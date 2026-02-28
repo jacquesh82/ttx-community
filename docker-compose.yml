@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ttx-postgres
+    environment:
+      POSTGRES_DB: ttx
+      POSTGRES_USER: ttx
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ttx_dev_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ttx -d ttx"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    networks:
+      - ttx-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ttx-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ttx:${DB_PASSWORD:-ttx_dev_password}@postgres:5432/ttx
+      SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production_min_32_chars}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      MEDIA_STORAGE_PATH: /app/media
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:80}
+    volumes:
+      - media-data:/app/media
+      - logs-data:/app/logs
+      - ./backend:/app:cached
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - ttx-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: ttx-frontend
+    environment:
+      VITE_API_URL: ${API_URL:-http://localhost:3000}
+      VITE_WS_URL: ${WS_URL:-ws://localhost:3000}
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - ttx-net
+
+volumes:
+  pgdata:
+  media-data:
+  logs-data:
+
+networks:
+  ttx-net:
+    driver: bridge

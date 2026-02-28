@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: inject-postgres-community
+    environment:
+      POSTGRES_DB: inject
+      POSTGRES_USER: inject
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-inject_dev_password}
+    volumes:
+      - pgdata-community:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inject -d inject"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5433:5432"
+    networks:
+      - inject-net-community
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        EDITION: community
+    container_name: inject-backend-community
+    environment:
+      DATABASE_URL: postgresql+asyncpg://inject:${DB_PASSWORD:-inject_dev_password}@postgres:5432/inject
+      SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production_min_32_chars}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      MEDIA_STORAGE_PATH: /app/media
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:80}
+      EDITION: community
+    volumes:
+      - media-data-community:/app/media
+      - logs-data-community:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+    networks:
+      - inject-net-community
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+      args:
+        VITE_EDITION: community
+    container_name: inject-frontend-community
+    environment:
+      VITE_API_URL: ${API_URL:-http://localhost:3001}
+      VITE_WS_URL: ${WS_URL:-ws://localhost:3001}
+      VITE_EDITION: community
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+    ports:
+      - "5174:5173"
+    depends_on:
+      - backend
+    networks:
+      - inject-net-community
+
+volumes:
+  pgdata-community:
+  media-data-community:
+  logs-data-community:
+
+networks:
+  inject-net-community:
+    driver: bridge

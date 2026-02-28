@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Phase",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "integer" },
+    "name": { "type": "string" },
+    "order": { "type": "integer" },
+    "injects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "type": "string" },
+          "time_offset": { "type": "integer" },
+          "duration_min": { "type": "integer" },
+          "description": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "title",
+          "type",
+          "status",
+          "time_offset",
+          "duration_min",
+          "description"
+        ]
+      }
+    }
+  },
+  "required": ["id", "name", "order", "injects"]
+}

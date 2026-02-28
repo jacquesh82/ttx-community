@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/crisis-inject.schema.json",
+  "title": "Crisis Exercise Inject",
+  "type": "object",
+  "required": ["id", "type", "title", "status", "created_at"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": [
+        "idea",
+        "scenario",
+        "chronogram",
+        "video",
+        "image",
+        "mail",
+        "message",
+        "directory",
+        "reference_url",
+        "social_post",
+        "document",
+        "canal_press",
+        "canal_anssi",
+        "canal_gouvernement",
+        "other"
+      ]
+    },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "description": { "type": "string" },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "validated", "ready", "played", "archived"]
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "language": { "type": "string" },
+    "exercise": {
+      "type": "object"
+    },
+    "timing": {
+      "type": "object"
+    },
+    "audience": {
+      "type": "object"
+    },
+    "content": { "type": "object" },
+    "expected_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evaluation": { "type": "object" },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "canal_press" } } },
+      "then": { "properties": { "content": { "$ref": "#/$defs/canal_press" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "canal_anssi" } } },
+      "then": { "properties": { "content": { "$ref": "#/$defs/canal_anssi" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "canal_gouvernement" } } },
+      "then": { "properties": { "content": { "$ref": "#/$defs/canal_gouvernement" } } }
+    }
+  ],
+  "$defs": {
+    "canal_press": {
+      "type": "object",
+      "required": ["media_name", "headline", "article_body"],
+      "properties": {
+        "media_name": { "type": "string" },
+        "journalist": { "type": "string" },
+        "headline": { "type": "string" },
+        "article_body": { "type": "string" },
+        "tone": {
+          "type": "string",
+          "enum": ["factuel", "alarmiste", "investigatif", "critique"]
+        },
+        "publication_datetime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "media_assets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/file" }
+        }
+      }
+    },
+    "canal_anssi": {
+      "type": "object",
+      "required": ["communication_type", "official_message"],
+      "properties": {
+        "communication_type": {
+          "type": "string",
+          "enum": [
+            "alerte",
+            "recommandation",
+            "demande_information",
+            "notification_officielle"
+          ]
+        },
+        "reference_number": { "type": "string" },
+        "official_message": { "type": "string" },
+        "required_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "contact_point": { "type": "string" }
+      }
+    },
+    "canal_gouvernement": {
+      "type": "object",
+      "required": ["authority", "communication_format", "official_statement"],
+      "properties": {
+        "authority": { "type": "string" },
+        "communication_format": {
+          "type": "string",
+          "enum": [
+            "communique_presse",
+            "discours_officiel",
+            "instruction",
+            "arrete",
+            "conference_presse"
+          ]
+        },
+        "official_statement": { "type": "string" },
+        "legal_reference": { "type": "string" },
+        "impact_scope": {
+          "type": "string",
+          "enum": ["local", "regional", "national"]
+        },
+        "media_assets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/file" }
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "required": ["filename"],
+      "properties": {
+        "filename": { "type": "string" },
+        "mime_type": { "type": "string" },
+        "size_bytes": { "type": "integer" },
+        "checksum": { "type": "string" },
+        "storage_path": { "type": "string" }
+      }
+    }
+  }
+}

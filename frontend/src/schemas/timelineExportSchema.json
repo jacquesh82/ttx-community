@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "exercise_id": { "type": "integer" },
+    "exported_at": { "type": "string" },
+    "timeline_type": { "type": "string" },
+    "total_injects": { "type": "integer" },
+    "phases": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/phase" }
+    },
+    "injects": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/inject" }
+    }
+  },
+  "required": [
+    "exercise_id",
+    "exported_at",
+    "timeline_type",
+    "total_injects",
+    "phases",
+    "injects"
+  ],
+  "definitions": {
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "order": { "type": "integer" }
+      },
+      "required": ["id", "name", "order"]
+    },
+    "nullableInt": { "type": ["integer", "null"] },
+    "nullableStr": { "type": ["string", "null"] },
+    "injectMini": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "time": { "type": "string" },
+        "inject_id": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["time", "inject_id", "description"]
+    },
+    "bankMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bank_kind": { "type": "string" },
+        "inject_bank_kind": { "type": "string" },
+        "bank_item_id": { "type": "integer" }
+      },
+      "required": ["bank_kind", "inject_bank_kind", "bank_item_id"]
+    },
+    "contentText": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "text": { "type": "string" } },
+      "required": ["text"]
+    },
+    "contentChronogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "phase": { "type": "string" },
+        "duration_minutes": { "type": "integer" },
+        "injects": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/injectMini" }
+        }
+      },
+      "required": ["phase", "duration_minutes", "injects"]
+    },
+    "contentCommsActions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "communication_type": { "type": "string" },
+        "reference_number": { "type": "string" },
+        "official_message": { "type": "string" },
+        "required_actions": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["communication_type", "reference_number", "official_message", "required_actions"]
+    },
+    "contentCommsContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "communication_type": { "type": "string" },
+        "reference_number": { "type": "string" },
+        "official_message": { "type": "string" },
+        "contact_point": { "type": "string" }
+      },
+      "required": ["communication_type", "reference_number", "official_message", "contact_point"]
+    },
+    "contentCommsActionsDeadline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "communication_type": { "type": "string" },
+        "reference_number": { "type": "string" },
+        "official_message": { "type": "string" },
+        "required_actions": { "type": "array", "items": { "type": "string" } },
+        "deadline": { "type": "string" },
+        "contact_point": { "type": "string" }
+      },
+      "required": ["communication_type", "reference_number", "official_message", "required_actions", "deadline", "contact_point"]
+    },
+    "contentPress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "media_name": { "type": "string" },
+        "journalist": { "type": "string" },
+        "headline": { "type": "string" },
+        "article_body": { "type": "string" },
+        "tone": { "type": "string" },
+        "publication_datetime": { "type": "string" }
+      },
+      "required": ["media_name", "journalist", "headline", "article_body", "tone", "publication_datetime"]
+    },
+    "contentImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filename": { "type": "string" },
+        "mime_type": { "type": "string" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "description": { "type": "string" }
+      },
+      "required": ["filename", "mime_type", "width", "height", "description"]
+    },
+    "contentVideo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "duration_seconds": { "type": "integer" },
+        "platform": { "type": "string" },
+        "thumbnail": { "type": "string" },
+        "views": { "type": "integer" }
+      },
+      "required": ["title", "duration_seconds", "platform", "thumbnail", "views"]
+    },
+    "inject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "timeline_type": { "type": "string" },
+        "time_offset": { "type": "integer" },
+        "time_label": { "type": "string" },
+        "duration_min": { "type": "integer" },
+        "phase_id": { "$ref": "#/definitions/nullableInt" },
+        "phase_name": { "$ref": "#/definitions/nullableStr" },
+        "description": { "type": "string" },
+        "content": {
+          "oneOf": [
+            { "allOf": [ { "$ref": "#/definitions/contentText" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentChronogram" }, { "$ref": "#/definitions/bankMeta" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentCommsActions" }, { "$ref": "#/definitions/bankMeta" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentCommsContact" }, { "$ref": "#/definitions/bankMeta" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentCommsActionsDeadline" }, { "$ref": "#/definitions/bankMeta" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentPress" }, { "$ref": "#/definitions/bankMeta" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentImage" }, { "$ref": "#/definitions/bankMeta" } ] },
+            { "allOf": [ { "$ref": "#/definitions/contentVideo" }, { "$ref": "#/definitions/bankMeta" } ] }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "status",
+        "timeline_type",
+        "time_offset",
+        "time_label",
+        "duration_min",
+        "phase_id",
+        "phase_name",
+        "description",
+        "content"
+      ]
+    }
+  }
+}
