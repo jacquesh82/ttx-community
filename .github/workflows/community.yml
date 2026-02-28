@@ -1,0 +1,68 @@
+name: Build Community (AGPLv3)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for community image
+        id: meta-community
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/inject-community
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Backend (Community)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-community.outputs.tags }}-backend
+          labels: ${{ steps.meta-community.outputs.labels }}
+          build-args: |
+            EDITION=community
+
+      - name: Build and push Frontend (Community)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-community.outputs.tags }}-frontend
+          labels: ${{ steps.meta-community.outputs.labels }}
+          build-args: |
+            VITE_EDITION=community
+
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## Community Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Images pushed to DockerHub:" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ secrets.DOCKERHUB_USERNAME }}/inject-community-backend:latest" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ secrets.DOCKERHUB_USERNAME }}/inject-community-frontend:latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Edition**: Community (AGPLv3)" >> $GITHUB_STEP_SUMMARY
+          echo "**Features disabled**: AI, Multi-tenant, Credit system" >> $GITHUB_STEP_SUMMARY

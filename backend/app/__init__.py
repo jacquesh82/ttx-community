@@ -1,0 +1,1 @@
+"""TTX Platform Backend Application."""
