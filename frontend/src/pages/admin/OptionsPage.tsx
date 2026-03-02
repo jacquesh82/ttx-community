@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, PluginConfiguration, AppConfiguration, PluginType } from '../../services/api'
-import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Cpu, Download, Upload, MessageCircle, Smartphone, Phone, Tv, Newspaper, Users, FileText } from 'lucide-react'
+import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Cpu, Download, Upload, MessageCircle, Smartphone, Phone, Tv, Newspaper, Users } from 'lucide-react'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
+import LangSelector from '../../components/LangSelector'
 
 const COLORS = [
   { value: 'green', label: 'Vert', class: 'bg-green-500' },
@@ -680,6 +681,25 @@ export default function OptionsPage() {
               <ThemeModeSelector className="w-full justify-center" />
             </div>
           </div>
+
+          <div
+            className="rounded-xl border p-4 backdrop-blur-md"
+            style={{
+              backgroundColor: 'var(--login-card-bg)',
+              borderColor: 'var(--login-card-border)',
+            }}
+          >
+            <p className="text-xs uppercase tracking-wider login-muted">Langue</p>
+            <p className="text-sm font-medium mt-1" style={{ color: 'var(--login-text)' }}>
+              Langue de l&apos;interface
+            </p>
+            <p className="text-xs mt-2 login-muted">
+              Préférence locale (navigateur) : FR / EN.
+            </p>
+            <div className="mt-3">
+              <LangSelector className="w-full justify-center" />
+            </div>
+          </div>
         </aside>
 
         <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4 md:p-6">
@@ -709,17 +729,6 @@ export default function OptionsPage() {
                     onChange={(e) => updateAppConfigField('organization_name', e.target.value)}
                     className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      id="import_txt"
-                      onClick={() => organizationAutofillFileInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 text-gray-100 rounded-lg text-sm hover:bg-gray-600"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Importer txt
-                    </button>
-                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
