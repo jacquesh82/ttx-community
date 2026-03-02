@@ -1,0 +1,153 @@
+{
+  "login": {
+    "title": "Sign In",
+    "subtitle": "Table Top Exercise Platform",
+    "tenantSpace": "Tenant space {{name}}",
+    "username": "Username or email",
+    "password": "Password",
+    "submit": "Sign in",
+    "connecting": "Signing in...",
+    "platformTagline": "TTX management and exercise platform.",
+    "errorDefault": "Login error",
+    "errorDevDefault": "Dev login error"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "exercises": "Exercises",
+    "administration": "Administration",
+    "users": "Users",
+    "teams": "Teams",
+    "injectBank": "Inject Bank",
+    "audit": "Audit",
+    "welcomeKits": "Welcome Kits",
+    "options": "Options",
+    "myRole": "My Role",
+    "logout": "Logout",
+    "profile": "My Profile"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "close": "Close",
+    "search": "Search",
+    "none": "None",
+    "noneF": "None",
+    "noDescription": "No description",
+    "viewAll": "View all",
+    "viewDetails": "View details",
+    "actions": "Actions",
+    "status": "Status",
+    "name": "Name",
+    "active": "Active",
+    "inactive": "Inactive",
+    "createdAt": "Created",
+    "tenant": "Tenant"
+  },
+  "roles": {
+    "admin": "Administrator",
+    "animateur": "Facilitator",
+    "observateur": "Observer",
+    "participant": "Participant"
+  },
+  "debug": {
+    "devMode": "Development Mode",
+    "quickLogin": "Quick login",
+    "devTools": "Debug tools",
+    "eventsEmitter": "Events Emitter",
+    "eventsReceiver": "Events Receiver",
+    "apiStatus": "API Status",
+    "apiOnline": "API online",
+    "apiOffline": "API offline",
+    "connecting": "Signing in...",
+    "loginAs": "Sign in as {{role}}"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage platform users",
+      "new": "New user",
+      "edit": "Edit user",
+      "create": "Create",
+      "creating": "Creating...",
+      "updating": "Updating...",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "passwordEdit": "New password (leave blank to keep current)",
+      "role": "Role",
+      "team": "Assigned team",
+      "noTeam": "No team",
+      "tags": "Tags",
+      "tagsPlaceholder": "e.g. crisis-cell, vip, spokesperson",
+      "tagsSeparator": "Separate tags with commas.",
+      "noUsers": "No users found.",
+      "noTags": "None",
+      "teamNum": "Team #{{id}}",
+      "deleteConfirm": "Are you sure you want to delete this user?",
+      "errorCreate": "Error creating user",
+      "errorUpdate": "Error updating user"
+    },
+    "teams": {
+      "title": "Teams",
+      "subtitle": "Manage platform teams"
+    },
+    "injectBank": {
+      "title": "Inject Bank"
+    },
+    "audit": {
+      "title": "Audit"
+    },
+    "welcomeKits": {
+      "title": "Welcome Kits"
+    },
+    "options": {
+      "title": "Options"
+    }
+  },
+  "exercises": {
+    "title": "Exercises",
+    "titleParticipant": "Available exercises",
+    "subtitle": "Manage your crisis exercises",
+    "subtitleParticipant": "Join a crisis exercise to start your mission",
+    "new": "New exercise",
+    "createFirst": "Create your first exercise",
+    "noneCreated": "No exercises created",
+    "recent": "Recent exercises",
+    "noDescription": "No description",
+    "deleteTitle": "Delete exercise",
+    "deleteConfirm": "This will permanently delete {{name}} and all associated data.",
+    "deleteError": "Cannot delete exercise. Please try again.",
+    "join": "Join",
+    "participantWelcome": "Welcome to your participant role!",
+    "participantInfo": "Click \"Join\" to access the exercise interface and start your mission. You'll have access to the timeline, messaging, team chat and other tools.",
+    "status": {
+      "draft": "Draft",
+      "running": "Running",
+      "paused": "Paused",
+      "completed": "Completed",
+      "archived": "Archived"
+    },
+    "columns": {
+      "name": "Name",
+      "status": "Status",
+      "createdAt": "Created",
+      "actions": "Actions"
+    },
+    "stats": {
+      "active": "Active exercises",
+      "paused": "Paused",
+      "completed": "Completed"
+    }
+  },
+  "observer": {
+    "role": "My role",
+    "mode": "Observer mode",
+    "readOnly": "Read-only access to exercises. Select an exercise to observe it."
+  }
+}

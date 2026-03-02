@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.config import get_settings
 from app.database import init_db, close_db, async_session_factory
+from app.seed import seed_initial_data
 from app.models import AuditLog, Session
 from app.routers import auth, users, teams, exercises, injects, events, webmail, crisis_contacts, exercise_users, audit, media, tv, player, websocket, twitter, inject_bank, crisis_management, welcome_kit, admin_options, debug, simulated_channels
 from app.utils.security import hash_token
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
     await init_db()
+    await seed_initial_data()
     print(f"[{datetime.now(timezone.utc).isoformat()}] TTX Platform started")
     yield
     # Shutdown

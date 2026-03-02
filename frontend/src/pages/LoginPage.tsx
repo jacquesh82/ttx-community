@@ -1,18 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/authStore'
 import { authApi, adminApi } from '../services/api'
 import ThemeModeSelector from '../components/ThemeModeSelector'
+import LangSelector from '../components/LangSelector'
+import DevDrawer from '../components/login/DevDrawer'
 import { OFFICIAL_TTX_LOGO_URL } from '../config/branding'
-// Check if running in development mode
-const isDevelopment = import.meta.env.DEV
 
-const devRoles = [
-  { role: 'admin' as const, label: 'Admin', color: 'bg-red-600 hover:bg-red-700' },
-  { role: 'animateur' as const, label: 'Animateur', color: 'bg-blue-600 hover:bg-blue-700' },
-  { role: 'observateur' as const, label: 'Observateur', color: 'bg-green-600 hover:bg-green-700' },
-  { role: 'participant' as const, label: 'Joueur', color: 'bg-purple-600 hover:bg-purple-700' },
-]
+const isDevelopment = import.meta.env.DEV
 
 function inferTenantSlugFromHost(hostname: string): string | null {
   const host = hostname.toLowerCase()
@@ -44,6 +40,7 @@ function formatTenantName(slug: string | null): string | null {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const [usernameOrEmail, setUsernameOrEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -100,7 +97,7 @@ export default function LoginPage() {
       setCsrfToken(response.csrf_token)
       navigate('/')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erreur de connexion')
+      setError(err.response?.data?.detail || t('login.errorDefault'))
     } finally {
       setLoading(false)
     }
@@ -116,13 +113,12 @@ export default function LoginPage() {
       setCsrfToken(response.csrf_token)
       navigate('/')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erreur de connexion dev')
+      setError(err.response?.data?.detail || t('login.errorDevDefault'))
     } finally {
       setDevLoading(null)
     }
   }
 
-  // "default" is a technical slug, not a display name — skip formatting it.
   const tenantName = (tenantSlug && tenantSlug !== 'default') ? formatTenantName(tenantSlug) : null
   const loginTitle = organizationName || tenantName || 'TTX Platform'
 
@@ -134,7 +130,8 @@ export default function LoginPage() {
       <div className="login-orb login-orb-c" aria-hidden="true" />
       <div className="login-vignette" aria-hidden="true" />
 
-      <div className="relative mx-auto mb-6 flex max-w-5xl justify-end">
+      <div className="relative mx-auto mb-6 flex max-w-5xl items-center justify-end gap-2">
+        <LangSelector />
         <ThemeModeSelector />
       </div>
 
@@ -147,7 +144,7 @@ export default function LoginPage() {
               {loginTitle}
             </h1>
             <p className="mt-4 max-w-lg text-base leading-relaxed login-muted">
-              Plateforme de pilotage et d&apos;exercices TTX.
+              {t('login.platformTagline')}
             </p>
             {tenantName && (
               <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-md" style={{ borderColor: 'var(--login-panel-subtle-border)', backgroundColor: 'var(--login-panel-subtle-bg)' }}>
@@ -155,7 +152,7 @@ export default function LoginPage() {
                   {tenantName.slice(0, 2)}
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] login-muted">Tenant</p>
+                  <p className="text-xs uppercase tracking-[0.2em] login-muted">{t('common.tenant')}</p>
                   <p className="text-sm font-semibold" style={{ color: 'var(--login-text)' }}>
                     {tenantName}
                   </p>
@@ -185,10 +182,10 @@ export default function LoginPage() {
               ) : null}
 
               <h2 className="text-center text-3xl font-extrabold" style={{ color: 'var(--login-text)' }}>
-                Connexion
+                {t('login.title')}
               </h2>
               <p className="mt-2 text-center text-sm login-muted">
-                {tenantName ? `Espace tenant ${tenantName}` : 'Table Top Exercise Platform'}
+                {tenantName ? t('login.tenantSpace', { name: tenantName }) : t('login.subtitle')}
               </p>
               {tenantSlug && tenantSlug !== 'default' && (
                 <p className="mt-1 text-center text-xs uppercase tracking-[0.18em] login-muted">
@@ -207,7 +204,7 @@ export default function LoginPage() {
               <div className="rounded-md shadow-sm -space-y-px">
                 <div>
                   <label htmlFor="username" className="sr-only">
-                    Nom d&apos;utilisateur ou email
+                    {t('login.username')}
                   </label>
                   <input
                     id="username"
@@ -215,14 +212,14 @@ export default function LoginPage() {
                     type="text"
                     required
                     className="login-input appearance-none rounded-none relative block w-full px-3 py-2 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                    placeholder="Nom d'utilisateur ou email"
+                    placeholder={t('login.username')}
                     value={usernameOrEmail}
                     onChange={(e) => setUsernameOrEmail(e.target.value)}
                   />
                 </div>
                 <div>
                   <label htmlFor="password" className="sr-only">
-                    Mot de passe
+                    {t('login.password')}
                   </label>
                   <input
                     id="password"
@@ -230,7 +227,7 @@ export default function LoginPage() {
                     type="password"
                     required
                     className="login-input appearance-none rounded-none relative block w-full px-3 py-2 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                    placeholder="Mot de passe"
+                    placeholder={t('login.password')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -243,55 +240,17 @@ export default function LoginPage() {
                   disabled={loading}
                   className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-50"
                 >
-                  {loading ? 'Connexion...' : 'Se connecter'}
+                  {loading ? t('login.connecting') : t('login.submit')}
                 </button>
               </div>
             </form>
-
-            {/* Dev Mode Login Buttons */}
-            {isDevelopment && (
-              <div className="mt-6 border-t pt-6" style={{ borderColor: 'var(--login-card-border)' }}>
-                <p className="text-center text-sm mb-4 login-muted">
-                  🔧 Mode Développement - Connexion rapide
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {devRoles.map(({ role, label, color }) => (
-                    <button
-                      key={role}
-                      onClick={() => handleDevLogin(role)}
-                      disabled={devLoading !== null}
-                      className={`py-2 px-3 text-sm font-medium rounded-md text-white ${color} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 transition-colors`}
-                    >
-                      {devLoading === role ? 'Connexion...' : `Se connecter en tant que ${label}`}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Debug Tools Links */}
-                <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--login-card-border)' }}>
-                  <p className="text-center text-sm mb-3 login-muted">
-                    🧪 Debug Tools
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    <Link
-                      to="/debug/events_emit"
-                      className="text-center py-2 px-3 text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors"
-                    >
-                      📡 Events Emitter
-                    </Link>
-                    <Link
-                      to="/debug/events_receive"
-                      className="text-center py-2 px-3 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                    >
-                      📥 Events Receiver
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
           </section>
         </div>
       </div>
+
+      {isDevelopment && (
+        <DevDrawer onDevLogin={handleDevLogin} devLoading={devLoading} />
+      )}
     </div>
   )
 }

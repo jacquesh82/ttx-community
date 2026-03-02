@@ -27,6 +27,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://ttx:${DB_PASSWORD:-ttx_dev_password}@postgres:5432/ttx
       SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production_min_32_chars}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      EDITION: community
       MEDIA_STORAGE_PATH: /app/media
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:80}
     volumes:

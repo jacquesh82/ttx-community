@@ -262,7 +262,9 @@ class InjectBankImportResponse(BaseModel):
 class InjectBankSchemaResponse(BaseModel):
     """Inject bank import schema payload."""
 
-    schema: dict
+    json_schema: dict = Field(serialization_alias="schema")
+
+    model_config = {"populate_by_name": True}
 
 
 def _get_attachment(payload: dict) -> Optional[dict]:
@@ -421,7 +423,7 @@ async def get_inject_bank_import_schema(
     _: any = Depends(require_auth),
 ):
     """Return JSON schema used to validate inject-bank text imports."""
-    return InjectBankSchemaResponse(schema=get_inject_bank_schema())
+    return InjectBankSchemaResponse(json_schema=get_inject_bank_schema())
 
 
 @router.get("/export/zip")
