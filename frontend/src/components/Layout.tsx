@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/authStore'
 import { authApi, adminApi } from '../services/api'
 import {
@@ -27,13 +28,14 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const { t } = useTranslation()
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('TTX Platform')
   const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(OFFICIAL_TTX_LOGO_URL)
-  // Fetch public configuration for logo
+
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -43,7 +45,6 @@ export default function Layout({ children }: LayoutProps) {
         }
         setOrganizationLogoUrl(config.organization_logo_url || OFFICIAL_TTX_LOGO_URL)
       } catch (error) {
-        // Silently fail - keep defaults
         console.warn('Could not load app configuration for logo')
       }
     }
@@ -66,12 +67,11 @@ export default function Layout({ children }: LayoutProps) {
 
   const isActive = (path: string) => location.pathname === path
 
-  // Badge de rôle dans la sidebar
   const roleBadge: Record<string, { label: string; color: string }> = {
-    admin: { label: 'Admin', color: 'bg-red-700 text-red-100' },
-    animateur: { label: 'Animateur', color: 'bg-blue-700 text-blue-100' },
-    observateur: { label: 'Observateur', color: 'bg-purple-700 text-purple-100' },
-    participant: { label: 'Participant', color: 'bg-green-700 text-green-100' },
+    admin: { label: t('roles.admin'), color: 'bg-red-700 text-red-100' },
+    animateur: { label: t('roles.animateur'), color: 'bg-blue-700 text-blue-100' },
+    observateur: { label: t('roles.observateur'), color: 'bg-purple-700 text-purple-100' },
+    participant: { label: t('roles.participant'), color: 'bg-green-700 text-green-100' },
   }
   const badge = roleBadge[user?.role ?? '']
 
@@ -95,12 +95,11 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="sidebar-border flex items-center justify-center h-16 border-b px-4">
           {organizationLogoUrl ? (
-            <img 
-              src={organizationLogoUrl} 
+            <img
+              src={organizationLogoUrl}
               alt={organizationName}
               className="max-h-10 max-w-full object-contain"
               onError={(e) => {
-                // Fallback to text if image fails to load
                 e.currentTarget.style.display = 'none'
                 setOrganizationLogoUrl(null)
               }}
@@ -113,157 +112,138 @@ export default function Layout({ children }: LayoutProps) {
         {/* Navigation */}
         <nav className="mt-6 px-3">
           <div className="space-y-1">
-            {/* Dashboard – visible pour admin et animateur */}
             {isAnimateur && (
               <Link
                 to="/"
                 className={clsx(
                   'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                  isActive('/')
-                    ? 'sidebar-link-active'
-                    : ''
+                  isActive('/') ? 'sidebar-link-active' : ''
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
                 <LayoutDashboard className="mr-3" size={20} />
-                Dashboard
+                {t('nav.dashboard')}
               </Link>
             )}
 
-            {/* Exercices – visible pour admin, animateur et observateur */}
             {(isAnimateur || isObservateur) && (
               <Link
                 to="/exercises"
                 className={clsx(
                   'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                  location.pathname.startsWith('/exercises')
-                    ? 'sidebar-link-active'
-                    : ''
+                  location.pathname.startsWith('/exercises') ? 'sidebar-link-active' : ''
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
                 <Dumbbell className="mr-3" size={20} />
-                Exercices
+                {t('nav.exercises')}
               </Link>
             )}
           </div>
 
-          {/* Section Administration – admin uniquement */}
+          {/* Administration section */}
           {isAdmin && (
             <div className="mt-8">
               <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
-                Administration
+                {t('nav.administration')}
               </h3>
               <div className="mt-3 space-y-1">
                 <Link
                   to="/admin/users"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/users')
-                      ? 'sidebar-link-active'
-                      : ''
+                    location.pathname.startsWith('/admin/users') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Users className="mr-3" size={20} />
-                  Utilisateurs
+                  {t('nav.users')}
                 </Link>
 
                 <Link
                   to="/admin/teams"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/teams')
-                      ? 'sidebar-link-active'
-                      : ''
+                    location.pathname.startsWith('/admin/teams') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Shield className="mr-3" size={20} />
-                  Équipes
+                  {t('nav.teams')}
                 </Link>
 
                 <Link
                   to="/admin/inject-bank"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/inject-bank')
-                      ? 'sidebar-link-active'
-                      : ''
+                    location.pathname.startsWith('/admin/inject-bank') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <LibraryBig className="mr-3" size={20} />
-                  Banque d'inject
+                  {t('nav.injectBank')}
                 </Link>
 
                 <Link
                   to="/admin/audit"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/audit')
-                      ? 'sidebar-link-active'
-                      : ''
+                    location.pathname.startsWith('/admin/audit') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <FileText className="mr-3" size={20} />
-                  Audit
+                  {t('nav.audit')}
                 </Link>
 
                 <Link
                   to="/admin/welcome-kits"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/welcome-kits')
-                      ? 'sidebar-link-active'
-                      : ''
+                    location.pathname.startsWith('/admin/welcome-kits') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <FileDown className="mr-3" size={20} />
-                  Kits de bienvenue
+                  {t('nav.welcomeKits')}
                 </Link>
 
                 <Link
                   to="/admin/options"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/options')
-                      ? 'sidebar-link-active'
-                      : ''
+                    location.pathname.startsWith('/admin/options') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Settings className="mr-3" size={20} />
-                  Options
+                  {t('nav.options')}
                 </Link>
               </div>
             </div>
           )}
 
-          {/* Section Observateur – info sur le rôle */}
+          {/* Observer section */}
           {isObservateur && (
             <div className="mt-8">
               <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
-                Mon rôle
+                {t('observer.role')}
               </h3>
               <div className="sidebar-info-card mt-3 px-4 py-3 rounded-md">
                 <div className="sidebar-info-text flex items-center gap-2 text-sm">
                   <Eye size={15} />
-                  <span>Mode observateur</span>
+                  <span>{t('observer.mode')}</span>
                 </div>
                 <p className="sidebar-footer-muted text-xs mt-1">
-                  Accès lecture seule aux exercices. Sélectionnez un exercice pour l'observer.
+                  {t('observer.readOnly')}
                 </p>
               </div>
             </div>
           )}
         </nav>
 
-        {/* Footer utilisateur */}
+        {/* User footer */}
         <div className="sidebar-border absolute bottom-0 left-0 right-0 p-4 border-t space-y-3">
-          {/* Tenant actif */}
           {user?.tenant && (
             <div className="flex items-center gap-2 px-1">
               <Building2 size={13} className="sidebar-footer-muted flex-shrink-0" style={{ color: 'var(--sidebar-footer-muted)' }} />
@@ -274,14 +254,13 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           )}
 
-          {/* Profil utilisateur */}
           <div className="flex items-center justify-between">
             <Link
               to="/profile"
               className="flex items-center gap-2 min-w-0 flex-1 rounded-md px-1 py-1 hover:bg-opacity-10 transition-colors group"
               style={{ color: 'inherit' }}
               onClick={() => setSidebarOpen(false)}
-              title="Mon profil"
+              title={t('nav.profile')}
             >
               {user?.avatar_url ? (
                 <img
@@ -307,7 +286,7 @@ export default function Layout({ children }: LayoutProps) {
               onClick={handleLogout}
               className="p-2 hover:opacity-100 opacity-75 flex-shrink-0 transition-opacity"
               style={{ color: 'var(--sidebar-footer-muted)' }}
-              title="Déconnexion"
+              title={t('nav.logout')}
             >
               <LogOut size={18} />
             </button>
@@ -315,7 +294,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </aside>
 
-      {/* Overlay mobile */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 z-30 bg-black/50"

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { exercisesApi } from '../services/api'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Dumbbell, Play, Pause, CheckCircle } from 'lucide-react'
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
   const { data: exercisesData, isLoading } = useQuery({
     queryKey: ['exercises'],
     queryFn: () => exercisesApi.list({ page: 1, page_size: 10 }),
@@ -19,19 +21,11 @@ export default function DashboardPage() {
     archived: 'bg-gray-100 text-gray-600',
   }
 
-  const statusLabels: Record<string, string> = {
-    draft: 'Brouillon',
-    running: 'En cours',
-    paused: 'En pause',
-    completed: 'Terminé',
-    archived: 'Archivé',
-  }
-
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Bienvenue sur la plateforme TTX</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('nav.dashboard')}</h1>
+        <p className="text-gray-600">{t('login.platformTagline')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -41,7 +35,7 @@ export default function DashboardPage() {
               <Dumbbell className="text-blue-600" size={24} />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500">Exercices actifs</p>
+              <p className="text-sm text-gray-500">{t('exercises.stats.active')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {exercises.filter((e: any) => e.status === 'running').length}
               </p>
@@ -55,7 +49,7 @@ export default function DashboardPage() {
               <Pause className="text-yellow-600" size={24} />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500">En pause</p>
+              <p className="text-sm text-gray-500">{t('exercises.stats.paused')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {exercises.filter((e: any) => e.status === 'paused').length}
               </p>
@@ -69,7 +63,7 @@ export default function DashboardPage() {
               <CheckCircle className="text-green-600" size={24} />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500">Terminés</p>
+              <p className="text-sm text-gray-500">{t('exercises.stats.completed')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {exercises.filter((e: any) => e.status === 'completed').length}
               </p>
@@ -81,21 +75,21 @@ export default function DashboardPage() {
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Exercices récents</h2>
+            <h2 className="text-lg font-medium">{t('exercises.recent')}</h2>
             <Link
               to="/exercises"
               className="text-primary-600 hover:text-primary-700 text-sm font-medium"
             >
-              Voir tout
+              {t('common.viewAll')}
             </Link>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="p-6 text-center text-gray-500">Chargement...</div>
+          <div className="p-6 text-center text-gray-500">{t('common.loading')}</div>
         ) : exercises.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
-            Aucun exercice. Créez votre premier exercice pour commencer.
+            {t('exercises.noneCreated')}
           </div>
         ) : (
           <ul className="divide-y">
@@ -105,11 +99,11 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-medium text-gray-900">{exercise.name}</p>
                     <p className="text-sm text-gray-500">
-                      {exercise.description || 'Aucune description'}
+                      {exercise.description || t('common.noDescription')}
                     </p>
                   </div>
                   <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[exercise.status]}`}>
-                    {statusLabels[exercise.status]}
+                    {t(`exercises.status.${exercise.status}`)}
                   </span>
                 </Link>
               </li>

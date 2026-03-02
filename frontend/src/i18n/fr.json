@@ -1,0 +1,153 @@
+{
+  "login": {
+    "title": "Connexion",
+    "subtitle": "Table Top Exercise Platform",
+    "tenantSpace": "Espace tenant {{name}}",
+    "username": "Nom d'utilisateur ou email",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "connecting": "Connexion...",
+    "platformTagline": "Plateforme de pilotage et d'exercices TTX.",
+    "errorDefault": "Erreur de connexion",
+    "errorDevDefault": "Erreur de connexion dev"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "exercises": "Exercices",
+    "administration": "Administration",
+    "users": "Utilisateurs",
+    "teams": "Équipes",
+    "injectBank": "Banque d'inject",
+    "audit": "Audit",
+    "welcomeKits": "Kits de bienvenue",
+    "options": "Options",
+    "myRole": "Mon rôle",
+    "logout": "Déconnexion",
+    "profile": "Mon profil"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "none": "Aucun",
+    "noneF": "Aucune",
+    "noDescription": "Aucune description",
+    "viewAll": "Voir tout",
+    "viewDetails": "Voir détails",
+    "actions": "Actions",
+    "status": "Statut",
+    "name": "Nom",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "createdAt": "Créé le",
+    "tenant": "Tenant"
+  },
+  "roles": {
+    "admin": "Administrateur",
+    "animateur": "Animateur",
+    "observateur": "Observateur",
+    "participant": "Participant"
+  },
+  "debug": {
+    "devMode": "Mode Développement",
+    "quickLogin": "Connexion rapide",
+    "devTools": "Outils de debug",
+    "eventsEmitter": "Events Emitter",
+    "eventsReceiver": "Events Receiver",
+    "apiStatus": "État API",
+    "apiOnline": "API en ligne",
+    "apiOffline": "API hors ligne",
+    "connecting": "Connexion...",
+    "loginAs": "Se connecter en tant que {{role}}"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": {
+      "title": "Utilisateurs",
+      "subtitle": "Gérez les utilisateurs de la plateforme",
+      "new": "Nouvel utilisateur",
+      "edit": "Modifier l'utilisateur",
+      "create": "Créer",
+      "creating": "Création...",
+      "updating": "Mise à jour...",
+      "username": "Nom d'utilisateur",
+      "email": "Email",
+      "password": "Mot de passe",
+      "passwordEdit": "Nouveau mot de passe (laisser vide pour garder l'actuel)",
+      "role": "Rôle",
+      "team": "Équipe de rattachement",
+      "noTeam": "Aucune équipe",
+      "tags": "Tags",
+      "tagsPlaceholder": "ex: cellule-crise, vip, porte-parole",
+      "tagsSeparator": "Séparez les tags par des virgules.",
+      "noUsers": "Aucun utilisateur trouvé.",
+      "noTags": "Aucun",
+      "teamNum": "Équipe #{{id}}",
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cet utilisateur ?",
+      "errorCreate": "Erreur lors de la création",
+      "errorUpdate": "Erreur lors de la mise à jour"
+    },
+    "teams": {
+      "title": "Équipes",
+      "subtitle": "Gérez les équipes de la plateforme"
+    },
+    "injectBank": {
+      "title": "Banque d'inject"
+    },
+    "audit": {
+      "title": "Audit"
+    },
+    "welcomeKits": {
+      "title": "Kits de bienvenue"
+    },
+    "options": {
+      "title": "Options"
+    }
+  },
+  "exercises": {
+    "title": "Exercices",
+    "titleParticipant": "Exercices disponibles",
+    "subtitle": "Gérez vos exercices de crise",
+    "subtitleParticipant": "Rejoignez un exercice de crise pour commencer votre mission",
+    "new": "Nouvel exercice",
+    "createFirst": "Créer votre premier exercice",
+    "noneCreated": "Aucun exercice créé",
+    "recent": "Exercices récents",
+    "noDescription": "Aucune description",
+    "deleteTitle": "Supprimer l'exercice",
+    "deleteConfirm": "Cette action supprimera définitivement {{name}} et toutes ses données associées.",
+    "deleteError": "Impossible de supprimer l'exercice. Réessayez.",
+    "join": "Rejoindre",
+    "participantWelcome": "Bienvenue dans votre rôle de participant !",
+    "participantInfo": "Cliquez sur \"Rejoindre\" pour accéder à l'interface de l'exercice et commencer votre mission. Vous aurez accès à la timeline, la messagerie, le chat équipe et d'autres outils.",
+    "status": {
+      "draft": "Brouillon",
+      "running": "En cours",
+      "paused": "En pause",
+      "completed": "Terminé",
+      "archived": "Archivé"
+    },
+    "columns": {
+      "name": "Nom",
+      "status": "Statut",
+      "createdAt": "Créé le",
+      "actions": "Actions"
+    },
+    "stats": {
+      "active": "Exercices actifs",
+      "paused": "En pause",
+      "completed": "Terminés"
+    }
+  },
+  "observer": {
+    "role": "Mon rôle",
+    "mode": "Mode observateur",
+    "readOnly": "Accès lecture seule aux exercices. Sélectionnez un exercice pour l'observer."
+  }
+}

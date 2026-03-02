@@ -2021,8 +2021,6 @@ export default function TimelineGantt({
         maxWidthClassName="max-w-4xl"
       >
         <div className="space-y-4">
-              <div className="flex justify-end">
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
             <input

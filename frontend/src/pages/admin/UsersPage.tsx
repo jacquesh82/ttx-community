@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { teamsApi, usersApi } from '../../services/api'
 import { Edit, Plus, Trash2 } from 'lucide-react'
 import Modal from '../../components/Modal'
@@ -53,6 +54,7 @@ function parseTagsInput(input: string): string[] {
 }
 
 export default function UsersPage() {
+  const { t } = useTranslation()
   const appDialog = useAppDialog()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -80,7 +82,7 @@ export default function UsersPage() {
       setError('')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de la création')
+      setError(err.response?.data?.detail || t('admin.users.errorCreate'))
     },
   })
 
@@ -94,7 +96,7 @@ export default function UsersPage() {
       setError('')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de la mise à jour')
+      setError(err.response?.data?.detail || t('admin.users.errorUpdate'))
     },
   })
 
@@ -110,10 +112,10 @@ export default function UsersPage() {
   const teamsById = new Map<number, TeamSummary>(teams.map((team) => [team.id, team]))
 
   const roleLabels: Record<UserRole, string> = {
-    admin: 'Administrateur',
-    animateur: 'Animateur',
-    observateur: 'Observateur',
-    participant: 'Participant',
+    admin: t('roles.admin'),
+    animateur: t('roles.animateur'),
+    observateur: t('roles.observateur'),
+    participant: t('roles.participant'),
   }
 
   const resetForm = () => setFormData(getEmptyForm())
@@ -179,7 +181,7 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (await appDialog.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+    if (await appDialog.confirm(t('admin.users.deleteConfirm'))) {
       deleteMutation.mutate(id)
     }
   }
@@ -188,7 +190,7 @@ export default function UsersPage() {
     <>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Nom d'utilisateur
+          {t('admin.users.username')}
         </label>
         <input
           type="text"
@@ -202,7 +204,7 @@ export default function UsersPage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Email
+          {t('admin.users.email')}
         </label>
         <input
           type="email"
@@ -215,7 +217,7 @@ export default function UsersPage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {isEdit ? "Nouveau mot de passe (laisser vide pour garder l'actuel)" : 'Mot de passe'}
+          {isEdit ? t('admin.users.passwordEdit') : t('admin.users.password')}
         </label>
         <input
           type="password"
@@ -229,30 +231,30 @@ export default function UsersPage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Rôle
+          {t('admin.users.role')}
         </label>
         <select
           value={formData.role}
           onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="participant">Participant</option>
-          <option value="observateur">Observateur</option>
-          <option value="animateur">Animateur</option>
-          <option value="admin">Administrateur</option>
+          <option value="participant">{t('roles.participant')}</option>
+          <option value="observateur">{t('roles.observateur')}</option>
+          <option value="animateur">{t('roles.animateur')}</option>
+          <option value="admin">{t('roles.admin')}</option>
         </select>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Équipe de rattachement
+          {t('admin.users.team')}
         </label>
         <select
           value={formData.teamId}
           onChange={(e) => setFormData({ ...formData, teamId: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="">Aucune équipe</option>
+          <option value="">{t('admin.users.noTeam')}</option>
           {teams.map((team) => (
             <option key={team.id} value={team.id}>
               {team.name}
@@ -263,17 +265,17 @@ export default function UsersPage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tags
+          {t('admin.users.tags')}
         </label>
         <input
           type="text"
           value={formData.tagsInput}
           onChange={(e) => setFormData({ ...formData, tagsInput: e.target.value })}
-          placeholder="ex: cellule-crise, vip, porte-parole"
+          placeholder={t('admin.users.tagsPlaceholder')}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         <p className="mt-1 text-xs text-gray-500">
-          Séparez les tags par des virgules.
+          {t('admin.users.tagsSeparator')}
         </p>
       </div>
     </>
@@ -283,15 +285,15 @@ export default function UsersPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Utilisateurs</h1>
-          <p className="text-gray-600">Gérez les utilisateurs de la plateforme</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('admin.users.title')}</h1>
+          <p className="text-gray-600">{t('admin.users.subtitle')}</p>
         </div>
         <button
           onClick={openCreateModal}
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
           <Plus className="mr-2" size={20} />
-          Nouvel utilisateur
+          {t('admin.users.new')}
         </button>
       </div>
 
@@ -302,11 +304,11 @@ export default function UsersPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Équipe</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.users.role')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.users.team')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.users.tags')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -320,7 +322,7 @@ export default function UsersPage() {
                     <td className="px-6 py-4 text-sm text-gray-500">{roleLabels[user.role]}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {user.team_id == null ? (
-                        <span className="text-gray-400">Aucune</span>
+                        <span className="text-gray-400">{t('common.noneF')}</span>
                       ) : team ? (
                         <span className="inline-flex items-center gap-2">
                           <span
@@ -330,7 +332,7 @@ export default function UsersPage() {
                           {team.name}
                         </span>
                       ) : (
-                        <span>Équipe #{user.team_id}</span>
+                        <span>{t('admin.users.teamNum', { id: user.team_id })}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
@@ -346,26 +348,26 @@ export default function UsersPage() {
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-400">Aucun</span>
+                        <span className="text-gray-400">{t('admin.users.noTags')}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {user.is_active ? 'Actif' : 'Inactif'}
+                        {user.is_active ? t('common.active') : t('common.inactive')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm space-x-2">
                       <button
                         onClick={() => handleEdit(user)}
                         className="text-primary-600 hover:text-primary-700"
-                        title="Modifier"
+                        title={t('common.edit')}
                       >
                         <Edit size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
                         className="text-red-600 hover:text-red-700"
-                        title="Supprimer"
+                        title={t('common.delete')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -377,7 +379,7 @@ export default function UsersPage() {
               {!isLoading && users.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
-                    Aucun utilisateur trouvé.
+                    {t('admin.users.noUsers')}
                   </td>
                 </tr>
               )}
@@ -389,7 +391,7 @@ export default function UsersPage() {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={closeCreateModal}
-        title="Nouvel utilisateur"
+        title={t('admin.users.new')}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -406,14 +408,14 @@ export default function UsersPage() {
               onClick={closeCreateModal}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
             >
-              {createMutation.isPending ? 'Création...' : 'Créer'}
+              {createMutation.isPending ? t('admin.users.creating') : t('admin.users.create')}
             </button>
           </div>
         </form>
@@ -422,7 +424,7 @@ export default function UsersPage() {
       <Modal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
-        title="Modifier l'utilisateur"
+        title={t('admin.users.edit')}
       >
         <form onSubmit={handleUpdate} className="space-y-4">
           {error && (
@@ -439,14 +441,14 @@ export default function UsersPage() {
               onClick={closeEditModal}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
             >
-              {updateMutation.isPending ? 'Mise à jour...' : 'Enregistrer'}
+              {updateMutation.isPending ? t('admin.users.updating') : t('common.save')}
             </button>
           </div>
         </form>

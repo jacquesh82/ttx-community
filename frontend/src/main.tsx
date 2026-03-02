@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { AppDialogProvider } from './contexts/AppDialogContext'
 import { applyThemeToDocument, useThemeStore } from './stores/themeStore'
+import './i18n'
 import './index.css'
 
 const queryClient = new QueryClient({
