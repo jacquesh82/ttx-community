@@ -115,6 +115,109 @@
   color: #1d4ed8 !important;
 }
 
+/* Light mode: simulator screens on /debug/events_receive */
+:root[data-theme='light'] .events-receive-simulators .bg-gray-900 {
+  background-color: #f8fafc;
+}
+
+:root[data-theme='light'] .events-receive-simulators .bg-gray-800 {
+  background-color: #ffffff;
+}
+
+:root[data-theme='light'] .events-receive-simulators .bg-gray-700 {
+  background-color: #f1f5f9;
+}
+
+:root[data-theme='light'] .events-receive-simulators .bg-gray-700\/50 {
+  background-color: rgba(241, 245, 249, 0.8);
+}
+
+:root[data-theme='light'] .events-receive-simulators .bg-gray-600 {
+  background-color: #e2e8f0;
+}
+
+:root[data-theme='light'] .events-receive-simulators .border-gray-800,
+:root[data-theme='light'] .events-receive-simulators .border-gray-700 {
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .events-receive-simulators .border-gray-600 {
+  border-color: #94a3b8;
+}
+
+:root[data-theme='light'] .events-receive-simulators .text-white {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .events-receive-simulators .bg-blue-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-blue-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-purple-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-purple-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-red-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-red-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-green-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-green-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-yellow-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-yellow-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-indigo-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-indigo-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-violet-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-violet-600 .text-white {
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .events-receive-simulators .text-gray-300 {
+  color: #334155;
+}
+
+:root[data-theme='light'] .events-receive-simulators .text-gray-400 {
+  color: #475569;
+}
+
+:root[data-theme='light'] .events-receive-simulators .text-gray-500,
+:root[data-theme='light'] .events-receive-simulators .text-gray-600 {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .events-receive-simulators .placeholder-gray-400::placeholder,
+:root[data-theme='light'] .events-receive-simulators .placeholder-gray-500::placeholder {
+  color: #94a3b8;
+}
+
+:root[data-theme='light'] .events-receive-simulators .scrollbar-thumb-gray-600 {
+  --scrollbar-thumb: #cbd5e1;
+}
+
+:root[data-theme='light'] .events-receive-simulators .scrollbar-track-gray-800,
+:root[data-theme='light'] .events-receive-simulators .scrollbar-track-gray-900 {
+  --scrollbar-track: #f1f5f9;
+}
+
+:root[data-theme='light'] .events-receive-simulators .hover\:bg-gray-800:hover {
+  background-color: #e2e8f0;
+}
+
+:root[data-theme='light'] .events-receive-simulators .hover\:bg-gray-800\/50:hover,
+:root[data-theme='light'] .events-receive-simulators .hover\:bg-gray-700\/50:hover {
+  background-color: rgba(226, 232, 240, 0.7);
+}
+
+:root[data-theme='light'] .events-receive-simulators .hover\:bg-gray-700:hover {
+  background-color: #e2e8f0;
+}
+
+:root[data-theme='light'] .events-receive-simulators .hover\:bg-gray-600:hover {
+  background-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .events-receive-simulators .hover\:text-white:hover {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .events-receive-simulators .hover\:text-gray-300:hover {
+  color: #334155;
+}
+
 :root[data-theme='dark'] {
   --app-bg: #020617;
   --app-fg: #e2e8f0;

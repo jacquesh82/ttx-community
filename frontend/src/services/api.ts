@@ -597,6 +597,10 @@ export const teamsApi = {
     const response = await api.put(`/teams/${id}`, data)
     return response.data
   },
+  delete: async (id: number) => {
+    const response = await api.delete(`/teams/${id}`)
+    return response.data
+  },
   addMember: async (teamId: number, userId: number, isLeader?: boolean) => {
     const response = await api.post(`/teams/${teamId}/members/${userId}`, null, {
       params: { is_leader: isLeader },
@@ -1502,6 +1506,19 @@ export interface OptionsImportPayload {
   plugins?: PluginConfiguration[]
 }
 
+export interface ApiKeyItem {
+  id: number
+  name: string
+  key_preview: string
+  is_active: boolean
+  created_at: string
+  last_used_at: string | null
+}
+
+export interface ApiKeyCreated extends ApiKeyItem {
+  key: string
+}
+
 // App Configuration API
 export interface AppConfiguration {
   organization_name: string
@@ -1526,6 +1543,8 @@ export interface AppConfiguration {
   smtp_user: string | null
   smtp_from: string | null
   simulator_inject_mapping: string | null
+  default_phases_config: string | null
+  default_phases_preset: string | null
 }
 
 export interface PublicConfigurationResponse {
@@ -1576,6 +1595,17 @@ export const adminApi = {
   ): Promise<OptionsExportPayload> => {
     const response = await api.post('/admin/config/import', payload)
     return response.data
+  },
+  listApiKeys: async (): Promise<ApiKeyItem[]> => {
+    const response = await api.get('/admin/api-keys')
+    return response.data
+  },
+  createApiKey: async (name: string): Promise<ApiKeyCreated> => {
+    const response = await api.post('/admin/api-keys', { name })
+    return response.data
+  },
+  revokeApiKey: async (keyId: number): Promise<void> => {
+    await api.delete(`/admin/api-keys/${keyId}`)
   },
 }
 

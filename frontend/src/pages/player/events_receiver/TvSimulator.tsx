@@ -18,15 +18,9 @@ interface TvSimulatorProps {
   refreshKey?: number
 }
 
-const DEFAULT_CHANNELS = [
-  { id: 'bfm', name: 'BFM TV', logo: null, color: 'bg-blue-600' },
-  { id: 'france2', name: 'France 2', logo: null, color: 'bg-blue-800' },
-  { id: 'france24', name: 'France 24', logo: null, color: 'bg-red-600' },
-  { id: 'euronews', name: 'Euronews', logo: null, color: 'bg-yellow-600' },
-]
+const CHANNEL_NAME = 'TTX TV'
 
 export default function TvSimulator({ exerciseId, refreshKey }: TvSimulatorProps) {
-  const [selectedChannel, setSelectedChannel] = useState(DEFAULT_CHANNELS[0])
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null)
@@ -84,11 +78,6 @@ export default function TvSimulator({ exerciseId, refreshKey }: TvSimulatorProps
     }
   }
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  }
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('fr-FR', {
@@ -106,7 +95,7 @@ export default function TvSimulator({ exerciseId, refreshKey }: TvSimulatorProps
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Tv className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-semibold text-white">TV Live</h2>
+            <h2 className="text-lg font-semibold text-white">{CHANNEL_NAME}</h2>
             {currentLive && (
               <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
                 <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -126,27 +115,6 @@ export default function TvSimulator({ exerciseId, refreshKey }: TvSimulatorProps
       </div>
 
       <div className="flex-1 flex min-h-0">
-        {/* Channel selector */}
-        <div className="w-48 border-r border-gray-700 p-3 space-y-2">
-          <h3 className="text-xs font-medium text-gray-400 uppercase mb-2">Chaînes</h3>
-          {DEFAULT_CHANNELS.map((channel) => (
-            <button
-              key={channel.id}
-              onClick={() => setSelectedChannel(channel)}
-              className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                selectedChannel.id === channel.id
-                  ? 'bg-purple-600/20 border border-purple-500'
-                  : 'hover:bg-gray-700'
-              }`}
-            >
-              <div className={`w-8 h-8 ${channel.color} rounded flex items-center justify-center text-white text-xs font-bold`}>
-                {channel.name.charAt(0)}
-              </div>
-              <span className="text-sm text-white truncate">{channel.name}</span>
-            </button>
-          ))}
-        </div>
-
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Video player */}

@@ -10,7 +10,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import String, select, func
+from sqlalchemy import String, select, func, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -80,6 +81,97 @@ from app.utils.security import hash_password
 from app.utils.tenancy import current_tenant_id_var
 
 router = APIRouter(prefix="/exercises", tags=["crisis-management"])
+
+
+async def _shift_phase_orders(
+    db: AsyncSession,
+    *,
+    exercise_id: int,
+    starting_from: int,
+) -> None:
+    """
+    Make room for a phase at `starting_from` by shifting existing orders up by 1.
+    Processed in descending order to avoid transient unique conflicts.
+    """
+    # Two-step bump avoids transient unique collisions on (exercise_id, phase_order).
+    await db.execute(
+        update(ExercisePhase)
+        .where(
+            ExercisePhase.exercise_id == exercise_id,
+            ExercisePhase.phase_order >= starting_from,
+        )
+        .values(phase_order=ExercisePhase.phase_order + 10000)
+    )
+    await db.execute(
+        update(ExercisePhase)
+        .where(
+            ExercisePhase.exercise_id == exercise_id,
+            ExercisePhase.phase_order >= starting_from + 10000,
+        )
+        .values(phase_order=ExercisePhase.phase_order - 9999)
+    )
+
+
+async def _move_phase_to_order(
+    db: AsyncSession,
+    *,
+    phase: ExercisePhase,
+    new_order: int,
+) -> None:
+    """Move a phase to a new order while preserving uniqueness throughout flushes."""
+    current_order = phase.phase_order
+    if new_order == current_order:
+        return
+
+    # Park target phase on a temporary unique order before shifting neighbors.
+    phase.phase_order = -phase.id
+    await db.flush()
+
+    if new_order < current_order:
+        await db.execute(
+            update(ExercisePhase)
+            .where(
+                ExercisePhase.exercise_id == phase.exercise_id,
+                ExercisePhase.id != phase.id,
+                ExercisePhase.phase_order >= new_order,
+                ExercisePhase.phase_order < current_order,
+            )
+            .values(phase_order=ExercisePhase.phase_order + 10000)
+        )
+        await db.execute(
+            update(ExercisePhase)
+            .where(
+                ExercisePhase.exercise_id == phase.exercise_id,
+                ExercisePhase.id != phase.id,
+                ExercisePhase.phase_order >= new_order + 10000,
+                ExercisePhase.phase_order < current_order + 10000,
+            )
+            .values(phase_order=ExercisePhase.phase_order - 9999)
+        )
+    else:
+        await db.execute(
+            update(ExercisePhase)
+            .where(
+                ExercisePhase.exercise_id == phase.exercise_id,
+                ExercisePhase.id != phase.id,
+                ExercisePhase.phase_order > current_order,
+                ExercisePhase.phase_order <= new_order,
+            )
+            .values(phase_order=ExercisePhase.phase_order + 10000)
+        )
+        await db.execute(
+            update(ExercisePhase)
+            .where(
+                ExercisePhase.exercise_id == phase.exercise_id,
+                ExercisePhase.id != phase.id,
+                ExercisePhase.phase_order > current_order + 10000,
+                ExercisePhase.phase_order <= new_order + 10000,
+            )
+            .values(phase_order=ExercisePhase.phase_order - 10001)
+        )
+
+    await db.flush()
+    phase.phase_order = new_order
 
 
 class ScenarioPayload(BaseModel):
@@ -312,6 +404,8 @@ async def create_phase(
     db: AsyncSession = Depends(get_db_session),
 ):
     await _get_exercise_or_404(exercise_id, db)
+    await _shift_phase_orders(db, exercise_id=exercise_id, starting_from=data.phase_order)
+    await db.flush()
     phase = ExercisePhase(
         exercise_id=exercise_id,
         name=data.name,
@@ -321,7 +415,12 @@ async def create_phase(
         end_offset_min=data.end_offset_min,
     )
     db.add(phase)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # Defensive fallback if concurrent insert slipped through check.
+        raise HTTPException(status_code=409, detail="phase_order already used for this exercise")
     await db.refresh(phase)
     return phase
 
@@ -338,12 +437,18 @@ async def update_phase(
     phase = result.scalar_one_or_none()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    if data.phase_order != phase.phase_order:
+        await _move_phase_to_order(db, phase=phase, new_order=data.phase_order)
     phase.name = data.name
     phase.description = data.description
     phase.phase_order = data.phase_order
     phase.start_offset_min = data.start_offset_min
     phase.end_offset_min = data.end_offset_min
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="phase_order already used for this exercise")
     return phase
 
 

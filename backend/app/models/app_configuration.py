@@ -93,4 +93,6 @@ DEFAULT_APP_CONFIG = {
     "smtp_user": None,
     "smtp_from": None,
     "simulator_inject_mapping": None,
+    "default_phases_config": None,
+    "default_phases_preset": None,
 }

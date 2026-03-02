@@ -222,7 +222,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
         </div>
         <button
           onClick={() => setShowCompose(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
+          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white"
         >
           <Plus size={16} />
           Nouveau mail

@@ -33,7 +33,7 @@ async def seed_initial_data() -> None:
             select(User).where(
                 User.tenant_id == tenant.id,
                 User.role == UserRole.ADMIN,
-            )
+            ).limit(1)
         )
         admin = result.scalar_one_or_none()
         if not admin:

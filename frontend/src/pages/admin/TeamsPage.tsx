@@ -1,26 +1,45 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { teamsApi, usersApi } from '../../services/api'
-import { Plus, Users, Edit, UserPlus, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { exercisesApi, teamsApi, usersApi } from '../../services/api'
+import { Plus, Users, Edit, UserPlus, Trash2, Search } from 'lucide-react'
 import Modal from '../../components/Modal'
 
 // Predefined team colors
 const TEAM_COLORS = [
-  "#ef4444",  // red
-  "#f97316",  // orange
-  "#f59e0b",  // amber
-  "#84cc16",  // lime
-  "#22c55e",  // green
-  "#14b8a6",  // teal
-  "#06b6d4",  // cyan
-  "#3b82f6",  // blue
-  "#6366f1",  // indigo
-  "#8b5cf6",  // violet
-  "#a855f7",  // purple
-  "#d946ef",  // fuchsia
-  "#ec4899",  // pink
-  "#78716c",  // stone
+  '#ef4444', // red
+  '#f97316', // orange
+  '#f59e0b', // amber
+  '#84cc16', // lime
+  '#22c55e', // green
+  '#14b8a6', // teal
+  '#06b6d4', // cyan
+  '#3b82f6', // blue
+  '#6366f1', // indigo
+  '#8b5cf6', // violet
+  '#a855f7', // purple
+  '#d946ef', // fuchsia
+  '#ec4899', // pink
+  '#78716c', // stone
 ]
+
+type TeamRow = {
+  id: number
+  name: string
+  description?: string | null
+  color?: string
+  member_count?: number
+}
+
+type ExerciseRow = {
+  id: number
+  name: string
+}
+
+type TeamSection = {
+  key: string
+  title: string
+  teams: TeamRow[]
+}
 
 export default function TeamsPage() {
   const queryClient = useQueryClient()
@@ -28,6 +47,8 @@ export default function TeamsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [exerciseFilter, setExerciseFilter] = useState<'all' | 'none' | string>('all')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -37,12 +58,32 @@ export default function TeamsPage() {
 
   const { data: teamsData, isLoading } = useQuery({
     queryKey: ['teams'],
-    queryFn: () => teamsApi.list({ page: 1, page_size: 50 }),
+    queryFn: () => teamsApi.list({ page: 1, page_size: 100 }),
   })
 
   const { data: usersData } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.list({ page: 1, page_size: 100 }),
+  })
+
+  const { data: exerciseGroupsData, isLoading: isExercisesLoading } = useQuery({
+    queryKey: ['teams', 'exercise-groups'],
+    queryFn: async () => {
+      const exercisesResponse = await exercisesApi.list({ page: 1, page_size: 100 })
+      const exercises = (exercisesResponse?.exercises || []) as ExerciseRow[]
+
+      const links = await Promise.all(
+        exercises.map(async (exercise) => {
+          const response = await exercisesApi.listTeams(exercise.id)
+          return {
+            exercise,
+            teamIds: new Set((response?.teams || []).map((team) => team.id)),
+          }
+        })
+      )
+
+      return { exercises, links }
+    },
   })
 
   const { data: teamDetail } = useQuery({
@@ -82,23 +123,114 @@ export default function TeamsPage() {
       teamsApi.addMember(teamId, userId, isLeader),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team', selectedTeam?.id] })
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de l\'ajout du membre')
+      setError(err.response?.data?.detail || "Erreur lors de l'ajout du membre")
     },
   })
 
   const removeMemberMutation = useMutation({
-    mutationFn: ({ teamId, userId }: { teamId: number; userId: number }) =>
-      teamsApi.removeMember(teamId, userId),
+    mutationFn: ({ teamId, userId }: { teamId: number; userId: number }) => teamsApi.removeMember(teamId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team', selectedTeam?.id] })
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
     },
   })
 
-  const teams = teamsData?.teams || []
+  const deleteOrphanTeamsMutation = useMutation({
+    mutationFn: async (teamIds: number[]) => Promise.all(teamIds.map((teamId) => teamsApi.delete(teamId))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['teams', 'exercise-groups'] })
+      setError('')
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.detail || 'Erreur lors de la suppression des équipes')
+    },
+  })
+
+  const teams = (teamsData?.teams || []) as TeamRow[]
   const users = usersData?.users || []
   const members = teamDetail?.members || []
+  const exerciseLinks = exerciseGroupsData?.links || []
+  const exercises = (exerciseGroupsData?.exercises || []) as ExerciseRow[]
+
+  const teamIdsByExercise = useMemo(() => {
+    const map = new Map<number, Set<number>>()
+    for (const link of exerciseLinks) {
+      map.set(link.exercise.id, link.teamIds)
+    }
+    return map
+  }, [exerciseLinks])
+
+  const exerciseNamesByTeam = useMemo(() => {
+    const map = new Map<number, string[]>()
+    for (const link of exerciseLinks) {
+      for (const teamId of link.teamIds) {
+        if (!map.has(teamId)) {
+          map.set(teamId, [])
+        }
+        map.get(teamId)?.push(link.exercise.name)
+      }
+    }
+    return map
+  }, [exerciseLinks])
+
+  const exerciseOptions = useMemo(
+    () => [...exercises].sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+    [exercises]
+  )
+
+  const matchesSearch = (team: TeamRow) => {
+    const needle = searchTerm.trim().toLowerCase()
+    if (!needle) return true
+    return `${team.name} ${team.description || ''}`.toLowerCase().includes(needle)
+  }
+
+  const sections = useMemo(() => {
+    const built: TeamSection[] = []
+
+    const teamsWithoutExercise = teams.filter((team) => !exerciseNamesByTeam.has(team.id) && matchesSearch(team))
+
+    if (exerciseFilter === 'none') {
+      built.push({
+        key: 'none',
+        title: 'Sans exercice',
+        teams: teamsWithoutExercise,
+      })
+      return built
+    }
+
+    const selectedExerciseId = exerciseFilter === 'all' ? null : Number(exerciseFilter)
+    const scopedExercises =
+      selectedExerciseId == null ? exerciseOptions : exerciseOptions.filter((exercise) => exercise.id === selectedExerciseId)
+
+    for (const exercise of scopedExercises) {
+      const attachedIds = teamIdsByExercise.get(exercise.id) || new Set<number>()
+      const groupedTeams = teams.filter((team) => attachedIds.has(team.id) && matchesSearch(team))
+      built.push({
+        key: `exercise-${exercise.id}`,
+        title: `${exercise.name}`,
+        teams: groupedTeams,
+      })
+    }
+
+    if (exerciseFilter === 'all') {
+      built.push({
+        key: 'none',
+        title: 'Sans exercice',
+        teams: teamsWithoutExercise,
+      })
+    }
+
+    return built
+  }, [exerciseFilter, exerciseNamesByTeam, exerciseOptions, searchTerm, teamIdsByExercise, teams])
+
+  const totalVisibleTeams = useMemo(
+    () => sections.reduce((acc, section) => acc + section.teams.length, 0),
+    [sections]
+  )
 
   // Get available users (not already in team)
   const memberIds = new Set(members.map((m: any) => m.id))
@@ -118,7 +250,7 @@ export default function TeamsPage() {
     }
   }
 
-  const openEditModal = (team: any) => {
+  const openEditModal = (team: TeamRow) => {
     setSelectedTeam(team)
     setFormData({
       name: team.name,
@@ -129,7 +261,7 @@ export default function TeamsPage() {
     setError('')
   }
 
-  const openMembersModal = (team: any) => {
+  const openMembersModal = (team: TeamRow) => {
     setSelectedTeam(team)
     setIsMembersModalOpen(true)
     setError('')
@@ -147,6 +279,57 @@ export default function TeamsPage() {
     }
   }
 
+  const handleDeleteTeamsWithoutExercise = (teamsToDelete: TeamRow[]) => {
+    if (teamsToDelete.length === 0) return
+    const ok = window.confirm(
+      `Supprimer ${teamsToDelete.length} équipe(s) sans exercice ? Cette action est irréversible.`
+    )
+    if (!ok) return
+    deleteOrphanTeamsMutation.mutate(teamsToDelete.map((team) => team.id))
+  }
+
+  const renderTeamCard = (team: TeamRow) => (
+    <div key={team.id} className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: team.color || '#3b82f6' }} />
+          <h3 className="text-lg font-medium text-gray-900">{team.name}</h3>
+        </div>
+        <button onClick={() => openEditModal(team)} className="text-primary-600 hover:text-primary-700">
+          <Edit size={16} />
+        </button>
+      </div>
+      <p className="text-gray-600 text-sm mb-4">{team.description || 'Aucune description'}</p>
+      {(exerciseNamesByTeam.get(team.id) || []).length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(exerciseNamesByTeam.get(team.id) || []).slice(0, 3).map((exerciseName) => (
+            <span key={`${team.id}-${exerciseName}`} className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-700">
+              {exerciseName}
+            </span>
+          ))}
+          {(exerciseNamesByTeam.get(team.id) || []).length > 3 && (
+            <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-700">
+              +{(exerciseNamesByTeam.get(team.id) || []).length - 3}
+            </span>
+          )}
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center text-gray-600 text-sm">
+          <Users className="mr-1" size={16} />
+          <span>{team.member_count || 0} membres</span>
+        </div>
+        <button
+          onClick={() => openMembersModal(team)}
+          className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
+        >
+          <UserPlus className="mr-1" size={16} />
+          Gérer
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -154,7 +337,7 @@ export default function TeamsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Équipes</h1>
           <p className="text-gray-600">Gérez les équipes participantes</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsCreateModalOpen(true)}
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
@@ -163,67 +346,85 @@ export default function TeamsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teams.map((team: any) => (
-          <div key={team.id} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-4 h-4 rounded-full flex-shrink-0" 
-                  style={{ backgroundColor: team.color || '#3b82f6' }}
-                />
-                <h3 className="text-lg font-medium text-gray-900">{team.name}</h3>
-              </div>
-              <button 
-                onClick={() => openEditModal(team)}
-                className="text-primary-600 hover:text-primary-700"
-              >
-                <Edit size={16} />
-              </button>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">
-              {team.description || 'Aucune description'}
-            </p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center text-gray-600 text-sm">
-                <Users className="mr-1" size={16} />
-                <span>{team.member_count || 0} membres</span>
-              </div>
-              <button
-                onClick={() => openMembersModal(team)}
-                className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
-              >
-                <UserPlus className="mr-1" size={16} />
-                Gérer
-              </button>
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher une équipe (nom, description)..."
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
             </div>
           </div>
-        ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Filtrer par exercice</label>
+            <select
+              value={exerciseFilter}
+              onChange={(e) => setExerciseFilter(e.target.value as 'all' | 'none' | string)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            >
+              <option value="all">Tous les exercices</option>
+              <option value="none">Sans exercice</option>
+              {exerciseOptions.map((exercise) => (
+                <option key={exercise.id} value={String(exercise.id)}>
+                  {exercise.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500 mt-3">{totalVisibleTeams} équipe(s) affichée(s)</p>
       </div>
 
-      {teams.length === 0 && !isLoading && (
+      {(isLoading || isExercisesLoading) && <div className="text-center py-8 text-gray-500">Chargement...</div>}
+
+      {!isLoading && !isExercisesLoading && sections.every((section) => section.teams.length === 0) && (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <Users className="mx-auto text-gray-500 mb-4" size={48} />
-          <p className="text-gray-600">Aucune équipe créée</p>
+          <p className="text-gray-600">Aucune équipe trouvée pour ce filtre</p>
         </div>
       )}
 
+      {!isLoading &&
+        !isExercisesLoading &&
+        sections
+          .filter((section) => section.teams.length > 0)
+          .map((section) => (
+            <section key={section.key} className="mb-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">{section.title}</h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-500">{section.teams.length} équipe(s)</span>
+                  {section.key === 'none' && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTeamsWithoutExercise(section.teams)}
+                      disabled={deleteOrphanTeamsMutation.isPending}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 disabled:opacity-50"
+                    >
+                      <Trash2 className="mr-1" size={14} />
+                      {deleteOrphanTeamsMutation.isPending ? 'Suppression...' : 'Supprimer les équipes sans exercice'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {section.teams.map((team) => renderTeamCard(team))}
+              </div>
+            </section>
+          ))}
+
       {/* Create Team Modal */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Nouvelle équipe"
-      >
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Nouvelle équipe">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-              {error}
-            </div>
-          )}
+          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nom de l'équipe
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipe</label>
             <input
               type="text"
               value={formData.name}
@@ -233,9 +434,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -244,9 +443,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Couleur
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Couleur</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((color) => (
                 <button
@@ -288,15 +485,9 @@ export default function TeamsPage() {
         title="Modifier l'équipe"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-              {error}
-            </div>
-          )}
+          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nom de l'équipe
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipe</label>
             <input
               type="text"
               value={formData.name}
@@ -306,9 +497,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -317,9 +506,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Couleur
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Couleur</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((color) => (
                 <button
@@ -364,11 +551,7 @@ export default function TeamsPage() {
         title={`Membres - ${selectedTeam?.name || ''}`}
       >
         <div className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-              {error}
-            </div>
-          )}
+          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
 
           {/* Current Members */}
           <div>
@@ -382,15 +565,10 @@ export default function TeamsPage() {
                     <div>
                       <span className="text-sm font-medium text-gray-900">{member.username}</span>
                       {member.is_leader && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-primary-100 text-primary-800 rounded">
-                          Chef
-                        </span>
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-primary-100 text-primary-800 rounded">Chef</span>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleRemoveMember(member.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
+                    <button onClick={() => handleRemoveMember(member.id)} className="text-red-600 hover:text-red-700">
                       <Trash2 size={16} />
                     </button>
                   </li>
@@ -411,7 +589,9 @@ export default function TeamsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
                   defaultValue=""
                 >
-                  <option value="" disabled>Sélectionner un utilisateur</option>
+                  <option value="" disabled>
+                    Sélectionner un utilisateur
+                  </option>
                   {availableUsers.map((user: any) => (
                     <option key={user.id} value={user.id}>
                       {user.username} ({user.email})

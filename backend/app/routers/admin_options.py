@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from typing import List
 import json
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -15,6 +16,7 @@ from app.models import (
     PluginConfiguration,
     TenantConfiguration,
     TenantPluginConfiguration,
+    ApiKey,
 )
 from app.models.user import UserRole
 from app.routers.auth import require_role
@@ -96,6 +98,8 @@ class AppConfigurationResponse(BaseModel):
     smtp_user: str | None
     smtp_from: str | None
     simulator_inject_mapping: str | None
+    default_phases_config: str | None = None
+    default_phases_preset: str | None = None
 
     class Config:
         from_attributes = True
@@ -125,6 +129,8 @@ class AppConfigurationUpdate(BaseModel):
     smtp_user: str | None = None
     smtp_from: str | None = None
     simulator_inject_mapping: str | None = None
+    default_phases_config: str | None = None
+    default_phases_preset: str | None = None
 
 
 # ============== Plugin Configuration Models ==============
@@ -583,6 +589,93 @@ async def export_options_configuration(
     )
 
 
+# ============== API Key Endpoints ==============
+
+class ApiKeyCreateRequest(BaseModel):
+    name: str
+
+
+class ApiKeyItem(BaseModel):
+    id: int
+    name: str
+    key_preview: str
+    is_active: bool
+    created_at: datetime
+    last_used_at: datetime | None = None
+
+
+class ApiKeyCreatedResponse(BaseModel):
+    """Returned once at creation — includes the full plaintext key."""
+    id: int
+    name: str
+    key: str
+    key_preview: str
+    is_active: bool
+    created_at: datetime
+
+
+@router.get("/api-keys", response_model=List[ApiKeyItem])
+async def list_api_keys(
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """List all API keys (admin only)."""
+    result = await db.execute(select(ApiKey).order_by(ApiKey.created_at.desc()))
+    keys = result.scalars().all()
+    return [
+        ApiKeyItem(
+            id=k.id,
+            name=k.name,
+            key_preview=k.key[:8] + "..." + k.key[-4:],
+            is_active=k.is_active,
+            created_at=k.created_at,
+            last_used_at=k.last_used_at,
+        )
+        for k in keys
+    ]
+
+
+@router.post("/api-keys", response_model=ApiKeyCreatedResponse)
+async def create_api_key(
+    data: ApiKeyCreateRequest,
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Create a new named API key (admin only). The plaintext key is returned only once."""
+    new_key = "ttx_" + secrets.token_urlsafe(32)
+    api_key_obj = ApiKey(name=data.name.strip() or "Clé sans nom", key=new_key)
+    db.add(api_key_obj)
+    await db.commit()
+    await db.refresh(api_key_obj)
+    return ApiKeyCreatedResponse(
+        id=api_key_obj.id,
+        name=api_key_obj.name,
+        key=new_key,
+        key_preview=new_key[:8] + "..." + new_key[-4:],
+        is_active=api_key_obj.is_active,
+        created_at=api_key_obj.created_at,
+    )
+
+
+@router.delete("/api-keys/{key_id}")
+async def revoke_api_key(
+    key_id: int,
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Revoke (delete) an API key by id (admin only)."""
+    result = await db.execute(select(ApiKey).where(ApiKey.id == key_id))
+    api_key_obj = result.scalar_one_or_none()
+    if not api_key_obj:
+        raise HTTPException(status_code=404, detail="API key not found")
+    await db.delete(api_key_obj)
+    await db.commit()
+    return {"deleted": True}
+
+
 @router.post("/config/import", response_model=OptionsExportResponse)
 async def import_options_configuration(
     payload: OptionsImportPayload,
@@ -628,5 +721,4 @@ async def import_options_configuration(
         app_configuration=app_config,
         plugins=plugins,
     )
-
 

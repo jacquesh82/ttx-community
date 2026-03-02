@@ -124,9 +124,11 @@ type InjectBankCreatePayload = {
   tags: string[]
 }
 
+const HIDDEN_INJECT_KINDS = new Set<InjectBankKind>(['scenario', 'chronogram', 'idea', 'other'])
+
 const EMPTY_FORM: FormState = {
   title: '',
-  kind: 'idea',
+  kind: 'mail',
   status: 'draft',
   data_format: 'text',
   summary: '',
@@ -912,7 +914,11 @@ export default function InjectBankPage() {
   }, [statuses])
 
   const kindOptions = useMemo(() => {
-    return kinds ? kinds.map((k) => ({ value: k, label: INJECT_BANK_KIND_LABELS[k] || k })) : []
+    return kinds
+      ? kinds
+          .filter((k) => !HIDDEN_INJECT_KINDS.has(k))
+          .map((k) => ({ value: k, label: INJECT_BANK_KIND_LABELS[k] || k }))
+      : []
   }, [kinds])
 
   const statusOptions = useMemo(() => {

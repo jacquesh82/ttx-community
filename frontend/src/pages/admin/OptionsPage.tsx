@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminApi, PluginConfiguration, AppConfiguration, PluginType } from '../../services/api'
-import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Cpu, Download, Upload, MessageCircle, Smartphone, Phone, Tv, Newspaper, Users } from 'lucide-react'
+import { adminApi, PluginConfiguration, AppConfiguration, PluginType, ApiKeyItem, ApiKeyCreated } from '../../services/api'
+import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Cpu, Download, Upload, MessageCircle, Smartphone, Phone, Tv, Newspaper, Users, ListOrdered, Eye, EyeOff, Copy, RefreshCw, Trash2 } from 'lucide-react'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
@@ -136,7 +136,64 @@ const parseOrganizationAutofillResponse = (
   return Object.keys(parsedFromLines).length > 0 ? parsedFromLines : null
 }
 
-type TabType = 'general' | 'plugins' | 'security' | 'email' | 'simulators'
+type TabType = 'general' | 'plugins' | 'security' | 'email' | 'simulators' | 'phases'
+type PhasePreset = 'minimal' | 'classique' | 'precis' | 'full'
+
+const DEFAULT_PHASES_LIST = [
+  'Détection',
+  'Qualification',
+  'Alerte',
+  'Activation de la cellule de crise',
+  'Analyse de situation',
+  'Décisions stratégiques',
+  'Endiguement',
+  "Continuité d'activité (mode dégradé)",
+  'Communication interne',
+  'Communication externe (autorités, médias, partenaires)',
+  'Remédiation technique',
+  'Rétablissement progressif des services',
+  'Surveillance renforcée',
+  'Désescalade',
+  'Clôture de crise',
+  'RETEX (retour d\'expérience)',
+  'Plan d\'actions correctives',
+]
+
+const PHASE_PRESETS: Record<PhasePreset, string[]> = {
+  minimal: [
+    'Détection',
+    'Activation de la cellule de crise',
+    'Remédiation technique',
+    'Clôture de crise',
+  ],
+  classique: [
+    'Détection',
+    'Qualification',
+    'Alerte',
+    'Activation de la cellule de crise',
+    'Analyse de situation',
+    'Décisions stratégiques',
+    'Endiguement',
+    'Remédiation technique',
+    'Clôture de crise',
+  ],
+  precis: [
+    'Détection',
+    'Qualification',
+    'Alerte',
+    'Activation de la cellule de crise',
+    'Analyse de situation',
+    'Décisions stratégiques',
+    'Endiguement',
+    "Continuité d'activité (mode dégradé)",
+    'Communication interne',
+    'Communication externe (autorités, médias, partenaires)',
+    'Remédiation technique',
+    'Clôture de crise',
+    "RETEX (retour d'expérience)",
+  ],
+  full: [...DEFAULT_PHASES_LIST],
+}
 
 export default function OptionsPage() {
   const appDialog = useAppDialog()
@@ -159,6 +216,12 @@ export default function OptionsPage() {
   const [isExportingOptions, setIsExportingOptions] = useState(false)
   const [isImportingOptions, setIsImportingOptions] = useState(false)
   
+  // API key state
+  const [newKeyName, setNewKeyName] = useState('')
+  const [justCreatedKey, setJustCreatedKey] = useState<ApiKeyCreated | null>(null)
+  const [showJustCreated, setShowJustCreated] = useState(false)
+  const [copiedKeyId, setCopiedKeyId] = useState<number | null>(null)
+
   // Export options state
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [exportOptions, setExportOptions] = useState({
@@ -219,6 +282,31 @@ export default function OptionsPage() {
     },
   })
 
+  // API keys list
+  const { data: apiKeys, refetch: refetchApiKeys } = useQuery({
+    queryKey: ['api-keys'],
+    queryFn: adminApi.listApiKeys,
+  })
+
+  // API key mutations
+  const createApiKeyMutation = useMutation({
+    mutationFn: () => adminApi.createApiKey(newKeyName.trim() || 'Clé sans nom'),
+    onSuccess: (data) => {
+      setJustCreatedKey(data)
+      setShowJustCreated(true)
+      setNewKeyName('')
+      refetchApiKeys()
+    },
+  })
+
+  const revokeApiKeyMutation = useMutation({
+    mutationFn: (keyId: number) => adminApi.revokeApiKey(keyId),
+    onSuccess: () => {
+      if (justCreatedKey) setJustCreatedKey(null)
+      refetchApiKeys()
+    },
+  })
+
   // Initialize edited app config when data loads
   useEffect(() => {
     if (appConfig && !appConfigChanged) {
@@ -270,6 +358,18 @@ export default function OptionsPage() {
   const handleResetPlugins = async () => {
     if (await appDialog.confirm('Êtes-vous sûr de vouloir réinitialiser toutes les configurations de plugins ?')) {
       await resetPluginsMutation.mutateAsync()
+    }
+  }
+
+  const handleCopyApiKey = async (key: string, keyId: number) => {
+    await navigator.clipboard.writeText(key)
+    setCopiedKeyId(keyId)
+    setTimeout(() => setCopiedKeyId(null), 2000)
+  }
+
+  const handleRevokeApiKey = async (keyId: number, name: string) => {
+    if (await appDialog.confirm(`Révoquer "${name}" ? Les intégrations utilisant cette clé cesseront de fonctionner.`)) {
+      await revokeApiKeyMutation.mutateAsync(keyId)
     }
   }
 
@@ -435,52 +535,78 @@ export default function OptionsPage() {
   }
 
   // Simulator inject mapping helpers (1:N mapping)
-  const getSimulatorInjectMapping = (simulatorId: string): string[] => {
-    const mapping = getAppConfigValue('simulator_inject_mapping')
-    if (!mapping) {
-      // Default mapping using inject bank kinds
-      const defaults: Record<string, string[]> = {
-        mail: ['mail', 'canal_anssi', 'document'],
-        chat: ['message'],
-        sms: ['message'],
-        tel: ['canal_anssi', 'audio'],
-        tv: ['video', 'canal_gouvernement', 'canal_press'],
-        social: ['social_post', 'idea'],
-        press: ['canal_gouvernement', 'canal_press'],
-      }
-      return defaults[simulatorId] || ['message']
-    }
+  // JSON structure: { [simulatorId]: { types: string[], formats: string[] } }
+  // Backward compat: old format was { [simulatorId]: string[] }
+
+  const _parseSimulatorMapping = (): Record<string, { types: string[]; formats: string[] }> => {
+    const raw = getAppConfigValue('simulator_inject_mapping')
+    if (!raw) return {}
     try {
-      const parsed = JSON.parse(mapping)
-      return parsed[simulatorId] || ['message']
+      const parsed = JSON.parse(raw)
+      const result: Record<string, { types: string[]; formats: string[] }> = {}
+      for (const [key, val] of Object.entries(parsed)) {
+        if (Array.isArray(val)) {
+          // Legacy format: array of types
+          result[key] = { types: val as string[], formats: [] }
+        } else if (val && typeof val === 'object' && 'types' in val) {
+          result[key] = {
+            types: (val as any).types ?? [],
+            formats: (val as any).formats ?? [],
+          }
+        }
+      }
+      return result
     } catch {
-      return ['message']
+      return {}
     }
   }
 
-  const updateSimulatorInjectMapping = (simulatorId: string, injectType: string, checked: boolean) => {
-    const currentMapping = getAppConfigValue('simulator_inject_mapping')
-    let mapping: Record<string, string[]> = {}
-    if (currentMapping) {
-      try {
-        mapping = JSON.parse(currentMapping)
-      } catch {
-        mapping = {}
-      }
-    }
-    
-    const currentTypes = mapping[simulatorId] || []
-    if (checked) {
-      // Add type if not already present
-      if (!currentTypes.includes(injectType)) {
-        mapping[simulatorId] = [...currentTypes, injectType]
-      }
-    } else {
-      // Remove type
-      mapping[simulatorId] = currentTypes.filter(t => t !== injectType)
-    }
-    
+  const _saveSimulatorMapping = (mapping: Record<string, { types: string[]; formats: string[] }>) => {
     updateAppConfigField('simulator_inject_mapping', JSON.stringify(mapping))
+  }
+
+  const getSimulatorInjectMapping = (simulatorId: string): string[] => {
+    const mapping = _parseSimulatorMapping()
+    if (mapping[simulatorId]) return mapping[simulatorId].types
+    const defaults: Record<string, string[]> = {
+      mail: ['mail', 'canal_anssi', 'document'],
+      chat: ['message'],
+      sms: ['message'],
+      tel: ['canal_anssi', 'audio'],
+      tv: ['video', 'canal_gouvernement', 'canal_press'],
+      social: ['social_post'],
+      press: ['canal_gouvernement', 'canal_press'],
+    }
+    return defaults[simulatorId] || ['message']
+  }
+
+  const getSimulatorAllowedFormats = (simulatorId: string): string[] => {
+    const mapping = _parseSimulatorMapping()
+    return mapping[simulatorId]?.formats ?? []
+  }
+
+  const updateSimulatorInjectMapping = (simulatorId: string, injectType: string, checked: boolean) => {
+    const mapping = _parseSimulatorMapping()
+    const current = mapping[simulatorId] ?? { types: getSimulatorInjectMapping(simulatorId), formats: [] }
+    if (checked) {
+      if (!current.types.includes(injectType)) current.types = [...current.types, injectType]
+    } else {
+      current.types = current.types.filter(t => t !== injectType)
+    }
+    mapping[simulatorId] = current
+    _saveSimulatorMapping(mapping)
+  }
+
+  const updateSimulatorAllowedFormats = (simulatorId: string, format: string, checked: boolean) => {
+    const mapping = _parseSimulatorMapping()
+    const current = mapping[simulatorId] ?? { types: getSimulatorInjectMapping(simulatorId), formats: [] }
+    if (checked) {
+      if (!current.formats.includes(format)) current.formats = [...current.formats, format]
+    } else {
+      current.formats = current.formats.filter(f => f !== format)
+    }
+    mapping[simulatorId] = current
+    _saveSimulatorMapping(mapping)
   }
 
   if (isLoading) {
@@ -499,12 +625,49 @@ export default function OptionsPage() {
     )
   }
 
+  // Default phases helpers
+  const getPhasesConfig = (): { name: string; enabled: boolean }[] => {
+    const raw = getAppConfigValue('default_phases_config')
+    let stored: { name: string; enabled: boolean }[] = []
+    if (raw) {
+      try { stored = JSON.parse(raw) } catch { /* noop */ }
+    }
+    return DEFAULT_PHASES_LIST.map((name) => {
+      const found = stored.find((p) => p.name === name)
+      return { name, enabled: found?.enabled ?? true }
+    })
+  }
+
+  const togglePhase = (index: number) => {
+    const phases = getPhasesConfig()
+    phases[index] = { ...phases[index], enabled: !phases[index].enabled }
+    updateAppConfigField('default_phases_config', JSON.stringify(phases))
+    updateAppConfigField('default_phases_preset', null)
+  }
+
+  const applyPhasePreset = (preset: PhasePreset) => {
+    const enabledSet = new Set(PHASE_PRESETS[preset])
+    const phases = DEFAULT_PHASES_LIST.map((name) => ({ name, enabled: enabledSet.has(name) }))
+    updateAppConfigField('default_phases_config', JSON.stringify(phases))
+    updateAppConfigField('default_phases_preset', preset)
+  }
+
+  const resolveActivePreset = (phases: { name: string; enabled: boolean }[]): PhasePreset | 'custom' => {
+    for (const preset of Object.keys(PHASE_PRESETS) as PhasePreset[]) {
+      const set = new Set(PHASE_PRESETS[preset])
+      const matches = phases.every((p) => p.enabled === set.has(p.name))
+      if (matches) return preset
+    }
+    return 'custom'
+  }
+
   const tabs = [
     { id: 'general' as TabType, label: 'Général', icon: Settings },
     { id: 'plugins' as TabType, label: 'Plugins', icon: Puzzle },
     { id: 'security' as TabType, label: 'Sécurité', icon: Shield },
     { id: 'email' as TabType, label: 'Email', icon: Mail },
     { id: 'simulators' as TabType, label: 'Simulateurs', icon: Cpu },
+    { id: 'phases' as TabType, label: 'Phases', icon: ListOrdered },
   ]
 
   const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
@@ -1058,6 +1221,128 @@ export default function OptionsPage() {
                 </div>
               </div>
             </div>
+
+            {/* API Key Section */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Key className="w-5 h-5 text-gray-400" />
+                <h2 className="text-lg font-medium text-white">Clés API (X-API-Key)</h2>
+              </div>
+              <p className="text-sm text-gray-400 mb-5">
+                Authentification M2M via l'en-tête <code className="bg-gray-900 px-1 py-0.5 rounded text-xs text-blue-300">X-API-Key</code>. Chaque clé a un nom pour l'identifier.
+              </p>
+
+              {/* Create new key */}
+              <div className="flex gap-2 mb-5">
+                <input
+                  type="text"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="Nom de la clé (ex: CI/CD, Monitoring...)"
+                  className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => e.key === 'Enter' && createApiKeyMutation.mutate()}
+                />
+                <button
+                  onClick={() => createApiKeyMutation.mutate()}
+                  disabled={createApiKeyMutation.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {createApiKeyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Générer
+                </button>
+              </div>
+
+              {/* One-time display after creation */}
+              {justCreatedKey && (
+                <div className="mb-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-amber-200">Clé créée — copiez-la maintenant, elle ne sera plus affichée :</p>
+                  <div className="flex items-center gap-2 bg-gray-950 border border-amber-700/50 rounded-lg px-3 py-2">
+                    <code className="flex-1 text-xs text-green-300 font-mono break-all select-all">
+                      {showJustCreated ? justCreatedKey.key : '•'.repeat(Math.min(justCreatedKey.key.length, 52))}
+                    </code>
+                    <button onClick={() => setShowJustCreated(!showJustCreated)} className="p-1 text-amber-400 hover:text-white flex-shrink-0">
+                      {showJustCreated ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button onClick={() => handleCopyApiKey(justCreatedKey.key, justCreatedKey.id)} className="p-1 text-amber-400 hover:text-white flex-shrink-0">
+                      {copiedKeyId === justCreatedKey.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Keys table */}
+              {apiKeys && apiKeys.length > 0 ? (
+                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-900 text-gray-400">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium">Nom</th>
+                        <th className="px-4 py-2 text-left font-medium">Aperçu</th>
+                        <th className="px-4 py-2 text-left font-medium">Créée le</th>
+                        <th className="px-4 py-2 text-left font-medium">Dernière utilisation</th>
+                        <th className="px-4 py-2 text-right font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {apiKeys.map((k) => (
+                        <tr key={k.id} className="hover:bg-gray-750">
+                          <td className="px-4 py-2.5 text-white font-medium">{k.name}</td>
+                          <td className="px-4 py-2.5">
+                            <code className="text-xs text-gray-400 font-mono">{k.key_preview}</code>
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-400 text-xs">
+                            {new Date(k.created_at).toLocaleDateString('fr-FR')}
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-400 text-xs">
+                            {k.last_used_at
+                              ? new Date(k.last_used_at).toLocaleString('fr-FR')
+                              : <span className="text-gray-600">Jamais</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <button
+                              onClick={() => handleRevokeApiKey(k.id, k.name)}
+                              disabled={revokeApiKeyMutation.isPending}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-50 transition-colors"
+                            >
+                              {revokeApiKeyMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                              Révoquer
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">Aucune clé API configurée.</p>
+              )}
+
+              {/* Usage examples */}
+              <div className="mt-5 rounded-lg bg-gray-900 border border-gray-700 p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Exemples d'utilisation</p>
+                {(() => {
+                  const base = typeof window !== 'undefined' ? window.location.origin : 'https://votre-instance'
+                  return (
+                    <div className="space-y-2 font-mono text-xs">
+                      <div>
+                        <p className="text-gray-500 mb-1">cURL — lister les exercices :</p>
+                        <code className="block text-green-300 break-all">
+                          {`curl -H "X-API-Key: ttx_..." ${base}/api/exercises`}
+                        </code>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 mb-1">Python (requests) :</p>
+                        <code className="block text-green-300 whitespace-pre">{`import requests\nr = requests.get("${base}/api/exercises",\n    headers={"X-API-Key": "ttx_..."})\nprint(r.json())`}</code>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 mb-1">JavaScript (fetch) :</p>
+                        <code className="block text-green-300 whitespace-pre">{`fetch("${base}/api/exercises", {\n  headers: { "X-API-Key": "ttx_..." }\n}).then(r => r.json())`}</code>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1182,35 +1467,60 @@ export default function OptionsPage() {
                           <p className="text-xs text-gray-400">Simulateur {simulator.id}</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {[
-                          { value: 'mail', label: 'Mail' },
-                          { value: 'message', label: 'Message' },
-                          { value: 'social_post', label: 'Réseau social' },
-                          { value: 'canal_press', label: 'Presse' },
-                          { value: 'canal_anssi', label: 'Canal ANSSI' },
-                          { value: 'canal_gouvernement', label: 'Canal Gouvernement' },
-                          { value: 'document', label: 'Document' },
-                          { value: 'image', label: 'Image' },
-                          { value: 'video', label: 'Vidéo' },
-                          { value: 'audio', label: 'Audio' },
-                          { value: 'scenario', label: 'Scénario' },
-                          { value: 'chronogram', label: 'Chronogramme' },
-                          { value: 'directory', label: 'Répertoire' },
-                          { value: 'reference_url', label: 'URL de référence' },
-                          { value: 'idea', label: 'Idée' },
-                          { value: 'other', label: 'Autre' },
-                        ].map((type) => (
-                          <label key={type.value} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-gray-600 cursor-pointer hover:bg-gray-750">
-                            <input
-                              type="checkbox"
-                              checked={selectedTypes.includes(type.value)}
-                              onChange={(e) => updateSimulatorInjectMapping(simulator.id, type.value, e.target.checked)}
-                              className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-300">{type.label}</span>
-                          </label>
-                        ))}
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Types d'inject autorisés</p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {[
+                              { value: 'mail', label: 'Mail' },
+                              { value: 'message', label: 'Message' },
+                              { value: 'social_post', label: 'Réseau social' },
+                              { value: 'canal_press', label: 'Presse' },
+                              { value: 'canal_anssi', label: 'Canal ANSSI' },
+                              { value: 'canal_gouvernement', label: 'Canal Gouvernement' },
+                              { value: 'document', label: 'Document' },
+                              { value: 'image', label: 'Image' },
+                              { value: 'video', label: 'Vidéo' },
+                              { value: 'audio', label: 'Audio' },
+                              { value: 'directory', label: 'Répertoire' },
+                              { value: 'reference_url', label: 'URL de référence' },
+                            ].map((type) => (
+                              <label key={type.value} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-gray-600 cursor-pointer hover:bg-gray-750">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTypes.includes(type.value)}
+                                  onChange={(e) => updateSimulatorInjectMapping(simulator.id, type.value, e.target.checked)}
+                                  className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-300">{type.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Nature des contenus autorisés</p>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { value: 'text', label: 'Texte' },
+                              { value: 'image', label: 'Image' },
+                              { value: 'video', label: 'Vidéo' },
+                              { value: 'audio', label: 'Audio' },
+                            ].map((fmt) => {
+                              const selectedFormats = getSimulatorAllowedFormats(simulator.id)
+                              return (
+                                <label key={fmt.value} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-indigo-700/50 cursor-pointer hover:bg-gray-750">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedFormats.includes(fmt.value)}
+                                    onChange={(e) => updateSimulatorAllowedFormats(simulator.id, fmt.value, e.target.checked)}
+                                    className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  <span className="text-sm text-indigo-300">{fmt.label}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )
@@ -1219,6 +1529,83 @@ export default function OptionsPage() {
             </div>
           </div>
         )}
+
+        {/* Phases Tab */}
+        {activeTab === 'phases' && (() => {
+          const phasesConfig = getPhasesConfig()
+          const enabledCount = phasesConfig.filter((p) => p.enabled).length
+          const activePreset = resolveActivePreset(phasesConfig)
+          return (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Phases par défaut</h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  Liste des phases proposées lors de la création d&apos;un nouvel exercice.
+                  Les modifications n&apos;affectent pas les exercices existants.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {([
+                    { id: 'minimal', label: 'Minimal' },
+                    { id: 'classique', label: 'Classique' },
+                    { id: 'precis', label: 'Précis' },
+                    { id: 'full', label: 'Full' },
+                  ] as { id: PhasePreset; label: string }[]).map(({ id, label }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => applyPhasePreset(id)}
+                      className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                        activePreset === id
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <span className="text-xs text-gray-500 ml-2">
+                    Préset actif : {activePreset === 'custom' ? 'Personnalisé' : activePreset}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {phasesConfig.map((phase, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-700 bg-gray-900/60 hover:bg-gray-900 transition-colors"
+                  >
+                    <span className="w-5 text-right text-xs text-gray-500 flex-shrink-0 tabular-nums">
+                      {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={phase.enabled}
+                      onClick={() => togglePhase(index)}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                        phase.enabled ? 'bg-blue-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                          phase.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-sm flex-1 ${phase.enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'}`}>
+                      {phase.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-500">
+                {enabledCount} phase{enabledCount !== 1 ? 's' : ''} activée{enabledCount !== 1 ? 's' : ''} sur {DEFAULT_PHASES_LIST.length}
+              </p>
+            </div>
+          )
+        })()}
       </div>
         </div>
       </div>
