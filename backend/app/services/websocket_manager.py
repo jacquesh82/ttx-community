@@ -210,8 +210,6 @@ class ConnectionManager:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         audiences_payload = audiences
-        if audiences_payload is None and hasattr(event, "audiences") and event.audiences is not None:
-            audiences_payload = [{"kind": a.kind.value, "value": a.value} for a in event.audiences]
         await self.broadcast_to_audience(
             exercise_id,
             audiences_payload,

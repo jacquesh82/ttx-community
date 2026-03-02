@@ -134,7 +134,7 @@ const AUDIENCE_KIND_LABELS: Record<string, string> = {
   tag: 'Tag',
 }
 
-type RecipientKind = '' | 'user' | 'team' | 'role'
+type RecipientKind = 'all' | 'user' | 'team' | 'role'
 
 const resolveInjectBankKind = (inject: Inject): InjectBankKind => {
   const rawKind = inject.content?.bank_kind ?? inject.content?.inject_bank_kind ?? inject.content?.kind
@@ -171,7 +171,7 @@ const TIME_GRAIN_CONFIG: Record<TimeGrain, { label: string; minutes: number; tic
 // Constantes
 const HOURS_PER_PAGE = 12
 const HEADER_HEIGHT = 40
-const PHASE_LABEL_WIDTH = 120
+const PHASE_LABEL_WIDTH = 170
 const MIN_BLOCK_WIDTH = 30
 const INJECT_HEIGHT = 32 // Hauteur d'un bloc inject
 const INJECT_GAP = 4 // Espace vertical entre injects empilés
@@ -281,6 +281,9 @@ export default function TimelineGantt({
   const [showPhaseEditModal, setShowPhaseEditModal] = useState(false)
   const [phaseEditText, setPhaseEditText] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
+  const [, setEditModalTab] = useState<'manual' | 'ai'>('manual')
+  const [, setEditModalAiPrompt] = useState('')
+  const [, setEditModalAiError] = useState<string | null>(null)
   const [scrollMode, setScrollMode] = useState(false)
   const [fitEndMin, setFitEndMin] = useState<number | null>(null)
   const [hoveredInject, setHoveredInject] = useState<Inject | null>(null)
@@ -303,7 +306,7 @@ export default function TimelineGantt({
     bank_kind: 'mail' as InjectBankKind,
     type: 'mail' as InjectType,
     data_format: 'text' as InjectDataFormat,
-    recipient_kind: '' as RecipientKind,
+    recipient_kind: 'all' as RecipientKind,
     recipient_value: '',
     phase_id: '',
     content_text: '',
@@ -378,7 +381,8 @@ export default function TimelineGantt({
   const exerciseTeams = exerciseTeamsData?.teams ?? []
 
   const buildAudiencesFromEditForm = (): AudienceTarget[] => {
-    if (!editForm.recipient_kind || !editForm.recipient_value) return []
+    if (editForm.recipient_kind === 'all') return []
+    if (!editForm.recipient_value) return []
     return [{ kind: editForm.recipient_kind as AudienceTarget['kind'], value: editForm.recipient_value }]
   }
 
@@ -398,11 +402,11 @@ export default function TimelineGantt({
 
   const getRecipientFromInject = (inject: Inject): { recipient_kind: RecipientKind; recipient_value: string } => {
     const first = inject.audiences?.[0]
-    if (!first) return { recipient_kind: '', recipient_value: '' }
+    if (!first) return { recipient_kind: 'all', recipient_value: '' }
     if (first.kind === 'user' || first.kind === 'team' || first.kind === 'role') {
       return { recipient_kind: first.kind, recipient_value: String(first.value) }
     }
-    return { recipient_kind: '', recipient_value: '' }
+    return { recipient_kind: 'all', recipient_value: '' }
   }
 
   const exerciseTeamsPromptSection = exerciseTeams.length > 0
@@ -1158,6 +1162,8 @@ export default function TimelineGantt({
       const y = phaseYPositions[phaseIndex]
       const h = phaseHeights[phaseIndex]
       const phase = orderedPhases[phaseIndex]
+      const fullName = phase?.name ?? 'Sans phase'
+      const displayName = fullName.length > 28 ? `${fullName.slice(0, 27)}…` : fullName
       const phaseId = phase?.id ?? null
       const isSelected = selectedPhaseId === phaseId
       const isLoading = false
@@ -1179,8 +1185,9 @@ export default function TimelineGantt({
         .attr('x', 10)
         .attr('y', y + h / 2 + 5)
         .attr('class', `text-xs font-medium ${isSelected ? 'fill-blue-700' : 'fill-gray-700'}`)
-        .text(phase?.name ?? 'Sans phase')
+        .text(displayName)
         .style('cursor', 'pointer')
+      phaseText.append('title').text(fullName)
       
       
       // Clic pour sélectionner la phase
@@ -1475,7 +1482,7 @@ export default function TimelineGantt({
       bank_kind: bankTypeOptions[0]?.kind || 'mail',
       type: bankTypeOptions[0]?.injectType || 'mail',
       data_format: 'text',
-      recipient_kind: '',
+      recipient_kind: 'all',
       recipient_value: '',
       phase_id: phases?.[0]?.id?.toString() ?? '',
       content_text: '',
@@ -2097,9 +2104,10 @@ export default function TimelineGantt({
                       recipient_value: '',
                     }))
                   }
+                  data-testid="inject-recipient-kind"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                 >
-                  <option value="">Tout le monde</option>
+                  <option value="all">Tous</option>
                   <option value="user">Personne</option>
                   <option value="team">Equipe</option>
                   <option value="role">Role</option>
@@ -2111,6 +2119,7 @@ export default function TimelineGantt({
                   <select
                     value={editForm.recipient_value}
                     onChange={(e) => setEditForm((f) => ({ ...f, recipient_value: e.target.value }))}
+                    data-testid="inject-recipient-value"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                   >
                     <option value="">-</option>
@@ -2124,6 +2133,7 @@ export default function TimelineGantt({
                   <select
                     value={editForm.recipient_value}
                     onChange={(e) => setEditForm((f) => ({ ...f, recipient_value: e.target.value }))}
+                    data-testid="inject-recipient-value"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                   >
                     <option value="">-</option>
@@ -2135,6 +2145,7 @@ export default function TimelineGantt({
                   <select
                     value={editForm.recipient_value}
                     onChange={(e) => setEditForm((f) => ({ ...f, recipient_value: e.target.value }))}
+                    data-testid="inject-recipient-value"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                   >
                     <option value="">-</option>
@@ -2146,7 +2157,8 @@ export default function TimelineGantt({
                   <input
                     value=""
                     disabled
-                    placeholder="-"
+                    placeholder="Tous les clients WS de l'exercice"
+                    data-testid="inject-recipient-value"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-400"
                   />
                 )}

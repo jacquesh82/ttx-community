@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronUp, ChevronDown, Radio, Inbox, Activity } from 'lucide-react'
+import { ChevronUp, ChevronDown, Radio, Inbox, Activity, FlaskConical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import DebugExerciseSeedModal from './DebugExerciseSeedModal'
 
 const devRoles = [
   { role: 'admin' as const, label: 'Admin', color: 'bg-red-600 hover:bg-red-700' },
@@ -19,6 +20,7 @@ export default function DevDrawer({ onDevLogin, devLoading }: DevDrawerProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [apiOnline, setApiOnline] = useState<boolean | null>(null)
+  const [showSeed, setShowSeed] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -31,6 +33,7 @@ export default function DevDrawer({ onDevLogin, devLoading }: DevDrawerProps) {
 
   return (
     <>
+      <DebugExerciseSeedModal open={showSeed} onClose={() => setShowSeed(false)} />
       {/* Backdrop */}
       {open && (
         <div
@@ -80,6 +83,13 @@ export default function DevDrawer({ onDevLogin, devLoading }: DevDrawerProps) {
               🧪 {t('debug.devTools')}
             </p>
             <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowSeed(true)}
+                className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+              >
+                <FlaskConical size={14} />
+                {t('debug.seedExercise')}
+              </button>
               <Link
                 to="/debug/events_emit"
                 onClick={() => setOpen(false)}

@@ -3,21 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Smartphone,
   Send,
-  Plus,
-  Search,
   Loader2,
   User,
   ArrowLeft,
 } from 'lucide-react'
 import { simulatedApi, SimulatedSmsConversation, SimulatedSms } from '../../../services/simulatedApi'
-import { crisisContactsApi } from '../../../services/api'
-
-interface Contact {
-  id: number
-  name: string
-  email: string | null
-  phone: string | null
-}
 
 interface SmsSimulatorProps {
   exerciseId: number
@@ -35,10 +25,6 @@ interface DebugSmsEvent {
 export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorProps) {
   const [selectedConversation, setSelectedConversation] = useState<SimulatedSmsConversation | null>(null)
   const [message, setMessage] = useState('')
-  const [showNewSms, setShowNewSms] = useState(false)
-  const [toContactId, setToContactId] = useState<number | null>(null)
-  const [contactSearch, setContactSearch] = useState('')
-  const [showContactDropdown, setShowContactDropdown] = useState(false)
   const [debugConversations, setDebugConversations] = useState<SimulatedSmsConversation[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const debugSmsCounterRef = useRef(0)
@@ -51,23 +37,12 @@ export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorPro
     queryFn: () => simulatedApi.getSmsConversations(exerciseId),
   })
 
-  // Fetch contacts for autocomplete
-  const { data: contactsData } = useQuery({
-    queryKey: ['crisis-contacts', exerciseId, contactSearch],
-    queryFn: () => crisisContactsApi.list(exerciseId, { search: contactSearch, page_size: 50 }),
-    enabled: contactSearch.length > 0,
-  })
-
   // Send SMS mutation
   const sendSmsMutation = useMutation({
-    mutationFn: (data: { toContactId: number; content: string }) =>
-      simulatedApi.sendSms(exerciseId, data.toContactId, data.content),
+    mutationFn: (data: { toContactId: number; content: string }) => simulatedApi.sendSms(exerciseId, data.toContactId, data.content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['simulated-sms-conversations', exerciseId] })
-      setShowNewSms(false)
       setMessage('')
-      setToContactId(null)
-      setContactSearch('')
     },
   })
 
@@ -245,6 +220,7 @@ export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorPro
   }, [allConversations, selectedConversation])
 
   const handleSendSms = () => {
+    const toContactId = selectedConversation?.contact_id
     if (!message.trim() || !toContactId) return
     sendSmsMutation.mutate({
       toContactId,
@@ -264,8 +240,6 @@ export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorPro
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   }
 
-  const selectedContact = contactsData?.contacts?.find((c: Contact) => c.id === toContactId)
-
   // Get total unread count
   const totalUnread = allConversations.reduce((sum, conv) => sum + conv.unread_count, 0)
 
@@ -282,13 +256,6 @@ export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorPro
             </span>
           )}
         </div>
-        <button
-          onClick={() => setShowNewSms(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-sm"
-        >
-          <Plus size={16} />
-          Nouveau SMS
-        </button>
       </div>
 
       <div className="flex-1 flex min-h-0">
@@ -441,7 +408,7 @@ export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorPro
                   />
                   <button
                     onClick={handleSendSms}
-                    disabled={!message.trim() || sendSmsMutation.isPending}
+                    disabled={!message.trim() || sendSmsMutation.isPending || !selectedConversation.contact_id}
                     className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center gap-2"
                   >
                     {sendSmsMutation.isPending ? (
@@ -463,95 +430,6 @@ export default function SmsSimulator({ exerciseId, refreshKey }: SmsSimulatorPro
           )}
         </div>
       </div>
-
-      {/* New SMS modal */}
-      {showNewSms && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg w-full max-w-md border border-gray-700">
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Nouveau SMS</h3>
-              <button
-                onClick={() => setShowNewSms(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-4 space-y-4">
-              {/* To */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Destinataire</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={contactSearch || selectedContact?.name || ''}
-                    onChange={(e) => {
-                      setContactSearch(e.target.value)
-                      setToContactId(null)
-                      setShowContactDropdown(true)
-                    }}
-                    onFocus={() => setShowContactDropdown(true)}
-                    placeholder="Rechercher un contact..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
-                  />
-                  {showContactDropdown && contactsData?.contacts && contactsData.contacts.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded-lg max-h-48 overflow-y-auto z-10">
-                      {contactsData.contacts.map((contact: Contact) => (
-                        <button
-                          key={contact.id}
-                          onClick={() => {
-                            setToContactId(contact.id)
-                            setContactSearch(contact.name)
-                            setShowContactDropdown(false)
-                          }}
-                          className="w-full px-3 py-2 text-left hover:bg-gray-600 text-white"
-                        >
-                          <div className="font-medium">{contact.name}</div>
-                          <div className="text-xs text-gray-400">{contact.phone}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Message */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Message</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Tapez votre message..."
-                  rows={4}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-green-500 resize-none"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setShowNewSms(false)}
-                  className="px-4 py-2 text-gray-400 hover:text-white"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleSendSms}
-                  disabled={!toContactId || !message.trim() || sendSmsMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
-                >
-                  {sendSmsMutation.isPending ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Send size={16} />
-                  )}
-                  Envoyer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

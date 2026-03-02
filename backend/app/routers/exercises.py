@@ -1,4 +1,5 @@
 """Exercises router."""
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db_session
-from app.models import Exercise, ExerciseTeam, ExerciseUser, Inject, ExercisePlugin, PluginConfiguration, Team, Event, EventType, EventActorType
+from app.models import Exercise, ExerciseTeam, ExerciseUser, Inject, ExercisePlugin, PluginConfiguration, Team, Event, EventType, EventActorType, ExercisePhase
 from app.models.exercise import ExerciseStatus
 from app.models.user import UserRole
 from app.schemas.exercise import (
@@ -17,6 +18,7 @@ from app.schemas.exercise import (
     ExercisePluginResponse, PluginInfoResponse
 )
 from app.routers.auth import require_auth, require_role
+from app.services.tenant_service import get_or_create_tenant_configuration
 from app.services.plugin_catalog import (
     ensure_plugin_configurations,
     get_canonical_plugin_types,
@@ -28,6 +30,85 @@ from app.services.plugin_catalog import (
 from app.services.scheduler import inject_scheduler
 from app.services.websocket_manager import ws_manager
 from app.utils.tenancy import TenantRequestContext, require_tenant_context
+
+# Default ordered list of phases used to seed new exercises.
+DEFAULT_PHASE_NAMES = [
+    "Détection",
+    "Qualification",
+    "Alerte",
+    "Activation de la cellule de crise",
+    "Analyse de situation",
+    "Décisions stratégiques",
+    "Endiguement",
+    "Continuité d'activité (mode dégradé)",
+    "Communication interne",
+    "Communication externe (autorités, médias, partenaires)",
+    "Remédiation technique",
+    "Rétablissement progressif des services",
+    "Surveillance renforcée",
+    "Désescalade",
+    "Clôture de crise",
+    "RETEX (retour d'expérience)",
+    "Plan d'actions correctives",
+]
+
+
+def _parse_enabled_phase_names(raw: str | None) -> list[str]:
+    """Return ordered enabled phase names from stored JSON config.
+
+    Expected input is a JSON array of objects {"name": str, "enabled": bool}.
+    Falls back to the full default list when parsing fails or no phase is enabled.
+    """
+    if not raw:
+        return DEFAULT_PHASE_NAMES
+    try:
+        parsed = json.loads(raw)
+        if not isinstance(parsed, list):
+            return DEFAULT_PHASE_NAMES
+        enabled = [item.get("name") for item in parsed if isinstance(item, dict) and item.get("enabled")]
+        # Keep the original order from storage; otherwise fall back to defaults.
+        if [name for name in enabled if isinstance(name, str)]:
+            return [name for name in enabled if isinstance(name, str)]
+    except Exception:
+        pass
+    return DEFAULT_PHASE_NAMES
+
+
+async def _seed_phases_for_exercise(
+    db: AsyncSession,
+    *,
+    exercise: Exercise,
+    tenant_id: int,
+) -> None:
+    """Create initial phases on exercise creation based on tenant presets."""
+    tenant_config = await get_or_create_tenant_configuration(db, tenant_id=tenant_id)
+    overlay = getattr(tenant_config, "legacy_app_config_overrides", None) or {}
+    raw_phases = None
+    if isinstance(overlay, dict):
+        raw_phases = overlay.get("default_phases_config")
+
+    names = _parse_enabled_phase_names(raw_phases)
+    if not names:
+        return
+
+    total_minutes = max(10, (exercise.target_duration_hours or 1) * 60)
+    slot = max(5, total_minutes // max(1, len(names)))
+
+    phases = []
+    for idx, name in enumerate(names):
+        start = idx * slot
+        end = total_minutes if idx == len(names) - 1 else (idx + 1) * slot
+        phases.append(
+            ExercisePhase(
+                exercise_id=exercise.id,
+                name=name,
+                phase_order=idx + 1,
+                start_offset_min=start,
+                end_offset_min=end,
+            )
+        )
+
+    db.add_all(phases)
 
 router = APIRouter()
 
@@ -229,7 +310,14 @@ async def create_exercise(
             enabled=plugin_type in enabled_plugins,
         )
         db.add(plugin_entry)
-    
+
+    # Seed phases using tenant preset/config
+    await _seed_phases_for_exercise(
+        db,
+        exercise=exercise,
+        tenant_id=tenant_ctx.tenant.id,
+    )
+
     await db.commit()
     await db.refresh(exercise)
     

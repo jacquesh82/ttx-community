@@ -158,7 +158,7 @@ export default function TelSimulator({ exerciseId, refreshKey }: TelSimulatorPro
         >
           <div className="flex items-center justify-center gap-2">
             <PhoneCall size={16} />
-            Appel en cours
+            Boîte vocale
             {activeCall && (
               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
@@ -174,7 +174,7 @@ export default function TelSimulator({ exerciseId, refreshKey }: TelSimulatorPro
         >
           <div className="flex items-center justify-center gap-2">
             <Clock size={16} />
-            Historique ({callHistory.length})
+            Historique simulée ({callHistory.length})
           </div>
         </button>
       </div>

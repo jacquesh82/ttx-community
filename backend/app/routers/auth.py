@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response, Request, Cookie, WebSocket
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, Cookie, Header, WebSocket
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -189,16 +189,66 @@ async def authenticate_ws_with_ticket(
 async def get_current_user(
     request: Request,
     session_token: Optional[str] = Cookie(None, alias=SESSION_COOKIE_NAME),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
     tenant_ctx: TenantRequestContext = Depends(get_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ) -> Optional[User]:
-    """Get the current authenticated user from session cookie."""
+    """Get the current authenticated user from session cookie or API key."""
     _session, user = await _get_session_and_user_by_session_token(
         session_token=session_token,
         db=db,
         tenant_ctx=tenant_ctx,
     )
-    return user
+    if user:
+        return user
+
+    if x_api_key:
+        user = await _get_user_by_api_key(api_key=x_api_key, db=db)
+        if user:
+            return user
+
+    return None
+
+
+async def _get_user_by_api_key(
+    api_key: str,
+    db: AsyncSession,
+) -> Optional[User]:
+    """Validate an API key against the api_keys table and return the first admin user if valid."""
+    from app.models.api_key import ApiKey
+    from datetime import datetime, timezone
+
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.is_active == True)
+    )
+    keys = result.scalars().all()
+
+    matched: ApiKey | None = None
+    for k in keys:
+        try:
+            if secrets.compare_digest(api_key, k.key):
+                matched = k
+                break
+        except Exception:
+            continue
+
+    if not matched:
+        return None
+
+    # Update last_used_at asynchronously (best-effort)
+    try:
+        matched.last_used_at = datetime.now(timezone.utc)
+        await db.commit()
+    except Exception:
+        pass
+
+    result = await db.execute(
+        select(User)
+        .where(User.role == UserRole.ADMIN, User.is_active == True)
+        .order_by(User.id.asc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_current_user_ws(token: str) -> Optional[User]:

@@ -64,7 +64,21 @@
     "apiOnline": "API en ligne",
     "apiOffline": "API hors ligne",
     "connecting": "Connexion...",
-    "loginAs": "Se connecter en tant que {{role}}"
+    "loginAs": "Se connecter en tant que {{role}}",
+    "seedExercise": "Initialiser un exercice de DEBUG",
+    "seedModal": {
+      "title": "Initialisation d'un exercice de debug",
+      "stepAuth": "Authentification",
+      "stepBase": "Création du socle",
+      "stepScenario": "Définition du scénario",
+      "stepActors": "Configuration des acteurs",
+      "stepTimeline": "Construction de la timeline",
+      "success": "Exercice créé avec succès !",
+      "viewExercise": "Voir l'exercice",
+      "retry": "Réessayer",
+      "close": "Fermer",
+      "error": "Erreur lors de la création"
+    }
   },
   "admin": {
     "title": "Administration",

@@ -54,6 +54,7 @@ from app.models.crisis_management import (
 )
 from app.models.welcome_kit import WelcomeKitTemplate, WelcomeKitKind, ExerciseUserCredential
 from app.models.app_configuration import AppConfiguration, DEFAULT_APP_CONFIG
+from app.models.api_key import ApiKey
 
 __all__ = [
     # Tenant / Multi-tenant
@@ -105,4 +106,6 @@ __all__ = [
     "WelcomeKitTemplate", "WelcomeKitKind", "ExerciseUserCredential",
     # App Configuration
     "AppConfiguration", "DEFAULT_APP_CONFIG",
+    # API Keys
+    "ApiKey",
 ]

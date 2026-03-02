@@ -64,7 +64,21 @@
     "apiOnline": "API online",
     "apiOffline": "API offline",
     "connecting": "Signing in...",
-    "loginAs": "Sign in as {{role}}"
+    "loginAs": "Sign in as {{role}}",
+    "seedExercise": "Initialize a DEBUG exercise",
+    "seedModal": {
+      "title": "Initializing a debug exercise",
+      "stepAuth": "Authentication",
+      "stepBase": "Creating the base",
+      "stepScenario": "Defining the scenario",
+      "stepActors": "Configuring actors",
+      "stepTimeline": "Building the timeline",
+      "success": "Exercise created successfully!",
+      "viewExercise": "View exercise",
+      "retry": "Retry",
+      "close": "Close",
+      "error": "Error during creation"
+    }
   },
   "admin": {
     "title": "Administration",
