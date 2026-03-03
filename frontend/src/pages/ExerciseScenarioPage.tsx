@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, Plus, Trash2, Upload } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { crisisManagementApi, EscalationAxisType, InjectBankKind, injectBankApi } from '../services/api'
 import ExerciseSubpageShell from '../components/exercise/ExerciseSubpageShell'
 import Modal from '../components/Modal'
@@ -97,14 +97,6 @@ export default function ExerciseScenarioPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercise-axes', id] }),
   })
 
-  const importJson = useMutation({
-    mutationFn: (file: File) => crisisManagementApi.importComponent(id, 'scenario', file, false),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['exercise-scenario', id] })
-      queryClient.invalidateQueries({ queryKey: ['exercise-axes', id] })
-    },
-  })
-
   const importFromBankSelection = useMutation({
     mutationFn: () => crisisManagementApi.importComponentFromBankSelection(id, 'scenario', selectedBankItemIds),
     onSuccess: () => {
@@ -170,105 +162,6 @@ export default function ExerciseScenarioPage() {
     stress_factors: form.stress_factors,
   }
 
-  const buildPromptForField = (targetLabel: string, targetValue: string) => {
-    const contextLines = [
-      `Intention strategique: ${currentScenarioValues.strategic_intent || 'non renseigne'}`,
-      `Contexte initial: ${currentScenarioValues.initial_context || 'non renseigne'}`,
-      `Situation de depart: ${currentScenarioValues.initial_situation || 'non renseigne'}`,
-      `Hypotheses implicites: ${currentScenarioValues.implicit_hypotheses || 'non renseigne'}`,
-      `Elements caches animateur: ${currentScenarioValues.hidden_brief || 'non renseigne'}`,
-      `Objectifs pedagogiques: ${currentScenarioValues.pedagogical_objectives || 'non renseigne'}`,
-      `Criteres d evaluation: ${currentScenarioValues.evaluation_criteria || 'non renseigne'}`,
-      `Facteurs de stress: ${currentScenarioValues.stress_factors || 'non renseigne'}`,
-      `Axes d escalation: ${(axes || []).map((a) => `${AXIS_LABELS[a.axis_type]}(${a.intensity}/10${a.notes ? `, ${a.notes}` : ''})`).join('; ') || 'non renseigne'}`,
-    ].join('\n')
-
-    return [
-      'Tu es expert en conception d exercice de gestion de crise (TTX).',
-      `Objectif: proposer un contenu pret a coller pour le champ "${targetLabel}".`,
-      'Contraintes:',
-      '- Rester coherent avec les informations existantes.',
-      '- Ecrire en francais professionnel, clair et actionnable.',
-      '- Retourner uniquement le texte du champ cible, sans introduction.',
-      '',
-      'Contexte exercice:',
-      contextLines,
-      '',
-      `Champ cible: ${targetLabel}`,
-      `Valeur actuelle: ${targetValue || 'vide'}`,
-    ].join('\n')
-  }
-
-  const buildGlobalScenarioPrompt = () => {
-    const contextLines = [
-      `Intention strategique: ${currentScenarioValues.strategic_intent || 'non renseigne'}`,
-      `Contexte initial: ${currentScenarioValues.initial_context || 'non renseigne'}`,
-      `Situation de depart: ${currentScenarioValues.initial_situation || 'non renseigne'}`,
-      `Hypotheses implicites: ${currentScenarioValues.implicit_hypotheses || 'non renseigne'}`,
-      `Elements caches animateur: ${currentScenarioValues.hidden_brief || 'non renseigne'}`,
-      `Objectifs pedagogiques: ${currentScenarioValues.pedagogical_objectives || 'non renseigne'}`,
-      `Criteres d evaluation: ${currentScenarioValues.evaluation_criteria || 'non renseigne'}`,
-      `Facteurs de stress: ${currentScenarioValues.stress_factors || 'non renseigne'}`,
-      `Axes d escalation: ${(axes || []).map((a) => `${AXIS_LABELS[a.axis_type]}(${a.intensity}/10${a.notes ? `, ${a.notes}` : ''})`).join('; ') || 'non renseigne'}`,
-    ].join('\n')
-
-    return [
-      'Tu es expert en conception d exercice de gestion de crise (TTX).',
-      'Objectif: completer et harmoniser TOUTE la definition du scenario.',
-      'Contraintes:',
-      '- Conserver les informations deja presentes et les renforcer sans contradiction.',
-      '- Ecrire en francais professionnel, concret et actionnable.',
-      '- Retourner STRICTEMENT un JSON valide (sans markdown) avec ces cles:',
-      '{',
-      '  "strategic_intent": "...",',
-      '  "initial_context": "...",',
-      '  "initial_situation": "...",',
-      '  "implicit_hypotheses": "...",',
-      '  "hidden_brief": "...",',
-      '  "pedagogical_objectives": ["..."],',
-      '  "evaluation_criteria": ["..."],',
-      '  "stress_factors": ["..."]',
-      '}',
-      '',
-      'Contexte actuel:',
-      contextLines,
-    ].join('\n')
-  }
-
-  const applyGlobalScenarioResult = (result: string) => {
-    const sanitized = result
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```$/i, '')
-      .trim()
-
-    try {
-      const parsed = JSON.parse(sanitized)
-      setForm((prev) => ({
-        strategic_intent: typeof parsed.strategic_intent === 'string' && parsed.strategic_intent.trim() ? parsed.strategic_intent : prev.strategic_intent,
-        initial_context: typeof parsed.initial_context === 'string' && parsed.initial_context.trim() ? parsed.initial_context : prev.initial_context,
-        initial_situation: typeof parsed.initial_situation === 'string' && parsed.initial_situation.trim() ? parsed.initial_situation : prev.initial_situation,
-        implicit_hypotheses: typeof parsed.implicit_hypotheses === 'string' && parsed.implicit_hypotheses.trim() ? parsed.implicit_hypotheses : prev.implicit_hypotheses,
-        hidden_brief: typeof parsed.hidden_brief === 'string' && parsed.hidden_brief.trim() ? parsed.hidden_brief : prev.hidden_brief,
-        pedagogical_objectives: Array.isArray(parsed.pedagogical_objectives)
-          ? parsed.pedagogical_objectives.filter((v: any) => typeof v === 'string').join(', ')
-          : prev.pedagogical_objectives,
-        evaluation_criteria: Array.isArray(parsed.evaluation_criteria)
-          ? parsed.evaluation_criteria.filter((v: any) => typeof v === 'string').join(', ')
-          : prev.evaluation_criteria,
-        stress_factors: Array.isArray(parsed.stress_factors)
-          ? parsed.stress_factors.filter((v: any) => typeof v === 'string').join(', ')
-          : prev.stress_factors,
-      }))
-    } catch {
-      // Fallback: if response is free text, keep it in initial context so nothing is lost.
-      setForm((prev) => ({
-        ...prev,
-        initial_context: result,
-      }))
-    }
-  }
-
   return (
     <>
       <ExerciseSubpageShell
@@ -277,26 +170,6 @@ export default function ExerciseScenarioPage() {
       title="Scenario"
       actions={
         <div className="flex items-center gap-2">
-          <label className="px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded text-sm hover:bg-slate-200 cursor-pointer inline-flex items-center">
-            <Upload size={14} className="mr-1" />
-            Import JSON
-            <input
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) importJson.mutate(file)
-                e.currentTarget.value = ''
-              }}
-            />
-          </label>
-          <input
-            value={bankCategory}
-            onChange={(e) => setBankCategory(e.target.value)}
-            placeholder="Categorie (option)"
-            className="px-2 py-2 border border-gray-300 rounded text-sm w-44"
-          />
           <button
             onClick={() => {
               setBankKind('scenario')
@@ -312,25 +185,25 @@ export default function ExerciseScenarioPage() {
         </div>
       }
     >
-      <div className="bg-white rounded-lg shadow p-6 space-y-4">
+      <div className="bg-white rounded-lg shadow p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Definition complete du scenario</h2>
         </div>
-        <Field label="Intention strategique" value={currentScenarioValues.strategic_intent} onChange={(v) => setForm((f) => ({ ...f, strategic_intent: v }))} promptText={buildPromptForField('Intention strategique', currentScenarioValues.strategic_intent)} />
-        <Field label="Contexte initial" value={currentScenarioValues.initial_context} onChange={(v) => setForm((f) => ({ ...f, initial_context: v }))} multiline promptText={buildPromptForField('Contexte initial', currentScenarioValues.initial_context)} />
-        <Field label="Situation de depart" value={currentScenarioValues.initial_situation} onChange={(v) => setForm((f) => ({ ...f, initial_situation: v }))} multiline promptText={buildPromptForField('Situation de depart', currentScenarioValues.initial_situation)} />
-        <Field label="Hypotheses implicites" value={currentScenarioValues.implicit_hypotheses} onChange={(v) => setForm((f) => ({ ...f, implicit_hypotheses: v }))} multiline promptText={buildPromptForField('Hypotheses implicites', currentScenarioValues.implicit_hypotheses)} />
-        <Field label="Elements caches (animateur)" value={currentScenarioValues.hidden_brief} onChange={(v) => setForm((f) => ({ ...f, hidden_brief: v }))} multiline promptText={buildPromptForField('Elements caches (animateur)', currentScenarioValues.hidden_brief)} />
-        <Field label="Objectifs pedagogiques (separes par virgules)" value={currentScenarioValues.pedagogical_objectives} onChange={(v) => setForm((f) => ({ ...f, pedagogical_objectives: v }))} promptText={buildPromptForField('Objectifs pedagogiques (separes par virgules)', currentScenarioValues.pedagogical_objectives)} />
-        <Field label="Criteres d evaluation (separes par virgules)" value={currentScenarioValues.evaluation_criteria} onChange={(v) => setForm((f) => ({ ...f, evaluation_criteria: v }))} promptText={buildPromptForField('Criteres d evaluation (separes par virgules)', currentScenarioValues.evaluation_criteria)} />
-        <Field label="Facteurs de stress (separes par virgules)" value={currentScenarioValues.stress_factors} onChange={(v) => setForm((f) => ({ ...f, stress_factors: v }))} promptText={buildPromptForField('Facteurs de stress (separes par virgules)', currentScenarioValues.stress_factors)} />
+        <Field label="Intention strategique" value={currentScenarioValues.strategic_intent} onChange={(v) => setForm((f) => ({ ...f, strategic_intent: v }))} />
+        <Field label="Contexte initial" value={currentScenarioValues.initial_context} onChange={(v) => setForm((f) => ({ ...f, initial_context: v }))} multiline />
+        <Field label="Situation de depart" value={currentScenarioValues.initial_situation} onChange={(v) => setForm((f) => ({ ...f, initial_situation: v }))} multiline />
+        <Field label="Hypotheses implicites" value={currentScenarioValues.implicit_hypotheses} onChange={(v) => setForm((f) => ({ ...f, implicit_hypotheses: v }))} multiline />
+        <Field label="Elements caches (animateur)" value={currentScenarioValues.hidden_brief} onChange={(v) => setForm((f) => ({ ...f, hidden_brief: v }))} multiline />
+        <Field label="Objectifs pedagogiques (separes par virgules)" value={currentScenarioValues.pedagogical_objectives} onChange={(v) => setForm((f) => ({ ...f, pedagogical_objectives: v }))} />
+        <Field label="Criteres d evaluation (separes par virgules)" value={currentScenarioValues.evaluation_criteria} onChange={(v) => setForm((f) => ({ ...f, evaluation_criteria: v }))} />
+        <Field label="Facteurs de stress (separes par virgules)" value={currentScenarioValues.stress_factors} onChange={(v) => setForm((f) => ({ ...f, stress_factors: v }))} />
 
         <div className="flex items-center justify-end h-6">
           <AutoSaveIndicator status={autoSaveStatus} />
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Axes d'escalade</h2>
         </div>
@@ -478,49 +351,15 @@ function Field({
   value,
   onChange,
   multiline = false,
-  promptText,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   multiline?: boolean
-  promptText?: string
 }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopyPrompt = async () => {
-    if (!promptText) return
-    try {
-      await navigator.clipboard.writeText(promptText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1200)
-    } catch {
-      const el = document.createElement('textarea')
-      el.value = promptText
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1200)
-    }
-  }
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-1 gap-2">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={handleCopyPrompt}
-            className="inline-flex items-center px-2 py-1 text-xs border border-slate-300 rounded bg-white text-slate-700 hover:bg-slate-50"
-          >
-            <Copy size={12} className="mr-1" />
-            {copied ? 'Copie' : 'Copier prompt'}
-          </button>
-        </div>
-      </div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       {multiline ? (
         <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
       ) : (

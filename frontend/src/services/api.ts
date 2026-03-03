@@ -183,6 +183,7 @@ export interface ExerciseSetupChecklist {
     actors: ExerciseSetupSectionResult
     timelineInjects: ExerciseSetupSectionResult
     validation: ExerciseSetupSectionResult
+    simulators: ExerciseSetupSectionResult
   }
   completedCount: number
   totalCount: number
@@ -289,6 +290,7 @@ export const exercisesApi = {
     business_objective?: string
     technical_objective?: string
     lead_organizer_user_id?: number
+    simulator_config?: string | null
   }): Promise<Exercise> => {
     const response = await api.put(`/exercises/${id}`, data)
     return response.data

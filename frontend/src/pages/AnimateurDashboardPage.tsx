@@ -117,6 +117,8 @@ export default function AnimateurDashboardPage() {
   })
 
   const injects = injectsData?.injects ?? []
+  const teamsState = dashboard?.teams_state ?? []
+  const hasTeamsState = teamsState.length > 0
 
   // WebSocket connection
   const handleWebSocketMessage = useCallback(
@@ -614,9 +616,9 @@ export default function AnimateurDashboardPage() {
                   <div className="text-center py-4 text-gray-500">
                     <RefreshCw size={20} className="animate-spin mx-auto" />
                   </div>
-                ) : dashboard?.teams_state?.length > 0 ? (
+                ) : hasTeamsState ? (
                   <div className="space-y-2">
-                    {dashboard.teams_state.map((team: any) => (
+                    {teamsState.map((team: any) => (
                       <div key={team.team_id} className="bg-gray-700/50 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-sm">{team.team_name}</span>

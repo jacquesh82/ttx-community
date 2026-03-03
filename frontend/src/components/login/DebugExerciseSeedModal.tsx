@@ -124,6 +124,7 @@ export default function DebugExerciseSeedModal({ open, onClose }: Props) {
         initial_context: 'Un chiffrement massif est détecté sur les serveurs de production le lundi matin',
         initial_situation: 'Le SOC remonte une alerte critique. Le SI est partiellement inaccessible.',
         implicit_hypotheses: null,
+        hidden_brief: null,
         pedagogical_objectives: [
           'Activer la cellule de crise',
           'Évaluer la coordination inter-équipes',

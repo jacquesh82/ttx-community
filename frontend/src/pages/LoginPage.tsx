@@ -131,14 +131,39 @@ export default function LoginPage() {
       <div className="login-vignette" aria-hidden="true" />
 
       <div className="relative mx-auto mb-6 flex max-w-5xl items-center justify-end gap-2">
-        <LangSelector />
-        <ThemeModeSelector />
+        <div className="flex items-center gap-2">
+          <LangSelector />
+          <ThemeModeSelector />
+        </div>
       </div>
 
       <div className="relative mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center">
         <div className="grid w-full items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="hidden lg:block px-4">
-            <div className="flex flex-wrap items-center gap-2 mt-3">
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <span
+                className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                style={{
+                  borderColor: 'var(--login-panel-subtle-border)',
+                  backgroundColor: 'var(--login-panel-subtle-bg)',
+                  color: 'var(--login-text)',
+                }}
+              >
+                Community Edition
+              </span>
+
+              {tenantName && (
+                <span
+                  className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                  style={{
+                    borderColor: 'var(--login-panel-subtle-border)',
+                    backgroundColor: 'var(--login-panel-subtle-bg)',
+                    color: 'var(--login-text)',
+                  }}
+                >
+                  {t('common.tenant')}: {tenantName}
+                </span>
+              )}
             </div>
             <h1 className="mt-4 text-4xl font-extrabold leading-tight md:text-5xl" style={{ color: 'var(--login-text)' }}>
               {loginTitle}
@@ -152,6 +177,16 @@ export default function LoginPage() {
                   {tenantName.slice(0, 2)}
                 </div>
                 <div>
+                  <span
+                    className="mb-1 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                    style={{
+                      borderColor: 'var(--login-panel-subtle-border)',
+                      backgroundColor: 'var(--login-panel-subtle-bg)',
+                      color: 'var(--login-text)',
+                    }}
+                  >
+                    Community Edition
+                  </span>
                   <p className="text-xs uppercase tracking-[0.2em] login-muted">{t('common.tenant')}</p>
                   <p className="text-sm font-semibold" style={{ color: 'var(--login-text)' }}>
                     {tenantName}
