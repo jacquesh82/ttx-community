@@ -120,6 +120,39 @@ const isInjectType = (value: unknown): value is InjectType => {
   return typeof value === 'string' && ['mail', 'twitter', 'tv', 'decision', 'score', 'system'].includes(value)
 }
 
+const buildDefaultPhaseInjectsJson = (phaseId: number | null): string => {
+  const sampleInjects = [
+    {
+      title: 'Alerte SOC - activité suspecte détectée',
+      type: 'mail' as const,
+      time_offset: 5,
+      duration_min: 15,
+      phase_id: phaseId,
+      description: 'Le SOC remonte des connexions anormales sur un serveur exposé.',
+      content: { text: 'Analysez les logs et confirmez le périmètre impacté.' },
+    },
+    {
+      title: 'Tweet client viral',
+      type: 'twitter' as const,
+      time_offset: 20,
+      duration_min: 10,
+      phase_id: phaseId,
+      description: 'Un client poste une capture écran évoquant une fuite de données.',
+      content: { text: 'Le post prend de l ampleur. Préparer une première réaction.' },
+    },
+    {
+      title: 'Point COMEX demandé',
+      type: 'decision' as const,
+      time_offset: 40,
+      duration_min: 20,
+      phase_id: phaseId,
+      description: 'La direction demande une décision de communication officielle.',
+      content: { text: 'Choisir entre reconnaissance publique immédiate ou attente.' },
+    },
+  ]
+  return JSON.stringify(sampleInjects, null, 2)
+}
+
 const DATA_FORMAT_LABELS: Record<InjectDataFormat, string> = {
   text: 'Texte',
   audio: 'Audio',
@@ -196,11 +229,13 @@ interface TimelineGanttProps {
   targetDurationHours?: number
   showFullscreenLink?: boolean
   compact?: boolean
+  showTimelineTypeTabs?: boolean
   initialTimelineType?: TimelineType
   onTimelineTypeChange?: (timelineType: TimelineType) => void
   businessObjective?: string | null
   technicalObjective?: string | null
   showControls?: boolean
+  showTimeGrainSelector?: boolean
 }
 
 export default function TimelineGantt({
@@ -208,11 +243,13 @@ export default function TimelineGantt({
   targetDurationHours = 4,
   showFullscreenLink = false,
   compact = false,
+  showTimelineTypeTabs = true,
   initialTimelineType = 'business',
   onTimelineTypeChange,
   businessObjective,
   technicalObjective,
   showControls = true,
+  showTimeGrainSelector = true,
 }: TimelineGanttProps) {
   const appDialog = useAppDialog()
   const queryClient = useQueryClient()
@@ -1198,31 +1235,15 @@ export default function TimelineGantt({
         setSelectedPhaseId(prev => prev === phaseId ? null : phaseId)
       })
       
-      // Double-clic pour éditer la phase
-      phaseRect.on('dblclick', function() {
-        const phaseName = phase?.name ?? 'Sans phase'
-        const phaseInjects = injectsByPhase[phaseId ?? 0] || []
-        const injectsText = phaseInjects.length > 0
-          ? phaseInjects
-              .sort((a, b) => (a.time_offset ?? 0) - (b.time_offset ?? 0))
-              .map(i => `- T+${formatOffsetLabel(i.time_offset)} | ${i.title}`)
-              .join('\n')
-          : 'Aucun inject'
-        setPhaseEditText(`Phase: ${phaseName}\n\nInjects:\n${injectsText}`)
+      // Double-clic pour éditer la phase en JSON (timeline as code)
+      const openPhaseJsonEditor = () => {
+        setSelectedPhaseId(phaseId)
+        setImportError(null)
+        setPhaseEditText(buildDefaultPhaseInjectsJson(phaseId))
         setShowPhaseEditModal(true)
-      })
-      phaseText.on('dblclick', function() {
-        const phaseName = phase?.name ?? 'Sans phase'
-        const phaseInjects = injectsByPhase[phaseId ?? 0] || []
-        const injectsText = phaseInjects.length > 0
-          ? phaseInjects
-              .sort((a, b) => (a.time_offset ?? 0) - (b.time_offset ?? 0))
-              .map(i => `- T+${formatOffsetLabel(i.time_offset)} | ${i.title}`)
-              .join('\n')
-          : 'Aucun inject'
-        setPhaseEditText(`Phase: ${phaseName}\n\nInjects:\n${injectsText}`)
-        setShowPhaseEditModal(true)
-      })
+      }
+      phaseRect.on('dblclick', openPhaseJsonEditor)
+      phaseText.on('dblclick', openPhaseJsonEditor)
     })
     
   }, [visibleInjects, timeRange, orderedPhases, injectsByPhase, phaseRowLayouts, timeGrain, svgWidth, isLoading, phases, totalHeight, selectedPhaseId])
@@ -1753,7 +1774,7 @@ export default function TimelineGantt({
   return (
     <div className="space-y-4">
       {/* Timeline Type Tabs */}
-      {!compact && (
+      {!compact && showTimelineTypeTabs && (
         <div className="flex items-center gap-1 border-b border-gray-200">
           <button
             onClick={() => handleTimelineTypeChange('business')}
@@ -1780,21 +1801,23 @@ export default function TimelineGantt({
       
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Grain:</span>
-          <select
-            value={timeGrain}
-            onChange={(e) => {
-              setTimeGrain(e.target.value as TimeGrain)
-              setFitEndMin(null) // Reset fit mode when grain changes manually
-            }}
-            className="px-2 py-1 text-sm border border-gray-300 rounded"
-          >
-            {Object.entries(TIME_GRAIN_CONFIG).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.label}</option>
-            ))}
-          </select>
-        </div>
+        {showTimeGrainSelector && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Grain:</span>
+            <select
+              value={timeGrain}
+              onChange={(e) => {
+                setTimeGrain(e.target.value as TimeGrain)
+                setFitEndMin(null) // Reset fit mode when grain changes manually
+              }}
+              className="px-2 py-1 text-sm border border-gray-300 rounded"
+            >
+              {Object.entries(TIME_GRAIN_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         
         <div className="flex items-center gap-2">
           <button
@@ -2433,7 +2456,7 @@ export default function TimelineGantt({
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-1">
-              Coller le JSON généré par l'IA
+              Coller ici la timeline au format JSON
             </label>
             <textarea
               value={phaseEditText}
@@ -2442,13 +2465,31 @@ export default function TimelineGantt({
               className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm bg-white text-gray-900"
               placeholder={`[
   {
-    "title": "Titre de l'inject",
+    "title": "Alerte SOC - activité suspecte détectée",
     "type": "mail",
     "time_offset": 5,
+    "duration_min": 15,
+    "phase_id": 1,
+    "description": "Le SOC remonte des connexions anormales sur un serveur exposé.",
+    "content": { "text": "Analysez les logs et confirmez le périmètre impacté." }
+  },
+  {
+    "title": "Tweet client viral",
+    "type": "twitter",
+    "time_offset": 20,
     "duration_min": 10,
     "phase_id": 1,
-    "description": "Description",
-    "content": { "text": "Contenu" }
+    "description": "Un client poste une capture écran évoquant une fuite de données.",
+    "content": { "text": "Le post prend de l ampleur. Préparer une première réaction." }
+  },
+  {
+    "title": "Point COMEX demandé",
+    "type": "decision",
+    "time_offset": 40,
+    "duration_min": 20,
+    "phase_id": 1,
+    "description": "La direction demande une décision de communication officielle.",
+    "content": { "text": "Choisir entre reconnaissance publique immédiate ou attente." }
   }
 ]`}
             />
