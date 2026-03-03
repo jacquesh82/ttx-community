@@ -6,7 +6,7 @@ import { ExerciseSetupSectionStatus } from '../../services/api'
 interface SetupSectionCardProps {
   step: number
   title: string
-  description: string
+  description?: string
   status: ExerciseSetupSectionStatus
   summary?: string
   action?: ReactNode
@@ -68,7 +68,7 @@ export default function SetupSectionCard({
               {meta.label}
             </span>
           </div>
-          <p className="text-sm text-gray-500">{description}</p>
+          {description && <p className="text-sm text-gray-500">{description}</p>}
           {summary && <p className="text-sm text-gray-700">{summary}</p>}
         </div>
 

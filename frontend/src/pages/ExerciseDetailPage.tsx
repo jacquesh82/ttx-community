@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, CheckCircle2, Plus, Trash2, Upload, FileDown, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Clock3, FileDown, Gauge, PlayCircle, Plus, ShieldCheck, Trash2, Upload, Users } from 'lucide-react'
 import AutoSaveIndicator, { AutoSaveStatus } from '../components/AutoSaveIndicator'
 import {
+  adminApi,
   crisisManagementApi,
   ExerciseImportComponent,
   ExercisePresetId,
@@ -155,6 +157,87 @@ const DEFAULT_FAKE_SOCIAL_TRENDS = [
   },
 ] as const
 
+type SocleOption = {
+  value: string
+  label: string
+}
+
+type SocleChoiceGroupConfig = {
+  key: 'exercise_type' | 'target_duration_hours' | 'maturity_level' | 'mode'
+  label: string
+  icon: LucideIcon
+  options: SocleOption[]
+}
+
+const SOCLE_GROUPS: SocleChoiceGroupConfig[] = [
+  {
+    key: 'exercise_type',
+    label: "Type d'exercice",
+    icon: ShieldCheck,
+    options: [
+      { value: 'cyber', label: 'Cyber' },
+      { value: 'it_outage', label: 'Panne IT' },
+      { value: 'ransomware', label: 'Ransomware' },
+      { value: 'mixed', label: 'Mixte' },
+    ],
+  },
+  {
+    key: 'target_duration_hours',
+    label: 'Duree cible',
+    icon: Clock3,
+    options: [
+      { value: '4', label: '4h' },
+      { value: '8', label: '8h' },
+      { value: '24', label: '24h' },
+    ],
+  },
+  {
+    key: 'maturity_level',
+    label: 'Maturite',
+    icon: Gauge,
+    options: [
+      { value: 'beginner', label: 'Debutant' },
+      { value: 'intermediate', label: 'Intermediaire' },
+      { value: 'expert', label: 'Expert' },
+    ],
+  },
+  {
+    key: 'mode',
+    label: 'Mode',
+    icon: PlayCircle,
+    options: [
+      { value: 'real_time', label: 'Temps reel' },
+      { value: 'compressed', label: 'Compresse' },
+      { value: 'simulated', label: 'Simule' },
+    ],
+  },
+]
+
+type OptionsPhaseConfig = {
+  name: string
+  enabled: boolean
+}
+
+const FALLBACK_PHASES_FROM_OPTIONS: OptionsPhaseConfig[] = [
+  { name: 'Detection & Alerte', enabled: true },
+  { name: 'Gestion de crise', enabled: true },
+  { name: 'Recuperation & RETEX', enabled: true },
+]
+
+function parseEnabledPhasesFromOptions(raw: string | null | undefined): OptionsPhaseConfig[] {
+  if (!raw) return FALLBACK_PHASES_FROM_OPTIONS
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return FALLBACK_PHASES_FROM_OPTIONS
+    const enabled = parsed
+      .filter((phase: any) => phase && typeof phase.name === 'string' && phase.enabled === true)
+      .map((phase: any) => ({ name: phase.name, enabled: true }))
+    return enabled.length > 0 ? enabled : FALLBACK_PHASES_FROM_OPTIONS
+  } catch {
+    return FALLBACK_PHASES_FROM_OPTIONS
+  }
+}
+
 export default function ExerciseDetailPage() {
   const appDialog = useAppDialog()
   const { id } = useParams<{ id: string }>()
@@ -170,6 +253,7 @@ export default function ExerciseDetailPage() {
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState(1)
+  const [timelineSubTab, setTimelineSubTab] = useState<'objective' | 'business' | 'technical'>('objective')
   const [selectedActorForTeam, setSelectedActorForTeam] = useState<any | null>(null)
   const [selectedActorTeamId, setSelectedActorTeamId] = useState<string>('0')
   const [selectedExerciseTeamToAttach, setSelectedExerciseTeamToAttach] = useState<string>('')
@@ -899,6 +983,43 @@ export default function ExerciseDetailPage() {
     },
   })
 
+  const resetPhasesFromOptionsMutation = useMutation({
+    mutationFn: async () => {
+      let phaseDefs = FALLBACK_PHASES_FROM_OPTIONS
+      try {
+        const config = await adminApi.getAppConfiguration()
+        phaseDefs = parseEnabledPhasesFromOptions(config.default_phases_config)
+      } catch {
+        phaseDefs = FALLBACK_PHASES_FROM_OPTIONS
+      }
+
+      const existingPhases = await crisisManagementApi.listPhases(exerciseId)
+      for (const phase of existingPhases) {
+        await crisisManagementApi.deletePhase(exerciseId, phase.id)
+      }
+
+      for (let index = 0; index < phaseDefs.length; index += 1) {
+        await crisisManagementApi.createPhase(exerciseId, {
+          name: phaseDefs[index].name,
+          phase_order: index + 1,
+        })
+      }
+
+      return phaseDefs.length
+    },
+    onSuccess: (createdCount) => {
+      ;[
+        ['exercise-phases', exerciseId],
+        ['exercise-injects', exerciseId],
+        ['injects', exerciseId],
+      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
+      setFeedbackMessage(`${createdCount} phase(s) reinitialisee(s) depuis les options.`)
+    },
+    onError: (err: any) => {
+      setErrorMessage(err.response?.data?.detail || 'Impossible de reinitialiser les phases depuis les options.')
+    },
+  })
+
   const enabledPluginMap = useMemo(() => {
     const map = new Map<string, boolean>()
     for (const plugin of exercise?.plugins || []) map.set(plugin.plugin_type, plugin.enabled)
@@ -1003,6 +1124,13 @@ export default function ExerciseDetailPage() {
     }
   }
 
+  const socleOptionClass = (isActive: boolean) =>
+    `rounded-md border px-2.5 py-1.5 text-sm font-medium transition ${
+      isActive
+        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-cyan-400 dark:bg-cyan-500/10 dark:text-cyan-200'
+        : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-cyan-500'
+    } ${!canConfigure ? 'cursor-not-allowed opacity-70' : ''}`
+
   if (isLoading) return <div className="text-center py-12">Chargement...</div>
   if (!exercise) return <div className="text-center py-12">Exercice non trouve</div>
 
@@ -1011,7 +1139,7 @@ export default function ExerciseDetailPage() {
   const conditionalTriggers = triggerRules.filter((rule) => rule.trigger_mode === 'conditional').length
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-2 -mt-2">
       <input ref={fileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={onImportFileChange} />
 
       {feedbackMessage && <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm">{feedbackMessage}</div>}
@@ -1032,7 +1160,7 @@ export default function ExerciseDetailPage() {
         completedCount={checklistSafe.completedCount}
         totalCount={checklistSafe.totalCount}
         backAction={
-          <button onClick={() => navigate('/exercises')} className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+          <button onClick={() => navigate('/exercises')} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
             <ArrowLeft className="mr-1" size={14} /> Retour aux exercices
           </button>
         }
@@ -1042,31 +1170,36 @@ export default function ExerciseDetailPage() {
               <AutoSaveIndicator status={activeStep === 2 ? scenarioQuickSaveStatus : socleSaveStatus} />
               {exercise.status === 'running' && (
                 <>
-                  <button onClick={() => lifecycleMutation.mutate('pause')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50">Pause</button>
-                  <button onClick={() => lifecycleMutation.mutate('end')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Terminer</button>
+                  <button onClick={() => lifecycleMutation.mutate('pause')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-amber-500 text-white rounded-lg shadow-sm hover:bg-amber-600 disabled:opacity-50">Pause</button>
+                  <button onClick={() => lifecycleMutation.mutate('end')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 disabled:opacity-50">Terminer</button>
                 </>
               )}
               {exercise.status === 'paused' && (
                 <>
-                  <button onClick={() => lifecycleMutation.mutate('start')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">Reprendre</button>
-                  <button onClick={() => lifecycleMutation.mutate('end')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Terminer</button>
+                  <button onClick={() => lifecycleMutation.mutate('start')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50">Reprendre</button>
+                  <button onClick={() => lifecycleMutation.mutate('end')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 disabled:opacity-50">Terminer</button>
                 </>
               )}
               {(exercise.status === 'completed' || exercise.status === 'archived') && (
-                <button onClick={() => lifecycleMutation.mutate('restart')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Relancer</button>
+                <button onClick={() => lifecycleMutation.mutate('restart')} disabled={lifecycleMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 disabled:opacity-50">Relancer</button>
               )}
             </div>
           ) : undefined
         }
       />
 
-      <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
+      <div className="bg-gradient-to-r from-white via-blue-50 to-cyan-50 rounded-xl shadow-md p-4 border border-blue-100">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
           {STEPS.map((step) => (
             <button
               key={step.id}
+              type="button"
               onClick={() => setActiveStep(step.id)}
-              className={`px-3 py-2 rounded text-sm font-medium border ${activeStep === step.id ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200'}`}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                activeStep === step.id
+                  ? 'bg-blue-700 text-white shadow border border-blue-700'
+                  : 'bg-white/80 text-slate-800 border border-slate-200 hover:border-blue-300 hover:text-blue-700 shadow-sm'
+              }`}
             >
               {step.id}. {step.label}
             </button>
@@ -1074,23 +1207,16 @@ export default function ExerciseDetailPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {activeStep === 1 && (
           <SetupSectionCard
             step={1}
             title="Socle"
-            description="Parametres essentiels de l'exercice"
             status={checklistSafe.sections.socle.status}
             summary={checklistSafe.sections.socle.summary}
             action={
               canConfigure ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => launchImportFor('socle')} className="inline-flex items-center px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded hover:bg-slate-200">
-                    <Upload size={14} className="mr-1" /> Import
-                  </button>
-                  <button onClick={() => downloadImportTemplate('socle')} className="inline-flex items-center px-3 py-2 bg-white border border-slate-300 text-slate-800 rounded hover:bg-slate-50">
-                    Exemple JSON
-                  </button>
                   <button onClick={() => openBankImportModal('socle')} disabled={importFromBankMutation.isPending} className="inline-flex items-center px-3 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-50">
                     Banque/type
                   </button>
@@ -1099,21 +1225,60 @@ export default function ExerciseDetailPage() {
               ) : undefined
             }
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input value={socleForm.name} onChange={(e) => setSocleForm((prev) => ({ ...prev, name: e.target.value }))} disabled={!canConfigure} placeholder="Nom de l'exercice" className="px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-50" />
-              <select value={socleForm.exercise_type} onChange={(e) => setSocleForm((prev) => ({ ...prev, exercise_type: e.target.value }))} disabled={!canConfigure} className="px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-50">
-                <option value="cyber">Cyber</option><option value="it_outage">Panne IT</option><option value="ransomware">Ransomware</option><option value="mixed">Mixte</option>
-              </select>
-              <select value={socleForm.target_duration_hours} onChange={(e) => setSocleForm((prev) => ({ ...prev, target_duration_hours: e.target.value }))} disabled={!canConfigure} className="px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-50">
-                <option value="4">4h</option><option value="8">8h</option><option value="24">24h</option>
-              </select>
-              <select value={socleForm.maturity_level} onChange={(e) => setSocleForm((prev) => ({ ...prev, maturity_level: e.target.value }))} disabled={!canConfigure} className="px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-50">
-                <option value="beginner">Debutant</option><option value="intermediate">Intermediaire</option><option value="expert">Expert</option>
-              </select>
-              <select value={socleForm.mode} onChange={(e) => setSocleForm((prev) => ({ ...prev, mode: e.target.value }))} disabled={!canConfigure} className="px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-50">
-                <option value="real_time">Temps reel</option><option value="compressed">Compresse</option><option value="simulated">Simule</option>
-              </select>
-              <input type="datetime-local" value={socleForm.planned_date} onChange={(e) => setSocleForm((prev) => ({ ...prev, planned_date: e.target.value }))} disabled={!canConfigure} className="px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-50" />
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Nom de l'exercice</label>
+                  <input
+                    value={socleForm.name}
+                    onChange={(e) => setSocleForm((prev) => ({ ...prev, name: e.target.value }))}
+                    disabled={!canConfigure}
+                    placeholder="Renseigner le nom"
+                    className="mt-1.5 w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 disabled:bg-slate-100 dark:disabled:bg-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Date prevue</label>
+                  <input
+                    type="datetime-local"
+                    value={socleForm.planned_date}
+                    onChange={(e) => setSocleForm((prev) => ({ ...prev, planned_date: e.target.value }))}
+                    disabled={!canConfigure}
+                    className="mt-1.5 w-full px-3 py-2.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 disabled:bg-slate-100 dark:disabled:bg-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {SOCLE_GROUPS.map((group) => {
+                  const Icon = group.icon
+                  return (
+                    <div key={group.key} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-3">
+                      <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        <Icon size={16} className="text-blue-600 dark:text-cyan-300" />
+                        {group.label}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.options.map((opt) => {
+                          const selected = socleForm[group.key] === opt.value
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              disabled={!canConfigure}
+                              aria-pressed={selected}
+                              onClick={() => canConfigure && setSocleForm((prev) => ({ ...prev, [group.key]: opt.value }))}
+                              className={socleOptionClass(selected)}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </SetupSectionCard>
         )}
@@ -1128,8 +1293,6 @@ export default function ExerciseDetailPage() {
             action={
               canConfigure ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => launchImportFor('scenario')} className="inline-flex items-center px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded hover:bg-slate-200"><Upload size={14} className="mr-1" /> Import</button>
-                  <button onClick={() => downloadImportTemplate('scenario')} className="inline-flex items-center px-3 py-2 bg-white border border-slate-300 text-slate-800 rounded hover:bg-slate-50">Exemple JSON</button>
                   <button onClick={() => openBankImportModal('scenario')} disabled={importFromBankMutation.isPending} className="inline-flex items-center px-3 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-50">Banque/type</button>
                   <AutoSaveIndicator status={scenarioQuickSaveStatus} />
                 </div>
@@ -1336,8 +1499,7 @@ export default function ExerciseDetailPage() {
 
         {activeStep === 4 && (
           <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-            {/* Header unifié */}
-            <div className="p-4 border-b border-gray-200">
+            <div className="p-3 border-b border-gray-200">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1350,7 +1512,7 @@ export default function ExerciseDetailPage() {
                     Phases: {phases.length} | Injects: {injects.length} | {autoTriggers} auto, {manualTriggers} manuels, {conditionalTriggers} conditionnels
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {canConfigure && (
                     <>
                       <span className="text-xs text-gray-500">Import:</span>
@@ -1371,54 +1533,107 @@ export default function ExerciseDetailPage() {
                       >
                         <FileDown size={12} className="mr-1" /> Timeline
                       </button>
+                      <button
+                        onClick={async () => {
+                          if (resetPhasesFromOptionsMutation.isPending) return
+                          const confirmed = await appDialog.confirm('Reinitialiser les phases de cet exercice depuis la configuration Options ?')
+                          if (!confirmed) return
+                          resetPhasesFromOptionsMutation.mutate()
+                        }}
+                        disabled={resetPhasesFromOptionsMutation.isPending}
+                        className="inline-flex items-center px-2 py-1 text-xs bg-rose-100 border border-rose-200 text-rose-700 rounded hover:bg-rose-200 disabled:opacity-50"
+                      >
+                        {resetPhasesFromOptionsMutation.isPending ? 'Reset...' : 'Reset phases'}
+                      </button>
                     </>
                   )}
                 </div>
               </div>
             </div>
-            
-            {/* Objectifs */}
-            {canConfigure && (
-              <div className="p-4 border-b border-gray-100 bg-blue-50">
-                <div className="flex items-center justify-between mb-3">
+
+            <div className="px-3 pt-3 border-b border-gray-100 bg-slate-50">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setTimelineSubTab('objective')}
+                  className={`px-3 py-1.5 text-sm rounded border ${
+                    timelineSubTab === 'objective'
+                      ? 'bg-slate-800 text-white border-slate-800'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Objectif
+                </button>
+                <button
+                  onClick={() => setTimelineSubTab('business')}
+                  className={`px-3 py-1.5 text-sm rounded border ${
+                    timelineSubTab === 'business'
+                      ? 'bg-blue-700 text-white border-blue-700'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Timeline métier
+                </button>
+                <button
+                  onClick={() => setTimelineSubTab('technical')}
+                  className={`px-3 py-1.5 text-sm rounded border ${
+                    timelineSubTab === 'technical'
+                      ? 'bg-orange-700 text-white border-orange-700'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Timeline Technique
+                </button>
+              </div>
+            </div>
+
+            {timelineSubTab === 'objective' && (
+              <div className="p-3">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-gray-800">Objectifs de l'exercice</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Objectif métier à couvrir</label>
                     <textarea
-                      rows={2}
+                      rows={10}
                       value={objectivesForm.business_objective}
                       onChange={(e) => setObjectivesForm((prev) => ({ ...prev, business_objective: e.target.value }))}
                       placeholder="Décrivez l'objectif métier principal de cet exercice..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      disabled={!canConfigure}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-50"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Objectif technique</label>
                     <textarea
-                      rows={2}
+                      rows={10}
                       value={objectivesForm.technical_objective}
                       onChange={(e) => setObjectivesForm((prev) => ({ ...prev, technical_objective: e.target.value }))}
                       placeholder="Décrivez l'objectif technique de cet exercice..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      disabled={!canConfigure}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-50"
                     />
                   </div>
                 </div>
               </div>
             )}
-            
-            {/* GANTT intégré */}
-            <div className="p-4">
-              <TimelineGantt
-                exerciseId={exerciseId}
-                targetDurationHours={exercise?.target_duration_hours ?? 4}
-                showFullscreenLink={false}
-                compact={false}
-                businessObjective={exercise?.business_objective}
-                technicalObjective={exercise?.technical_objective}
-              />
-            </div>
+
+            {(timelineSubTab === 'business' || timelineSubTab === 'technical') && (
+              <div className="p-3">
+                <TimelineGantt
+                  key={`timeline-${timelineSubTab}`}
+                  exerciseId={exerciseId}
+                  targetDurationHours={exercise?.target_duration_hours ?? 4}
+                  showFullscreenLink={false}
+                  compact={false}
+                  initialTimelineType={timelineSubTab}
+                  showTimelineTypeTabs={false}
+                  businessObjective={exercise?.business_objective}
+                  technicalObjective={exercise?.technical_objective}
+                  showTimeGrainSelector={false}
+                />
+              </div>
+            )}
           </div>
         )}
 

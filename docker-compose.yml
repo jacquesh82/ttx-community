@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ttx-postgres
+    container_name: ttx-community-postgres
     environment:
       POSTGRES_DB: ttx
       POSTGRES_USER: ttx
@@ -16,13 +16,13 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - ttx-net
+      - ttx-community-net
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: ttx-backend
+    container_name: ttx-community-backend
     environment:
       DATABASE_URL: postgresql+asyncpg://ttx:${DB_PASSWORD:-ttx_dev_password}@postgres:5432/ttx
       SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production_min_32_chars}
@@ -40,14 +40,14 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - ttx-net
+      - ttx-community-net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: development
-    container_name: ttx-frontend
+    container_name: ttx-community-frontend
     environment:
       VITE_API_URL: ${API_URL:-http://localhost:3000}
       VITE_WS_URL: ${WS_URL:-ws://localhost:3000}
@@ -59,7 +59,7 @@ services:
     depends_on:
       - backend
     networks:
-      - ttx-net
+      - ttx-community-net
 
 volumes:
   pgdata:
@@ -67,5 +67,5 @@ volumes:
   logs-data:
 
 networks:
-  ttx-net:
+  ttx-community-net:
     driver: bridge

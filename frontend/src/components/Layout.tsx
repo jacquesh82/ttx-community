@@ -244,6 +244,19 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* User footer */}
         <div className="sidebar-border absolute bottom-0 left-0 right-0 p-4 border-t space-y-3">
+          <div className="flex items-center px-1">
+            <span
+              className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
+              style={{
+                borderColor: 'var(--sidebar-footer-card-border)',
+                backgroundColor: 'var(--sidebar-footer-card-bg)',
+                color: 'var(--sidebar-text)',
+              }}
+            >
+              Community Edition
+            </span>
+          </div>
+
           {user?.tenant && (
             <div className="flex items-center gap-2 px-1">
               <Building2 size={13} className="sidebar-footer-muted flex-shrink-0" style={{ color: 'var(--sidebar-footer-muted)' }} />
