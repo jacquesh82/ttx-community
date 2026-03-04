@@ -8,6 +8,7 @@ interface ExerciseSubpageShellProps {
   exerciseId: number
   sectionLabel: string
   title: string
+  returnStep?: number
   actions?: ReactNode
   children: ReactNode
 }
@@ -24,6 +25,7 @@ export default function ExerciseSubpageShell({
   exerciseId,
   sectionLabel,
   title,
+  returnStep,
   actions,
   children,
 }: ExerciseSubpageShellProps) {
@@ -37,7 +39,7 @@ export default function ExerciseSubpageShell({
   return (
     <div className="space-y-6">
       <button
-        onClick={() => navigate(`/exercises/${exerciseId}`)}
+        onClick={() => navigate(`/exercises/${exerciseId}${returnStep ? `?step=${returnStep}` : ''}`)}
         className="inline-flex items-center text-gray-600 hover:text-gray-900"
       >
         <ArrowLeft size={18} className="mr-2" />

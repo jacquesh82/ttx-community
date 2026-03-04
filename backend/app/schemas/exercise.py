@@ -1,7 +1,7 @@
 """Exercise schemas for API."""
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -50,6 +50,7 @@ class ExerciseCreate(ExerciseBase):
     """Schema for creating an exercise."""
     team_ids: Optional[list[int]] = None
     enabled_plugins: Optional[list[str]] = None  # Plugin types as strings
+    phase_preset: Optional[Literal["minimal", "classique", "precis", "full"]] = None
 
 
 class ExerciseUpdate(BaseModel):

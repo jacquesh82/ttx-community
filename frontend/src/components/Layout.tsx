@@ -32,6 +32,17 @@ export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
+  const appVersion = import.meta.env.VITE_APP_VERSION || 'dev'
+  const buildDateIso = import.meta.env.VITE_BUILD_DATE || ''
+  const commitId = import.meta.env.VITE_COMMIT_ID || '-'
+  const parsedBuildDate = buildDateIso ? new Date(buildDateIso) : null
+  const buildDateDisplay =
+    parsedBuildDate && !Number.isNaN(parsedBuildDate.getTime())
+      ? parsedBuildDate.toLocaleString('fr-FR', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+      : buildDateIso || '-'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('TTX Platform')
   const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(OFFICIAL_TTX_LOGO_URL)
@@ -303,6 +314,18 @@ export default function Layout({ children }: LayoutProps) {
             >
               <LogOut size={18} />
             </button>
+          </div>
+
+          <div className="px-1 pt-2 border-t" style={{ borderColor: 'var(--sidebar-footer-card-border)' }}>
+            <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--sidebar-footer-muted)' }}>
+              Version {appVersion}
+            </p>
+            <p className="text-[10px]" style={{ color: 'var(--sidebar-footer-muted)' }}>
+              Build: {buildDateDisplay}
+            </p>
+            <p className="text-[10px] font-mono" style={{ color: 'var(--sidebar-footer-muted)' }}>
+              Commit: {commitId}
+            </p>
           </div>
         </div>
       </aside>

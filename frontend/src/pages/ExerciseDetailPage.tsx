@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { AlertCircle, ArrowLeft, Clock3, FileDown, Gauge, PlayCircle, Plus, ShieldCheck, Trash2, Upload, Users } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle2, CircleDashed, Clock3, FileDown, Gauge, PlayCircle, Plus, ShieldCheck, Trash2, Upload, Users } from 'lucide-react'
 import AutoSaveIndicator, { AutoSaveStatus } from '../components/AutoSaveIndicator'
 import {
   adminApi,
@@ -241,6 +241,7 @@ function parseEnabledPhasesFromOptions(raw: string | null | undefined): OptionsP
 export default function ExerciseDetailPage() {
   const appDialog = useAppDialog()
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
@@ -1131,12 +1132,39 @@ export default function ExerciseDetailPage() {
         : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-cyan-500'
     } ${!canConfigure ? 'cursor-not-allowed opacity-70' : ''}`
 
+  useEffect(() => {
+    const search = new URLSearchParams(location.search)
+    const stepParam = Number(search.get('step'))
+    if (Number.isInteger(stepParam) && stepParam >= 1 && stepParam <= STEPS.length) {
+      setActiveStep(stepParam)
+    }
+  }, [location.search])
+
   if (isLoading) return <div className="text-center py-12">Chargement...</div>
   if (!exercise) return <div className="text-center py-12">Exercice non trouve</div>
 
   const autoTriggers = triggerRules.filter((rule) => rule.trigger_mode === 'auto').length
   const manualTriggers = triggerRules.filter((rule) => rule.trigger_mode === 'manual').length
   const conditionalTriggers = triggerRules.filter((rule) => rule.trigger_mode === 'conditional').length
+  const timelineSectionStatus = checklistSafe.sections.timelineInjects.status
+  const timelineStatusMeta =
+    timelineSectionStatus === 'complete'
+      ? {
+          label: 'Complet',
+          color: 'bg-emerald-100 text-emerald-800',
+          icon: <CheckCircle2 size={14} />,
+        }
+      : timelineSectionStatus === 'partial'
+        ? {
+            label: 'Partiel',
+            color: 'bg-amber-100 text-amber-800',
+            icon: <AlertCircle size={14} />,
+          }
+        : {
+            label: 'A faire',
+            color: 'bg-gray-100 text-gray-700',
+            icon: <CircleDashed size={14} />,
+          }
 
   return (
     <div className="flex flex-col gap-2 -mt-2">
@@ -1198,7 +1226,7 @@ export default function ExerciseDetailPage() {
               className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
                 activeStep === step.id
                   ? 'bg-blue-700 text-white shadow border border-blue-700'
-                  : 'bg-white/80 text-slate-800 border border-slate-200 hover:border-blue-300 hover:text-blue-700 shadow-sm'
+                  : 'bg-transparent text-slate-800 border border-slate-200 hover:border-blue-300 hover:text-blue-700'
               }`}
             >
               {step.id}. {step.label}
@@ -1503,10 +1531,14 @@ export default function ExerciseDetailPage() {
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 text-xs rounded ${checklistSafe.sections.timelineInjects.status === 'complete' ? 'bg-green-100 text-green-700' : checklistSafe.sections.timelineInjects.status === 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {checklistSafe.sections.timelineInjects.status === 'complete' ? 'Complet' : checklistSafe.sections.timelineInjects.status === 'partial' ? 'Partiel' : 'A faire'}
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-white text-sm font-semibold">
+                      4
                     </span>
                     <h2 className="text-lg font-semibold text-gray-900">Timeline & Injects</h2>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${timelineStatusMeta.color}`}>
+                      {timelineStatusMeta.icon}
+                      {timelineStatusMeta.label}
+                    </span>
                   </div>
                   <p className="mt-1 text-sm text-gray-600">
                     Phases: {phases.length} | Injects: {injects.length} | {autoTriggers} auto, {manualTriggers} manuels, {conditionalTriggers} conditionnels
@@ -1558,7 +1590,7 @@ export default function ExerciseDetailPage() {
                   className={`px-3 py-1.5 text-sm rounded border ${
                     timelineSubTab === 'objective'
                       ? 'bg-slate-800 text-white border-slate-800'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      : 'bg-transparent text-slate-700 border-slate-300 hover:border-slate-400'
                   }`}
                 >
                   Objectif
@@ -1568,7 +1600,7 @@ export default function ExerciseDetailPage() {
                   className={`px-3 py-1.5 text-sm rounded border ${
                     timelineSubTab === 'business'
                       ? 'bg-blue-700 text-white border-blue-700'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      : 'bg-transparent text-slate-700 border-slate-300 hover:border-slate-400'
                   }`}
                 >
                   Timeline métier
@@ -1578,7 +1610,7 @@ export default function ExerciseDetailPage() {
                   className={`px-3 py-1.5 text-sm rounded border ${
                     timelineSubTab === 'technical'
                       ? 'bg-orange-700 text-white border-orange-700'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      : 'bg-transparent text-slate-700 border-slate-300 hover:border-slate-400'
                   }`}
                 >
                   Timeline Technique

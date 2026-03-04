@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { crisisManagementApi, exercisesApi } from '../services/api'
+import { crisisManagementApi, exercisesApi, type ExercisePhasePreset } from '../services/api'
 import { ArrowLeft } from 'lucide-react'
 
 export default function ExerciseNewPage() {
@@ -16,6 +16,7 @@ export default function ExerciseNewPage() {
     target_duration_hours: '4',
     maturity_level: 'beginner',
     mode: 'real_time',
+    phase_preset: 'classique' as ExercisePhasePreset,
     planned_date: '',
   })
   const [error, setError] = useState('')
@@ -56,6 +57,7 @@ export default function ExerciseNewPage() {
     `Niveau: ${formData.maturity_level}`,
     `Durée cible: ${formData.target_duration_hours}h`,
     `Mode: ${formData.mode}`,
+    `Granularité timeline: ${formData.phase_preset}`,
     `Description actuelle: ${formData.description || 'vide'}`,
     `Intention stratégique actuelle: ${formData.strategic_intent || 'vide'}`,
     `Contexte initial actuel: ${formData.initial_context || 'vide'}`,
@@ -119,6 +121,7 @@ export default function ExerciseNewPage() {
       target_duration_hours: parseInt(formData.target_duration_hours),
       planned_date: formData.planned_date ? new Date(formData.planned_date).toISOString() : undefined,
       enabled_plugins: enabledPlugins,
+      phase_preset: formData.phase_preset,
     })
   }
 
@@ -268,6 +271,20 @@ export default function ExerciseNewPage() {
                       className={inputCls}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Nombre de phases timeline</label>
+                  <select
+                    value={formData.phase_preset}
+                    onChange={(e) => setFormData({ ...formData, phase_preset: e.target.value as ExercisePhasePreset })}
+                    className={inputCls}
+                  >
+                    <option value="minimal">Minimal</option>
+                    <option value="classique">Classique</option>
+                    <option value="precis">Précis</option>
+                    <option value="full">Full</option>
+                  </select>
                 </div>
 
                 <div>

@@ -6,6 +6,7 @@ export type ExerciseRole = 'animateur' | 'observateur' | 'joueur'
 export type ExerciseType = 'cyber' | 'it_outage' | 'ransomware' | 'mixed'
 export type ExerciseMaturityLevel = 'beginner' | 'intermediate' | 'expert'
 export type ExerciseMode = 'real_time' | 'compressed' | 'simulated'
+export type ExercisePhasePreset = 'minimal' | 'classique' | 'precis' | 'full'
 export type InjectVisibilityScope = 'team_only' | 'user_only' | 'all'
 
 export interface ExerciseUser {
@@ -307,6 +308,7 @@ export const exercisesApi = {
     lead_organizer_user_id?: number
     team_ids?: number[]
     enabled_plugins?: PluginType[]
+    phase_preset?: ExercisePhasePreset
   }): Promise<Exercise> => {
     const response = await api.post('/exercises', data)
     return response.data
