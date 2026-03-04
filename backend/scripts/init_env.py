@@ -25,6 +25,7 @@ import asyncio
 import argparse
 import subprocess
 import sys
+import json
 from pathlib import Path
 
 # Add parent directory to path
@@ -32,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select, text
 from app.database import engine, async_session_factory, Base
-from app.models import User, Team, Tenant, TenantStatus
+from app.models import User, Team, Tenant, TenantStatus, TenantConfiguration
 from app.models.user import UserRole
 from app.models.team import UserTeam
 from app.models.exercise import Exercise, ExerciseStatus, ExerciseTeam
@@ -174,6 +175,37 @@ DEMO_EXERCISE = {
     "teams": ["Équipe Alpha", "Équipe Beta", "Cellule de Crise"],
 }
 
+CLASSIQUE_PHASES_ENABLED = {
+    "Détection",
+    "Qualification",
+    "Alerte",
+    "Activation de la cellule de crise",
+    "Analyse de situation",
+    "Décisions stratégiques",
+    "Endiguement",
+    "Remédiation technique",
+    "Clôture de crise",
+}
+
+TIMELINE_DEFAULT_INJECT_TYPES_FORMATS = [
+    {"type": "Mail", "formats": ["TXT"], "simulator": "mail"},
+    {"type": "SMS", "formats": ["TXT", "IMAGE"], "simulator": "sms"},
+    {"type": "Call", "formats": ["AUDIO"], "simulator": "tel"},
+    {"type": "Social network", "formats": ["TXT", "VIDEO", "IMAGE"], "simulator": "social"},
+    {"type": "TV", "formats": ["VIDEO"], "simulator": "tv"},
+    {"type": "Document", "formats": ["TXT", "IMAGE"], "simulator": "mail"},
+    {"type": "Annuaire de crise", "formats": ["TXT"], "simulator": None},
+    {"type": "Scenario", "formats": ["TXT"], "simulator": None},
+]
+
+TIMELINE_DEFAULT_SOURCE_IDS = [
+    "fr-press-lemonde", "fr-press-lefigaro", "fr-tv-france24", "fr-tv-bfmtv", "fr-gov-gouvernement", "fr-gov-anssi",
+    "us-press-nyt", "us-press-wp", "us-tv-cnn", "us-tv-foxnews", "us-gov-cisa", "us-gov-whitehouse",
+    "de-press-spiegel", "de-press-faz", "de-tv-dw", "de-tv-zdf", "de-gov-bsi", "de-gov-bundesregierung",
+    "es-press-pais", "es-press-mundo", "es-tv-rtve", "es-tv-antena3", "es-gov-incibe", "es-gov-lamoncloa",
+    "uk-press-bbcnews", "uk-press-guardian", "uk-tv-skynews", "uk-tv-bbcone", "uk-gov-ncsc", "uk-gov-govuk",
+]
+
 
 # ─────────────────────────────────────────────
 # Fonctions d'initialisation
@@ -240,6 +272,72 @@ async def create_default_tenant() -> Tenant:
         await session.refresh(tenant)
         print("  ✅ Tenant 'default' créé")
         return tenant
+
+
+async def ensure_default_timeline_configuration(tenant: Tenant) -> None:
+    """Seed timeline-related tenant overrides if absent.
+
+    Keeps existing values untouched and only fills missing keys.
+    """
+    print("\n🧭 Initialisation des presets Timeline par défaut...")
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(TenantConfiguration).where(TenantConfiguration.tenant_id == tenant.id)
+        )
+        config = result.scalar_one_or_none()
+        if not config:
+            config = TenantConfiguration(
+                tenant_id=tenant.id,
+                organization_name=tenant.name or "Organisation",
+            )
+            session.add(config)
+            await session.flush()
+
+        overlay = dict(config.legacy_app_config_overrides or {})
+
+        default_phases = [
+            {"name": name, "enabled": name in CLASSIQUE_PHASES_ENABLED}
+            for name in [
+                "Détection",
+                "Qualification",
+                "Alerte",
+                "Activation de la cellule de crise",
+                "Analyse de situation",
+                "Décisions stratégiques",
+                "Endiguement",
+                "Continuité d'activité (mode dégradé)",
+                "Communication interne",
+                "Communication externe (autorités, médias, partenaires)",
+                "Remédiation technique",
+                "Rétablissement progressif des services",
+                "Surveillance renforcée",
+                "Désescalade",
+                "Clôture de crise",
+                "RETEX (retour d'expérience)",
+                "Plan d'actions correctives",
+            ]
+        ]
+
+        defaults = {
+            "default_phases_preset": "classique",
+            "default_phases_config": json.dumps(default_phases, ensure_ascii=False),
+            "timeline_phase_type_format_config": json.dumps(TIMELINE_DEFAULT_INJECT_TYPES_FORMATS, ensure_ascii=False),
+            "timeline_sources_config": json.dumps(TIMELINE_DEFAULT_SOURCE_IDS, ensure_ascii=False),
+            "timeline_sources_custom_config": json.dumps([], ensure_ascii=False),
+        }
+
+        changed = False
+        for key, value in defaults.items():
+            if key not in overlay or overlay.get(key) in (None, ""):
+                overlay[key] = value
+                changed = True
+
+        if changed:
+            config.legacy_app_config_overrides = overlay
+            await session.commit()
+            print("  ✅ Presets Timeline appliqués")
+        else:
+            print("  ⏭️  Presets Timeline déjà présents")
 
 
 async def create_users(tenant_id: int) -> dict[str, User]:
@@ -562,6 +660,7 @@ async def main():
             await create_tables_fallback()
 
         tenant = await create_default_tenant()
+        await ensure_default_timeline_configuration(tenant)
         tenant_id = tenant.id
 
         users: dict[str, User] = {}

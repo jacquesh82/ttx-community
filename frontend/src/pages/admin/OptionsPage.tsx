@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, PluginConfiguration, AppConfiguration, PluginType, ApiKeyItem, ApiKeyCreated } from '../../services/api'
-import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Cpu, Download, Upload, MessageCircle, Smartphone, Phone, Tv, Newspaper, Users, ListOrdered, Eye, EyeOff, Copy, RefreshCw, Trash2 } from 'lucide-react'
+import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Users, ListOrdered, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus } from 'lucide-react'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
@@ -136,8 +136,18 @@ const parseOrganizationAutofillResponse = (
   return Object.keys(parsedFromLines).length > 0 ? parsedFromLines : null
 }
 
-type TabType = 'general' | 'plugins' | 'security' | 'email' | 'simulators' | 'phases'
+type TabType = 'general' | 'plugins' | 'security' | 'email' | 'timelines'
 type PhasePreset = 'minimal' | 'classique' | 'precis' | 'full'
+type TimelinePhaseTypeFormat = { type: string; formats: string[]; simulator: string | null }
+type TimelineSettingsTab = 'phase' | 'inject_types_formats' | 'sources'
+type TimelineSourceCategory = 'Press' | 'TV' | 'Gouvernement'
+type TimelineSourceItem = {
+  id: string
+  country: string
+  category: TimelineSourceCategory
+  name: string
+}
+type TimelineCustomSourceItem = TimelineSourceItem
 
 const DEFAULT_PHASES_LIST = [
   'Détection',
@@ -195,11 +205,97 @@ const PHASE_PRESETS: Record<PhasePreset, string[]> = {
   full: [...DEFAULT_PHASES_LIST],
 }
 
+const TIMELINE_ALLOWED_FORMATS = ['TXT', 'AUDIO', 'VIDEO', 'IMAGE'] as const
+type TimelineAllowedFormat = (typeof TIMELINE_ALLOWED_FORMATS)[number]
+const TIMELINE_SIMULATOR_OPTIONS = [
+  { value: 'mail', label: 'Mail' },
+  { value: 'chat', label: 'Chat' },
+  { value: 'sms', label: 'SMS' },
+  { value: 'tel', label: 'Call' },
+  { value: 'tv', label: 'TV' },
+  { value: 'social', label: 'Social network' },
+  { value: 'press', label: 'Press' },
+]
+
+const TIMELINE_DEFAULT_SIMULATOR_BY_TYPE: Record<string, string> = {
+  mail: 'mail',
+  email: 'mail',
+  sms: 'sms',
+  call: 'tel',
+  'social network': 'social',
+  'post réseau social': 'social',
+  tv: 'tv',
+  'stream tv': 'tv',
+  document: 'mail',
+}
+
+const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
+  { type: 'Mail', formats: ['TXT'], simulator: 'mail' },
+  { type: 'SMS', formats: ['TXT', 'IMAGE'], simulator: 'sms' },
+  { type: 'Call', formats: ['AUDIO'], simulator: 'tel' },
+  { type: 'Social network', formats: ['TXT', 'VIDEO', 'IMAGE'], simulator: 'social' },
+  { type: 'TV', formats: ['VIDEO'], simulator: 'tv' },
+  { type: 'Document', formats: ['TXT', 'IMAGE'], simulator: 'mail' },
+  { type: 'Annuaire de crise', formats: ['TXT'], simulator: null },
+  { type: 'Scenario', formats: ['TXT'], simulator: null },
+]
+
+const REQUIRED_TIMELINE_INJECT_TYPES = new Set(
+  [
+    ...DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((item) => item.type.toLowerCase()),
+    // Legacy labels kept for backward compatibility with existing tenant configs
+    'email',
+    'post réseau social',
+    'stream tv',
+  ]
+)
+
+const TIMELINE_SOURCE_CATEGORY_ORDER: TimelineSourceCategory[] = ['Press', 'TV', 'Gouvernement']
+
+const TIMELINE_SOURCES_CATALOG: TimelineSourceItem[] = [
+  { id: 'fr-press-lemonde', country: 'France', category: 'Press', name: 'Le Monde' },
+  { id: 'fr-press-lefigaro', country: 'France', category: 'Press', name: 'Le Figaro' },
+  { id: 'fr-tv-france24', country: 'France', category: 'TV', name: 'France 24' },
+  { id: 'fr-tv-bfmtv', country: 'France', category: 'TV', name: 'BFM TV' },
+  { id: 'fr-gov-gouvernement', country: 'France', category: 'Gouvernement', name: 'Gouvernement.fr' },
+  { id: 'fr-gov-anssi', country: 'France', category: 'Gouvernement', name: 'ANSSI' },
+
+  { id: 'us-press-nyt', country: 'États-Unis', category: 'Press', name: 'The New York Times' },
+  { id: 'us-press-wp', country: 'États-Unis', category: 'Press', name: 'The Washington Post' },
+  { id: 'us-tv-cnn', country: 'États-Unis', category: 'TV', name: 'CNN' },
+  { id: 'us-tv-foxnews', country: 'États-Unis', category: 'TV', name: 'Fox News' },
+  { id: 'us-gov-cisa', country: 'États-Unis', category: 'Gouvernement', name: 'CISA' },
+  { id: 'us-gov-whitehouse', country: 'États-Unis', category: 'Gouvernement', name: 'The White House' },
+
+  { id: 'de-press-spiegel', country: 'Allemagne', category: 'Press', name: 'Der Spiegel' },
+  { id: 'de-press-faz', country: 'Allemagne', category: 'Press', name: 'FAZ' },
+  { id: 'de-tv-dw', country: 'Allemagne', category: 'TV', name: 'DW' },
+  { id: 'de-tv-zdf', country: 'Allemagne', category: 'TV', name: 'ZDF' },
+  { id: 'de-gov-bsi', country: 'Allemagne', category: 'Gouvernement', name: 'BSI' },
+  { id: 'de-gov-bundesregierung', country: 'Allemagne', category: 'Gouvernement', name: 'Bundesregierung' },
+
+  { id: 'es-press-pais', country: 'Espagne', category: 'Press', name: 'El País' },
+  { id: 'es-press-mundo', country: 'Espagne', category: 'Press', name: 'El Mundo' },
+  { id: 'es-tv-rtve', country: 'Espagne', category: 'TV', name: 'RTVE' },
+  { id: 'es-tv-antena3', country: 'Espagne', category: 'TV', name: 'Antena 3' },
+  { id: 'es-gov-incibe', country: 'Espagne', category: 'Gouvernement', name: 'INCIBE' },
+  { id: 'es-gov-lamoncloa', country: 'Espagne', category: 'Gouvernement', name: 'La Moncloa' },
+
+  { id: 'uk-press-bbcnews', country: 'Royaume-Uni', category: 'Press', name: 'BBC News' },
+  { id: 'uk-press-guardian', country: 'Royaume-Uni', category: 'Press', name: 'The Guardian' },
+  { id: 'uk-tv-skynews', country: 'Royaume-Uni', category: 'TV', name: 'Sky News' },
+  { id: 'uk-tv-bbcone', country: 'Royaume-Uni', category: 'TV', name: 'BBC One' },
+  { id: 'uk-gov-ncsc', country: 'Royaume-Uni', category: 'Gouvernement', name: 'NCSC' },
+  { id: 'uk-gov-govuk', country: 'Royaume-Uni', category: 'Gouvernement', name: 'GOV.UK' },
+]
+
 export default function OptionsPage() {
   const appDialog = useAppDialog()
   const queryClient = useQueryClient()
   const tenant = useAuthStore((state) => state.user?.tenant ?? null)
   const [activeTab, setActiveTab] = useState<TabType>('general')
+  const [timelineSettingsTab, setTimelineSettingsTab] = useState<TimelineSettingsTab>('phase')
+  const [timelineSourceDrafts, setTimelineSourceDrafts] = useState<Record<string, string>>({})
   const importFileInputRef = useRef<HTMLInputElement | null>(null)
   const organizationAutofillFileInputRef = useRef<HTMLInputElement | null>(null)
   
@@ -534,81 +630,6 @@ export default function OptionsPage() {
     }
   }
 
-  // Simulator inject mapping helpers (1:N mapping)
-  // JSON structure: { [simulatorId]: { types: string[], formats: string[] } }
-  // Backward compat: old format was { [simulatorId]: string[] }
-
-  const _parseSimulatorMapping = (): Record<string, { types: string[]; formats: string[] }> => {
-    const raw = getAppConfigValue('simulator_inject_mapping')
-    if (!raw) return {}
-    try {
-      const parsed = JSON.parse(raw)
-      const result: Record<string, { types: string[]; formats: string[] }> = {}
-      for (const [key, val] of Object.entries(parsed)) {
-        if (Array.isArray(val)) {
-          // Legacy format: array of types
-          result[key] = { types: val as string[], formats: [] }
-        } else if (val && typeof val === 'object' && 'types' in val) {
-          result[key] = {
-            types: (val as any).types ?? [],
-            formats: (val as any).formats ?? [],
-          }
-        }
-      }
-      return result
-    } catch {
-      return {}
-    }
-  }
-
-  const _saveSimulatorMapping = (mapping: Record<string, { types: string[]; formats: string[] }>) => {
-    updateAppConfigField('simulator_inject_mapping', JSON.stringify(mapping))
-  }
-
-  const getSimulatorInjectMapping = (simulatorId: string): string[] => {
-    const mapping = _parseSimulatorMapping()
-    if (mapping[simulatorId]) return mapping[simulatorId].types
-    const defaults: Record<string, string[]> = {
-      mail: ['mail', 'canal_anssi', 'document'],
-      chat: ['message'],
-      sms: ['message'],
-      tel: ['canal_anssi', 'audio'],
-      tv: ['video', 'canal_gouvernement', 'canal_press'],
-      social: ['social_post'],
-      press: ['canal_gouvernement', 'canal_press'],
-    }
-    return defaults[simulatorId] || ['message']
-  }
-
-  const getSimulatorAllowedFormats = (simulatorId: string): string[] => {
-    const mapping = _parseSimulatorMapping()
-    return mapping[simulatorId]?.formats ?? []
-  }
-
-  const updateSimulatorInjectMapping = (simulatorId: string, injectType: string, checked: boolean) => {
-    const mapping = _parseSimulatorMapping()
-    const current = mapping[simulatorId] ?? { types: getSimulatorInjectMapping(simulatorId), formats: [] }
-    if (checked) {
-      if (!current.types.includes(injectType)) current.types = [...current.types, injectType]
-    } else {
-      current.types = current.types.filter(t => t !== injectType)
-    }
-    mapping[simulatorId] = current
-    _saveSimulatorMapping(mapping)
-  }
-
-  const updateSimulatorAllowedFormats = (simulatorId: string, format: string, checked: boolean) => {
-    const mapping = _parseSimulatorMapping()
-    const current = mapping[simulatorId] ?? { types: getSimulatorInjectMapping(simulatorId), formats: [] }
-    if (checked) {
-      if (!current.formats.includes(format)) current.formats = [...current.formats, format]
-    } else {
-      current.formats = current.formats.filter(f => f !== format)
-    }
-    mapping[simulatorId] = current
-    _saveSimulatorMapping(mapping)
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -629,12 +650,13 @@ export default function OptionsPage() {
   const getPhasesConfig = (): { name: string; enabled: boolean }[] => {
     const raw = getAppConfigValue('default_phases_config')
     let stored: { name: string; enabled: boolean }[] = []
+    const classiqueSet = new Set(PHASE_PRESETS.classique)
     if (raw) {
       try { stored = JSON.parse(raw) } catch { /* noop */ }
     }
     return DEFAULT_PHASES_LIST.map((name) => {
       const found = stored.find((p) => p.name === name)
-      return { name, enabled: found?.enabled ?? true }
+      return { name, enabled: found?.enabled ?? classiqueSet.has(name) }
     })
   }
 
@@ -661,13 +683,237 @@ export default function OptionsPage() {
     return 'custom'
   }
 
+  const getTimelinePhaseTypeFormats = (): TimelinePhaseTypeFormat[] => {
+    const raw = getAppConfigValue('timeline_phase_type_format_config')
+    if (!raw) return DEFAULT_TIMELINE_PHASE_TYPE_FORMATS
+    const normalizeFormat = (value: string): TimelineAllowedFormat | null => {
+      const upper = value.toUpperCase()
+      if (upper === 'TEXT') return 'TXT'
+      if (upper === 'TXT') return 'TXT'
+      if (upper === 'AUDIO') return 'AUDIO'
+      if (upper === 'VIDEO') return 'VIDEO'
+      if (upper === 'IMAGE') return 'IMAGE'
+      return null
+    }
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return DEFAULT_TIMELINE_PHASE_TYPE_FORMATS
+      const normalized = parsed
+        .filter((item) => item && typeof item.type === 'string')
+        .map((item) => ({
+          type: item.type,
+          formats: Array.isArray(item.formats)
+            ? item.formats
+              .filter((format: unknown): format is string => typeof format === 'string')
+              .map((format) => normalizeFormat(format))
+              .filter((format): format is TimelineAllowedFormat => format !== null)
+            : [],
+          simulator:
+            typeof item.simulator === 'string'
+              ? item.simulator
+              : (TIMELINE_DEFAULT_SIMULATOR_BY_TYPE[String(item.type || '').trim().toLowerCase()] || null),
+        }))
+      return normalized
+    } catch {
+      return DEFAULT_TIMELINE_PHASE_TYPE_FORMATS
+    }
+  }
+
+  const saveTimelinePhaseTypeFormats = (rows: TimelinePhaseTypeFormat[]) => {
+    const sanitized = rows
+      .map((row) => ({
+        type: row.type,
+        formats: row.formats.filter((format): format is TimelineAllowedFormat =>
+          TIMELINE_ALLOWED_FORMATS.includes(format as TimelineAllowedFormat)
+        ),
+        simulator:
+          typeof row.simulator === 'string' &&
+          TIMELINE_SIMULATOR_OPTIONS.some((option) => option.value === row.simulator)
+            ? row.simulator
+            : null,
+      }))
+    updateAppConfigField('timeline_phase_type_format_config', JSON.stringify(sanitized))
+  }
+
+  const addTimelineInjectType = () => {
+    const rows = getTimelinePhaseTypeFormats()
+    const existing = new Set(rows.map((row) => row.type.toLowerCase()))
+    let candidate = 'Nouvel inject'
+    let counter = 2
+    while (existing.has(candidate.toLowerCase())) {
+      candidate = `Nouvel inject ${counter}`
+      counter += 1
+    }
+    saveTimelinePhaseTypeFormats([...rows, { type: candidate, formats: ['TXT'], simulator: null }])
+  }
+
+  const renameTimelineInjectType = (index: number, nextName: string) => {
+    const rows = getTimelinePhaseTypeFormats()
+    if (!rows[index]) return
+    rows[index] = { ...rows[index], type: nextName }
+    saveTimelinePhaseTypeFormats(rows)
+  }
+
+  const removeTimelineInjectType = (index: number) => {
+    const rows = getTimelinePhaseTypeFormats()
+    if (!rows[index]) return
+    if (REQUIRED_TIMELINE_INJECT_TYPES.has(rows[index].type.trim().toLowerCase())) return
+    saveTimelinePhaseTypeFormats(rows.filter((_, rowIndex) => rowIndex !== index))
+  }
+
+  const toggleTimelineInjectFormat = (index: number, format: TimelineAllowedFormat, checked: boolean) => {
+    const rows = getTimelinePhaseTypeFormats()
+    const row = rows[index]
+    if (!row) return
+    if (checked) {
+      row.formats = row.formats.includes(format) ? row.formats : [...row.formats, format]
+    } else {
+      row.formats = row.formats.filter((item) => item !== format)
+    }
+    saveTimelinePhaseTypeFormats(rows)
+  }
+
+  const updateTimelineInjectSimulator = (index: number, simulator: string | null) => {
+    const rows = getTimelinePhaseTypeFormats()
+    const row = rows[index]
+    if (!row) return
+    row.simulator = simulator
+    saveTimelinePhaseTypeFormats(rows)
+  }
+
+  const getSelectedTimelineSourceIds = (): string[] => {
+    const raw = getAppConfigValue('timeline_sources_config')
+    if (!raw) return [...TIMELINE_SOURCES_CATALOG, ...getCustomTimelineSources()].map((item) => item.id)
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return [...TIMELINE_SOURCES_CATALOG, ...getCustomTimelineSources()].map((item) => item.id)
+      return parsed.filter((item): item is string => typeof item === 'string')
+    } catch {
+      return [...TIMELINE_SOURCES_CATALOG, ...getCustomTimelineSources()].map((item) => item.id)
+    }
+  }
+
+  const saveSelectedTimelineSourceIds = (ids: string[], knownSourceIds?: string[]) => {
+    const known = new Set(knownSourceIds ?? [...TIMELINE_SOURCES_CATALOG, ...getCustomTimelineSources()].map((item) => item.id))
+    const unique = Array.from(new Set(ids)).filter((id) => known.has(id))
+    updateAppConfigField('timeline_sources_config', JSON.stringify(unique))
+  }
+
+  const toggleTimelineSource = (sourceId: string, checked: boolean) => {
+    const selected = getSelectedTimelineSourceIds()
+    if (checked) {
+      if (!selected.includes(sourceId)) {
+        saveSelectedTimelineSourceIds([...selected, sourceId])
+      }
+      return
+    }
+    saveSelectedTimelineSourceIds(selected.filter((id) => id !== sourceId))
+  }
+
+  const getTimelineSourcesByCountry = (): Array<{
+    country: string
+    categories: Array<{ category: TimelineSourceCategory; sources: TimelineSourceItem[] }>
+  }> => {
+    const byCountry = new Map<string, Map<TimelineSourceCategory, TimelineSourceItem[]>>()
+    for (const item of [...TIMELINE_SOURCES_CATALOG, ...getCustomTimelineSources()]) {
+      if (!byCountry.has(item.country)) {
+        byCountry.set(item.country, new Map<TimelineSourceCategory, TimelineSourceItem[]>())
+      }
+      const byCategory = byCountry.get(item.country)!
+      if (!byCategory.has(item.category)) {
+        byCategory.set(item.category, [])
+      }
+      byCategory.get(item.category)!.push(item)
+    }
+    return Array.from(byCountry.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'fr'))
+      .map(([country, categoryMap]) => ({
+        country,
+        categories: TIMELINE_SOURCE_CATEGORY_ORDER.map((category) => ({
+          category,
+          sources: (categoryMap.get(category) || []).slice().sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+        })),
+      }))
+  }
+
+  const getCustomTimelineSources = (): TimelineCustomSourceItem[] => {
+    const raw = getAppConfigValue('timeline_sources_custom_config')
+    if (!raw) return []
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return []
+      return parsed
+        .filter((item) =>
+          item &&
+          typeof item.id === 'string' &&
+          typeof item.country === 'string' &&
+          typeof item.category === 'string' &&
+          typeof item.name === 'string'
+        )
+        .map((item) => ({
+          id: item.id.trim(),
+          country: item.country.trim(),
+          category: item.category as TimelineSourceCategory,
+          name: item.name.trim(),
+        }))
+        .filter((item) =>
+          item.id.length > 0 &&
+          item.country.length > 0 &&
+          item.name.length > 0 &&
+          TIMELINE_SOURCE_CATEGORY_ORDER.includes(item.category)
+        )
+    } catch {
+      return []
+    }
+  }
+
+  const saveCustomTimelineSources = (sources: TimelineCustomSourceItem[]) => {
+    updateAppConfigField('timeline_sources_custom_config', JSON.stringify(sources))
+  }
+
+  const addCustomTimelineSource = (country: string, category: TimelineSourceCategory) => {
+    const key = `${country}|${category}`
+    const draft = (timelineSourceDrafts[key] || '').trim()
+    if (!draft) return
+
+    const customSources = getCustomTimelineSources()
+    const sourceId = `custom-${country.toLowerCase().replace(/\s+/g, '-')}-${category.toLowerCase()}-${Date.now()}`
+    const nextSource: TimelineCustomSourceItem = {
+      id: sourceId,
+      country,
+      category,
+      name: draft,
+    }
+    const nextCustomSources = [...customSources, nextSource]
+    saveCustomTimelineSources(nextCustomSources)
+
+    const selected = getSelectedTimelineSourceIds()
+    if (!selected.includes(sourceId)) {
+      saveSelectedTimelineSourceIds(
+        [...selected, sourceId],
+        [...TIMELINE_SOURCES_CATALOG, ...nextCustomSources].map((item) => item.id)
+      )
+    }
+    setTimelineSourceDrafts((prev) => ({ ...prev, [key]: '' }))
+  }
+
+  const removeCustomTimelineSource = (sourceId: string) => {
+    const customSources = getCustomTimelineSources()
+    const nextCustomSources = customSources.filter((item) => item.id !== sourceId)
+    saveCustomTimelineSources(nextCustomSources)
+    const selected = getSelectedTimelineSourceIds()
+    saveSelectedTimelineSourceIds(
+      selected.filter((id) => id !== sourceId),
+      [...TIMELINE_SOURCES_CATALOG, ...nextCustomSources].map((item) => item.id)
+    )
+  }
+
   const tabs = [
     { id: 'general' as TabType, label: 'Général', icon: Settings },
     { id: 'plugins' as TabType, label: 'Plugins', icon: Puzzle },
     { id: 'security' as TabType, label: 'Sécurité', icon: Shield },
     { id: 'email' as TabType, label: 'Email', icon: Mail },
-    { id: 'simulators' as TabType, label: 'Simulateurs', icon: Cpu },
-    { id: 'phases' as TabType, label: 'Phases', icon: ListOrdered },
+    { id: 'timelines' as TabType, label: 'Timelines', icon: ListOrdered },
   ]
 
   const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
@@ -1427,182 +1673,294 @@ export default function OptionsPage() {
           </div>
         )}
 
-        {/* Simulators Tab */}
-        {activeTab === 'simulators' && (
-          <div className="space-y-6">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <Cpu className="w-5 h-5 text-gray-400" />
-                <h2 className="text-lg font-medium text-white">Mapping Simulateurs - Types d'inject</h2>
-              </div>
-              <p className="text-sm text-gray-400 mb-4">
-                Configurez le mapping entre les simulateurs et les types d'inject de la banque d'injects (sélection multiple possible)
-              </p>
-              
-              <div className="space-y-6">
-                {[
-                  { id: 'mail', label: 'Mail', icon: Mail },
-                  { id: 'chat', label: 'Chat', icon: MessageCircle },
-                  { id: 'sms', label: 'SMS', icon: Smartphone },
-                  { id: 'tel', label: 'Téléphone', icon: Phone },
-                  { id: 'tv', label: 'TV', icon: Tv },
-                  { id: 'social', label: 'Réseau social', icon: MessageCircle },
-                  { id: 'press', label: 'Presse', icon: Newspaper },
-                ].map((simulator) => {
-                  const selectedTypes = getSimulatorInjectMapping(simulator.id)
-                  return (
-                    <div key={simulator.id} className="bg-gray-900 rounded-lg border border-gray-700 p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center flex-shrink-0">
-                          {simulator.id === 'mail' && <Mail className="w-5 h-5 text-gray-300" />}
-                          {simulator.id === 'chat' && <MessageCircle className="w-5 h-5 text-gray-300" />}
-                          {simulator.id === 'sms' && <Smartphone className="w-5 h-5 text-gray-300" />}
-                          {simulator.id === 'tel' && <Phone className="w-5 h-5 text-gray-300" />}
-                          {simulator.id === 'tv' && <Tv className="w-5 h-5 text-gray-300" />}
-                          {simulator.id === 'social' && <MessageCircle className="w-5 h-5 text-gray-300" />}
-                          {simulator.id === 'press' && <Newspaper className="w-5 h-5 text-gray-300" />}
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">{simulator.label}</p>
-                          <p className="text-xs text-gray-400">Simulateur {simulator.id}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Types d'inject autorisés</p>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {[
-                              { value: 'mail', label: 'Mail' },
-                              { value: 'message', label: 'Message' },
-                              { value: 'social_post', label: 'Réseau social' },
-                              { value: 'canal_press', label: 'Presse' },
-                              { value: 'canal_anssi', label: 'Canal ANSSI' },
-                              { value: 'canal_gouvernement', label: 'Canal Gouvernement' },
-                              { value: 'document', label: 'Document' },
-                              { value: 'image', label: 'Image' },
-                              { value: 'video', label: 'Vidéo' },
-                              { value: 'audio', label: 'Audio' },
-                              { value: 'directory', label: 'Répertoire' },
-                              { value: 'reference_url', label: 'URL de référence' },
-                            ].map((type) => (
-                              <label key={type.value} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-gray-600 cursor-pointer hover:bg-gray-750">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedTypes.includes(type.value)}
-                                  onChange={(e) => updateSimulatorInjectMapping(simulator.id, type.value, e.target.checked)}
-                                  className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-gray-300">{type.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Nature des contenus autorisés</p>
-                          <div className="flex flex-wrap gap-2">
-                            {[
-                              { value: 'text', label: 'Texte' },
-                              { value: 'image', label: 'Image' },
-                              { value: 'video', label: 'Vidéo' },
-                              { value: 'audio', label: 'Audio' },
-                            ].map((fmt) => {
-                              const selectedFormats = getSimulatorAllowedFormats(simulator.id)
-                              return (
-                                <label key={fmt.value} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-indigo-700/50 cursor-pointer hover:bg-gray-750">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedFormats.includes(fmt.value)}
-                                    onChange={(e) => updateSimulatorAllowedFormats(simulator.id, fmt.value, e.target.checked)}
-                                    className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-sm text-indigo-300">{fmt.label}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Phases Tab */}
-        {activeTab === 'phases' && (() => {
+        {/* Timelines Tab */}
+        {activeTab === 'timelines' && (() => {
           const phasesConfig = getPhasesConfig()
           const enabledCount = phasesConfig.filter((p) => p.enabled).length
           const activePreset = resolveActivePreset(phasesConfig)
+          const timelineRows = getTimelinePhaseTypeFormats()
+          const selectedSourceIds = getSelectedTimelineSourceIds()
+          const timelineSourcesByCountry = getTimelineSourcesByCountry()
           return (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Phases par défaut</h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  Liste des phases proposées lors de la création d&apos;un nouvel exercice.
-                  Les modifications n&apos;affectent pas les exercices existants.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {([
-                    { id: 'minimal', label: 'Minimal' },
-                    { id: 'classique', label: 'Classique' },
-                    { id: 'precis', label: 'Précis' },
-                    { id: 'full', label: 'Full' },
-                  ] as { id: PhasePreset; label: string }[]).map(({ id, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => applyPhasePreset(id)}
-                      className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                        activePreset === id
-                          ? 'bg-blue-600 border-blue-500 text-white'
-                          : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  <span className="text-xs text-gray-500 ml-2">
-                    Préset actif : {activePreset === 'custom' ? 'Personnalisé' : activePreset}
-                  </span>
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <ListOrdered className="w-5 h-5 text-gray-400" />
+                  <h2 className="text-lg font-semibold text-white">Timelines</h2>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                {phasesConfig.map((phase, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-700 bg-gray-900/60 hover:bg-gray-900 transition-colors"
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTimelineSettingsTab('phase')}
+                    className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                      timelineSettingsTab === 'phase'
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
+                    }`}
                   >
-                    <span className="w-5 text-right text-xs text-gray-500 flex-shrink-0 tabular-nums">
-                      {index + 1}
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={phase.enabled}
-                      onClick={() => togglePhase(index)}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                        phase.enabled ? 'bg-blue-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                          phase.enabled ? 'translate-x-4' : 'translate-x-0.5'
-                        }`}
-                      />
-                    </button>
-                    <span className={`text-sm flex-1 ${phase.enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'}`}>
-                      {phase.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                    Phase
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimelineSettingsTab('inject_types_formats')}
+                    className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                      timelineSettingsTab === 'inject_types_formats'
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
+                    }`}
+                  >
+                    Type d&apos;inject et format
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimelineSettingsTab('sources')}
+                    className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                      timelineSettingsTab === 'sources'
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
+                    }`}
+                  >
+                    Sources
+                  </button>
+                </div>
 
-              <p className="text-xs text-gray-500">
-                {enabledCount} phase{enabledCount !== 1 ? 's' : ''} activée{enabledCount !== 1 ? 's' : ''} sur {DEFAULT_PHASES_LIST.length}
-              </p>
+                {timelineSettingsTab === 'phase' && (
+                  <>
+                    <div>
+                      <h3 className="text-base font-semibold text-white">Phases par défaut</h3>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Liste des phases proposées lors de la création d&apos;un nouvel exercice.
+                        Les modifications n&apos;affectent pas les exercices existants.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {([
+                          { id: 'minimal', label: 'Minimal' },
+                          { id: 'classique', label: 'Classique' },
+                          { id: 'precis', label: 'Précis' },
+                          { id: 'full', label: 'Full' },
+                        ] as { id: PhasePreset; label: string }[]).map(({ id, label }) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => applyPhasePreset(id)}
+                            className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                              activePreset === id
+                                ? 'bg-blue-600 border-blue-500 text-white'
+                                : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                        <span className="text-xs text-gray-500 ml-2">
+                          Préset actif : {activePreset === 'custom' ? 'Personnalisé' : activePreset}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {phasesConfig.map((phase, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-700 bg-gray-900/60 hover:bg-gray-900 transition-colors"
+                        >
+                          <span className="w-5 text-right text-xs text-gray-500 flex-shrink-0 tabular-nums">
+                            {index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={phase.enabled}
+                            onClick={() => togglePhase(index)}
+                            className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                              phase.enabled ? 'bg-blue-600' : 'bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                phase.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-sm flex-1 ${phase.enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'}`}>
+                            {phase.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-gray-500">
+                      {enabledCount} phase{enabledCount !== 1 ? 's' : ''} activée{enabledCount !== 1 ? 's' : ''} sur {DEFAULT_PHASES_LIST.length}
+                    </p>
+                  </>
+                )}
+
+                {timelineSettingsTab === 'inject_types_formats' && (
+                  <div>
+                    <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Créez, renommez et supprimez les types d&apos;inject puis attribuez les formats autorisés: TXT, AUDIO, VIDEO, IMAGE.
+                    </p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        {timelineRows.length} type(s) d&apos;inject configuré(s)
+                      </p>
+                      <button
+                        type="button"
+                        onClick={addTimelineInjectType}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 text-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Ajouter un type d&apos;inject
+                      </button>
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {timelineRows.length === 0 && (
+                        <div className="text-sm text-gray-500 bg-gray-900 border border-gray-700 rounded px-3 py-2">
+                          Aucun type configuré. Ajoutez un type d&apos;inject.
+                        </div>
+                      )}
+                      {timelineRows.map((row, index) => (
+                        <div key={index} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={row.type}
+                              onChange={(e) => renameTimelineInjectType(index, e.target.value)}
+                              placeholder="Nom du type d'inject"
+                              className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            {!REQUIRED_TIMELINE_INJECT_TYPES.has(row.type.trim().toLowerCase()) && (
+                              <button
+                                type="button"
+                                onClick={() => removeTimelineInjectType(index)}
+                                className="inline-flex items-center gap-1 px-2.5 py-2 rounded border border-red-400 bg-red-600 text-white hover:bg-red-500 text-sm font-medium"
+                                title="Supprimer ce type d'inject"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Supprimer
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                            <div className="flex flex-wrap gap-2">
+                              {TIMELINE_ALLOWED_FORMATS.map((format) => (
+                                <label key={`${index}-${format}`} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-indigo-700/40 cursor-pointer hover:bg-gray-750">
+                                  <input
+                                    type="checkbox"
+                                    checked={row.formats.includes(format)}
+                                    onChange={(e) => toggleTimelineInjectFormat(index, format, e.target.checked)}
+                                    className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  <span className="text-xs text-indigo-200">{format}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <div className="w-full lg:w-64">
+                              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                                Simulateur affecté
+                              </label>
+                              <select
+                                value={row.simulator || ''}
+                                onChange={(e) => updateTimelineInjectSimulator(index, e.target.value || null)}
+                                className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Aucun</option>
+                                {TIMELINE_SIMULATOR_OPTIONS.map((simulator) => (
+                                  <option key={simulator.value} value={simulator.value}>
+                                    {simulator.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {timelineSettingsTab === 'sources' && (
+                  <div>
+                    <h3 className="text-base font-semibold text-white">Sources</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Activez les sources utilisables par tenant, regroupées par pays et triées par Press, TV puis Gouvernement.
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {selectedSourceIds.length} source(s) active(s) sur {TIMELINE_SOURCES_CATALOG.length + getCustomTimelineSources().length}
+                    </p>
+                    <div className="mt-4 space-y-4">
+                      {timelineSourcesByCountry.map((countryBlock) => (
+                        <div key={countryBlock.country} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
+                          <div className="text-sm font-semibold text-white">{countryBlock.country}</div>
+                          {countryBlock.categories.map((categoryBlock) => (
+                            <div key={`${countryBlock.country}-${categoryBlock.category}`}>
+                              <div className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">
+                                {categoryBlock.category}
+                              </div>
+                              {categoryBlock.sources.length === 0 ? (
+                                <div className="text-xs text-gray-600">Aucune source</div>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                                  {categoryBlock.sources.map((source) => (
+                                    <div
+                                      key={source.id}
+                                      className="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-800 rounded border border-gray-700 hover:bg-gray-750"
+                                    >
+                                      <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedSourceIds.includes(source.id)}
+                                          onChange={(e) => toggleTimelineSource(source.id, e.target.checked)}
+                                          className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-200 truncate">{source.name}</span>
+                                      </label>
+                                      {source.id.startsWith('custom-') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => removeCustomTimelineSource(source.id)}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-red-400 bg-red-600 text-white hover:bg-red-500 text-xs font-medium"
+                                          title="Supprimer la source custom"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="mt-2 flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={timelineSourceDrafts[`${countryBlock.country}|${categoryBlock.category}`] || ''}
+                                  onChange={(e) =>
+                                    setTimelineSourceDrafts((prev) => ({
+                                      ...prev,
+                                      [`${countryBlock.country}|${categoryBlock.category}`]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder={`Ajouter une source ${categoryBlock.category.toLowerCase()} custom`}
+                                  className="flex-1 px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => addCustomTimelineSource(countryBlock.country, categoryBlock.category)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 text-sm"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Ajouter
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )
         })()}

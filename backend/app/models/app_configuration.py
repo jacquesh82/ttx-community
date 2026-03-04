@@ -95,4 +95,7 @@ DEFAULT_APP_CONFIG = {
     "simulator_inject_mapping": None,
     "default_phases_config": None,
     "default_phases_preset": None,
+    "timeline_phase_type_format_config": None,
+    "timeline_sources_config": None,
+    "timeline_sources_custom_config": None,
 }
