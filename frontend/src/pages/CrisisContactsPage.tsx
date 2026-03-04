@@ -36,7 +36,7 @@ const categoryLabels: Record<string, string> = {
 const priorityLabels: Record<string, { label: string; color: string }> = {
   critical: { label: 'Critique', color: 'bg-red-100 text-red-800' },
   high: { label: 'Haute', color: 'bg-orange-100 text-orange-800' },
-  normal: { label: 'Normale', color: 'bg-blue-100 text-blue-800' },
+  normal: { label: 'Normale', color: 'bg-primary-100 text-primary-800' },
   low: { label: 'Basse', color: 'bg-gray-100 text-gray-800' },
 }
 
@@ -608,7 +608,7 @@ function ImportModal({
       <div className="p-6 space-y-4">
         {!result ? (
           <>
-            <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm">
+            <div className="bg-primary-50 text-primary-800 p-3 rounded-md text-sm">
               <p className="font-medium mb-1">Formats acceptés : CSV, JSON</p>
               <p>
                 <button

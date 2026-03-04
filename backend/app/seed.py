@@ -1,9 +1,23 @@
 """Auto-seed initial data on first startup."""
+import json
+
 from sqlalchemy import select
 
 from app.database import async_session_factory
-from app.models import Tenant, TenantStatus, User, UserRole
+from app.models import Tenant, TenantConfiguration, TenantStatus, User, UserRole
 from app.utils.security import hash_password
+
+
+DEFAULT_TIMELINE_TYPES_FORMATS = [
+    {"type": "Mail", "formats": ["TXT"], "simulator": "mail"},
+    {"type": "SMS", "formats": ["TXT", "IMAGE"], "simulator": "sms"},
+    {"type": "Call", "formats": ["AUDIO"], "simulator": "tel"},
+    {"type": "Social network", "formats": ["TXT", "VIDEO", "IMAGE"], "simulator": "social"},
+    {"type": "TV", "formats": ["VIDEO"], "simulator": "tv"},
+    {"type": "Document", "formats": ["TXT", "IMAGE"], "simulator": "mail"},
+    {"type": "Annuaire de crise", "formats": ["TXT"], "simulator": None},
+    {"type": "Scenario", "formats": ["TXT"], "simulator": None},
+]
 
 
 async def seed_initial_data() -> None:
@@ -47,5 +61,32 @@ async def seed_initial_data() -> None:
             ))
             print("[seed] Admin user created  →  admin / Admin123!")
             print("[seed] WARNING: change the default password before going to production!")
+
+        # -- Tenant configuration defaults ----------------------------------
+        result = await session.execute(
+            select(TenantConfiguration).where(TenantConfiguration.tenant_id == tenant.id)
+        )
+        tenant_config = result.scalar_one_or_none()
+        if not tenant_config:
+            tenant_config = TenantConfiguration(
+                tenant_id=tenant.id,
+                organization_name=tenant.name,
+            )
+            session.add(tenant_config)
+            await session.flush()
+            print("[seed] Default tenant configuration created")
+
+        overlay = tenant_config.legacy_app_config_overrides or {}
+        timeline_defaults = json.dumps(DEFAULT_TIMELINE_TYPES_FORMATS, ensure_ascii=False)
+        updated_overlay = False
+        if not overlay.get("timeline_phase_type_format_config"):
+            overlay["timeline_phase_type_format_config"] = timeline_defaults
+            updated_overlay = True
+        if not overlay.get("default_phases_preset"):
+            overlay["default_phases_preset"] = "classique"
+            updated_overlay = True
+        if updated_overlay:
+            tenant_config.legacy_app_config_overrides = overlay
+            print("[seed] Timeline default inject types initialized")
 
         await session.commit()

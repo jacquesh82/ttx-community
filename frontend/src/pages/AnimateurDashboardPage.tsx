@@ -43,7 +43,7 @@ import { useAppDialog } from '../contexts/AppDialogContext'
 
 // Inject type configuration
 const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  mail: { label: 'Email', color: 'bg-blue-500', icon: Mail },
+  mail: { label: 'Email', color: 'bg-primary-500', icon: Mail },
   twitter: { label: 'Réseau social', color: 'bg-sky-500', icon: MessageSquare },
   tv: { label: 'TV', color: 'bg-purple-500', icon: Tv },
   decision: { label: 'Décision', color: 'bg-orange-500', icon: AlertTriangle },
@@ -53,7 +53,7 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.El
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
   draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-700', dot: 'bg-gray-400' },
-  scheduled: { label: 'Planifié', color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
+  scheduled: { label: 'Planifié', color: 'bg-primary-100 text-primary-700', dot: 'bg-primary-500' },
   sent: { label: 'Envoyé', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
   cancelled: { label: 'Annulé', color: 'bg-red-100 text-red-700', dot: 'bg-red-400' },
 }
@@ -387,7 +387,7 @@ export default function AnimateurDashboardPage() {
               <div className="w-32">
                 <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-500 transition-all duration-1000"
+                    className="h-full bg-primary-500 transition-all duration-1000"
                     style={{ width: `${timeInfo.progressPercent}%` }}
                   />
                 </div>
@@ -467,12 +467,12 @@ export default function AnimateurDashboardPage() {
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Clock size={20} className="text-blue-400" />
+                    <Clock size={20} className="text-primary-400" />
                     Injects à venir ({upcomingInjects.length})
                   </h2>
                   <button
                     onClick={() => setShowAddInjectModal(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 rounded-lg text-sm font-medium transition-colors"
                   >
                     <Plus size={16} />
                     Ajouter
@@ -717,7 +717,7 @@ export default function AnimateurDashboardPage() {
               type="text"
               value={injectForm.title}
               onChange={(e) => setInjectForm({ ...injectForm, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Titre de l'inject"
             />
           </div>
@@ -790,7 +790,7 @@ export default function AnimateurDashboardPage() {
             <button
               onClick={() => createInjectMutation.mutate()}
               disabled={!injectForm.title.trim() || createInjectMutation.isPending}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
             >
               {createInjectMutation.isPending ? 'Création...' : 'Créer'}
             </button>
@@ -845,7 +845,7 @@ function IndicatorCard({
   const colorClasses = {
     red: 'bg-red-900/50 text-red-400',
     orange: 'bg-orange-900/50 text-orange-400',
-    blue: 'bg-blue-900/50 text-blue-400',
+    blue: 'bg-primary-900/50 text-primary-400',
     green: 'bg-green-900/50 text-green-400',
   }
 

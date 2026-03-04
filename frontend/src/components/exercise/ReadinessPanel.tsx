@@ -110,7 +110,7 @@ export default function ReadinessPanel({
           <button
             onClick={onRestart}
             disabled={!canConfigure || isActionPending}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
           >
             <RotateCcw size={16} className="mr-2" />
             Relancer

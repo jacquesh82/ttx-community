@@ -41,7 +41,7 @@ import DebugAuthBar from '../../components/debug/DebugAuthBar'
 
 // Event type configurations
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-  mail: { label: 'Email', icon: Mail, color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
+  mail: { label: 'Email', icon: Mail, color: 'text-primary-400', bgColor: 'bg-primary-500/20' },
   twitter: { label: 'Réseau social', icon: MessageCircle, color: 'text-sky-400', bgColor: 'bg-sky-500/20' },
   tv: { label: 'TV / Vidéo', icon: Tv, color: 'text-teal-400', bgColor: 'bg-teal-500/20' },
   decision: { label: 'Décision', icon: AlertTriangle, color: 'text-orange-400', bgColor: 'bg-orange-500/20' },
@@ -224,7 +224,7 @@ export default function DebugEventsEmitPage() {
 
             <Link
               to="/debug/events_receive"
-              className="text-sm text-blue-400 hover:text-blue-300"
+              className="text-sm text-primary-400 hover:text-primary-300"
             >
               Open Receiver →
             </Link>
@@ -258,7 +258,7 @@ export default function DebugEventsEmitPage() {
                 <select
                   value={selectedExerciseId ?? ''}
                   onChange={(e) => handleExerciseSelect(parseInt(e.target.value))}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select an exercise...</option>
                   {exercises?.map((ex) => (
@@ -323,7 +323,7 @@ export default function DebugEventsEmitPage() {
                     onClick={() => handleSpeedChange(s)}
                     className={`px-3 py-1.5 text-sm rounded transition-colors ${
                       currentSpeed === s
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-primary-600 text-white'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
@@ -391,7 +391,7 @@ export default function DebugEventsEmitPage() {
             </div>
           ) : isLoadingTimeline ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
             </div>
           ) : events.length === 0 ? (
             <div className="bg-gray-800 rounded-lg p-12 text-center">

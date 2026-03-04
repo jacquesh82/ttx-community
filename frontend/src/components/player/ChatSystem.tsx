@@ -61,7 +61,7 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <MessageCircle size={24} className="text-blue-400" />
+            <MessageCircle size={24} className="text-primary-400" />
             <div>
               <h2 className="text-lg font-semibold text-white">Chat</h2>
               <p className="text-sm text-gray-400">Communication en temps réel</p>
@@ -102,13 +102,13 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
                   onClick={() => setSelectedRoom(room)}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
                     selectedRoom?.id === room.id 
-                      ? 'bg-blue-600/20 border border-blue-500' 
+                      ? 'bg-primary-600/20 border border-primary-500' 
                       : 'hover:bg-gray-700'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center">
                         <Users size={16} />
                       </div>
                       <div>
@@ -138,7 +138,7 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
           <div className="p-3 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                   <Users size={16} />
                 </div>
                 <div>
@@ -168,7 +168,7 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
                 >
                   <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                     message.is_current_user
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-primary-600 text-white'
                       : 'bg-gray-700 text-white'
                   }`}>
                     {!message.is_current_user && (
@@ -179,7 +179,7 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
                     )}
                     <div className="text-sm">{message.content}</div>
                     <div className={`text-xs mt-1 ${
-                      message.is_current_user ? 'text-blue-200' : 'text-gray-400'
+                      message.is_current_user ? 'text-primary-200' : 'text-gray-400'
                     }`}>
                       {formatTime(message.created_at)}
                     </div>
@@ -211,12 +211,12 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Tapez votre message..."
-                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
               />
               <button
                 onClick={handleSendMessage}
                 disabled={!message.trim() || sendChatMessageMutation.isPending}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
               >
                 <Send size={16} />
                 Envoyer

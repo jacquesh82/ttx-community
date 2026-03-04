@@ -122,7 +122,7 @@ export function AppDialogProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => closeWith(request.kind === 'prompt' ? promptValue : true)}
-                className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
               >
                 {request.confirmLabel || 'OK'}
               </button>

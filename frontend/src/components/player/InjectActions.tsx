@@ -65,7 +65,7 @@ export default function InjectActions({ inject, onAction }: InjectActionsProps) 
       case 'opened':
         return { label: 'Ouvert', color: 'text-yellow-400', icon: <Eye size={16} /> }
       case 'acknowledged':
-        return { label: 'Accusé', color: 'text-blue-400', icon: <Eye size={16} /> }
+        return { label: 'Accusé', color: 'text-primary-400', icon: <Eye size={16} /> }
       case 'in_progress':
         return { label: 'En cours', color: 'text-orange-400', icon: <Clock size={16} /> }
       case 'treated':
@@ -90,7 +90,7 @@ export default function InjectActions({ inject, onAction }: InjectActionsProps) 
             <span className={`px-2 py-0.5 text-xs font-bold rounded ${
               inject.criticity === 'critical' ? 'bg-red-900/30 text-red-400' :
               inject.criticity === 'important' ? 'bg-yellow-900/30 text-yellow-400' :
-              'bg-blue-900/30 text-blue-400'
+              'bg-primary-900/30 text-primary-400'
             }`}>
               {inject.criticity.toUpperCase()}
             </span>
@@ -111,7 +111,7 @@ export default function InjectActions({ inject, onAction }: InjectActionsProps) 
           <button
             onClick={handleAcknowledge}
             disabled={updateDeliveryMutation.isPending}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded transition-colors"
           >
             <Eye size={16} />
             Accuser réception

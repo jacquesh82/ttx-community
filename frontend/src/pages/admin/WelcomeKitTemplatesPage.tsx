@@ -182,7 +182,7 @@ export default function WelcomeKitTemplatesPage() {
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
     
     // Code
-    html = html.replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-blue-700">$1</code>')
+    html = html.replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-primary-700">$1</code>')
     
     // Horizontal rule
     html = html.replace(/^---$/gm, '<hr class="my-6 border-gray-300" />')
@@ -256,7 +256,7 @@ export default function WelcomeKitTemplatesPage() {
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{template.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <span className={`px-2 py-1 rounded text-xs ${
-                    template.kind === 'player' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                    template.kind === 'player' ? 'bg-primary-100 text-primary-800' : 'bg-purple-100 text-purple-800'
                   }`}>
                     {KIND_LABELS[template.kind as WelcomeKitKind] || template.kind}
                   </span>
@@ -319,7 +319,7 @@ export default function WelcomeKitTemplatesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {Object.entries(availableVariables).map(([key, description]) => (
             <div key={key} className="flex items-center gap-2 text-sm">
-              <code className="bg-gray-100 px-2 py-1 rounded text-blue-700">{`{{${key}}}`}</code>
+              <code className="bg-gray-100 px-2 py-1 rounded text-primary-700">{`{{${key}}}`}</code>
               <span className="text-gray-600">{description as string}</span>
             </div>
           ))}

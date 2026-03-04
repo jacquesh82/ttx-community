@@ -66,7 +66,7 @@ export default function UserProfilePage() {
 
   const roleBadge: Record<string, { label: string; color: string }> = {
     admin: { label: 'Admin', color: 'bg-red-100 text-red-800 border border-red-200' },
-    animateur: { label: 'Animateur', color: 'bg-blue-100 text-blue-800 border border-blue-200' },
+    animateur: { label: 'Animateur', color: 'bg-primary-100 text-primary-800 border border-primary-200' },
     observateur: { label: 'Observateur', color: 'bg-purple-100 text-purple-800 border border-purple-200' },
     participant: { label: 'Participant', color: 'bg-green-100 text-green-800 border border-green-200' },
   }
@@ -117,7 +117,7 @@ export default function UserProfilePage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder={user?.username}
                 maxLength={100}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 Visible dans la sidebar et les messages. Laissez vide pour utiliser le nom d'utilisateur.
@@ -135,7 +135,7 @@ export default function UserProfilePage() {
                 onChange={(e) => setUsername(e.target.value)}
                 minLength={3}
                 maxLength={50}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 Utilisé pour la connexion.
@@ -155,7 +155,7 @@ export default function UserProfilePage() {
             onChange={(e) => setAvatarUrl(e.target.value)}
             placeholder="https://example.com/photo.jpg"
             maxLength={512}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
             Lien public vers une image (JPG, PNG, WebP…).

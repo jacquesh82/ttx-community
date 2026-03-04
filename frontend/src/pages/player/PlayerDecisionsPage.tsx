@@ -58,7 +58,7 @@ export default function PlayerDecisionsPage() {
         <h1 className="text-2xl font-bold text-white">Décisions</h1>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
         >
           <Plus size={20} />
           Nouvelle décision
@@ -86,7 +86,7 @@ export default function PlayerDecisionsPage() {
                   type="text"
                   name="title"
                   required
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary-500"
                   placeholder="Titre de la décision"
                 />
               </div>
@@ -96,7 +96,7 @@ export default function PlayerDecisionsPage() {
                 <textarea
                   name="description"
                   rows={3}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary-500"
                   placeholder="Décrivez la décision prise..."
                 />
               </div>
@@ -106,7 +106,7 @@ export default function PlayerDecisionsPage() {
                 <textarea
                   name="impact"
                   rows={2}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary-500"
                   placeholder="Impact de cette décision..."
                 />
               </div>
@@ -122,7 +122,7 @@ export default function PlayerDecisionsPage() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2"
                 >
                   {createMutation.isPending ? (
                     <>
@@ -158,8 +158,8 @@ export default function PlayerDecisionsPage() {
 
         <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-900/50 rounded-lg">
-              <Clock className="text-blue-400" size={20} />
+            <div className="p-2 bg-primary-900/50 rounded-lg">
+              <Clock className="text-primary-400" size={20} />
             </div>
             <div>
               <p className="text-sm text-gray-400">Aujourd'hui</p>
@@ -207,7 +207,7 @@ export default function PlayerDecisionsPage() {
 
         {isLoading ? (
           <div className="p-8 text-center text-gray-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
             <p className="mt-4">Chargement...</p>
           </div>
         ) : decisions.length === 0 ? (
@@ -216,7 +216,7 @@ export default function PlayerDecisionsPage() {
             <p>Aucune décision enregistrée</p>
             <button
               onClick={() => setShowForm(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm"
+              className="mt-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors text-sm"
             >
               Créer une première décision
             </button>

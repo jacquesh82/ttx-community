@@ -36,7 +36,7 @@ import { useAppDialog } from '../contexts/AppDialogContext'
 
 const STATUS_CONFIG: Record<InjectStatus, { label: string; color: string; dot: string }> = {
   draft:     { label: 'Brouillon',  color: 'bg-gray-100 text-gray-700', dot: 'bg-gray-400' },
-  scheduled: { label: 'Planifié',   color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
+  scheduled: { label: 'Planifié',   color: 'bg-primary-100 text-primary-700', dot: 'bg-primary-500' },
   sent:      { label: 'Envoyé',     color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
   cancelled: { label: 'Annulé',     color: 'bg-red-100 text-red-700', dot: 'bg-red-400' },
 }
@@ -60,7 +60,7 @@ export default function ExerciseChronogrammePage() {
       system: Settings,
     }
     const colors: Record<string, string> = {
-      mail: 'bg-blue-500',
+      mail: 'bg-primary-500',
       twitter: 'bg-sky-500',
       tv: 'bg-teal-500',
       decision: 'bg-orange-500',
@@ -253,7 +253,7 @@ export default function ExerciseChronogrammePage() {
           <button
             onClick={() => importFromBank.mutate('injects')}
             disabled={importFromBank.isPending}
-            className="px-3 py-2 bg-blue-700 text-white rounded text-sm hover:bg-blue-800 disabled:opacity-50"
+            className="px-3 py-2 bg-primary-700 text-white rounded text-sm hover:bg-primary-800 disabled:opacity-50"
           >
             Banque vers injects
           </button>
@@ -282,7 +282,7 @@ export default function ExerciseChronogrammePage() {
           <Link to={`/exercises/${exerciseId}/injects`} className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
             <List className="mr-1.5" size={15} /> Liste
           </Link>
-          <Link to={`/exercises/${exerciseId}/injects`} className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <Link to={`/exercises/${exerciseId}/injects`} className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700">
             <Plus className="mr-1.5" size={15} /> Nouveau
           </Link>
         </div>
@@ -446,7 +446,7 @@ export default function ExerciseChronogrammePage() {
                     <Send className="inline mr-1" size={14} /> Envoyer
                   </button>
                   <button onClick={() => { setScheduleDate(selectedInject.scheduled_at?.slice(0, 16) || ''); setShowScheduleModal(true) }}
-                    className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                    className="flex-1 px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700">
                     <Clock className="inline mr-1" size={14} /> Planifier
                   </button>
                   <button onClick={() => { cancelMutation.mutate(selectedInject.id); setSelectedInject(null) }}
@@ -477,7 +477,7 @@ export default function ExerciseChronogrammePage() {
           <div className="flex justify-end gap-3">
             <button onClick={() => setShowScheduleModal(false)} className="px-4 py-2 text-sm bg-gray-100 rounded-md">Annuler</button>
             <button onClick={() => { if (selectedInject && scheduleDate) scheduleMutation.mutate({ id: selectedInject.id, date: scheduleDate }) }}
-              disabled={!scheduleDate} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50">
+              disabled={!scheduleDate} className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md disabled:opacity-50">
               Planifier
             </button>
           </div>

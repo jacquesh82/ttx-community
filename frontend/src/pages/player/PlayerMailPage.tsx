@@ -68,7 +68,7 @@ export default function PlayerMailPage() {
       case 'opened':
         return 'bg-yellow-500'
       case 'acknowledged':
-        return 'bg-blue-500'
+        return 'bg-primary-500'
       case 'in_progress':
         return 'bg-orange-500'
       case 'treated':
@@ -108,7 +108,7 @@ export default function PlayerMailPage() {
                 onClick={() => setSelectedFolder(folder.id as any)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
                   selectedFolder === folder.id
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
               >
@@ -137,7 +137,7 @@ export default function PlayerMailPage() {
                 placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
@@ -146,7 +146,7 @@ export default function PlayerMailPage() {
           <div className="flex-1 overflow-auto">
             {isLoading ? (
               <div className="p-4 text-center text-gray-400">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto"></div>
               </div>
             ) : mailInjects.length === 0 ? (
               <div className="p-4 text-center text-gray-400">
@@ -161,7 +161,7 @@ export default function PlayerMailPage() {
                       onClick={() => setSelectedMailId(mail.id)}
                       className={`w-full text-left p-3 hover:bg-gray-700 transition-colors ${
                         selectedMailId === mail.id ? 'bg-gray-700' : ''
-                      } ${mail.delivery_status === 'delivered' ? 'bg-blue-900/20' : ''}`}
+                      } ${mail.delivery_status === 'delivered' ? 'bg-primary-900/20' : ''}`}
                     >
                       <div className="flex items-start gap-2">
                         <div className={`w-2 h-2 rounded-full mt-2 ${getStatusColor(mail.delivery_status)}`} />
@@ -267,7 +267,7 @@ export default function PlayerMailPage() {
                   <FileText size={16} />
                   Créer une décision
                 </Link>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                <button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-sm flex items-center gap-2 transition-colors">
                   <Reply size={16} />
                   Répondre
                 </button>

@@ -181,7 +181,7 @@ export default function SimulatorTabs({ exerciseId }: SimulatorTabsProps) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
               >
@@ -199,7 +199,7 @@ export default function SimulatorTabs({ exerciseId }: SimulatorTabsProps) {
             {isConnected ? 'Sim' : 'Sim...'}
           </span>
           {/* Debug events connection */}
-          <span className={`flex items-center gap-1 ${isDebugConnected ? 'text-blue-400' : 'text-gray-400'}`}>
+          <span className={`flex items-center gap-1 ${isDebugConnected ? 'text-primary-400' : 'text-gray-400'}`}>
             {isDebugConnected ? 'Events' : 'Events...'}
           </span>
         </div>

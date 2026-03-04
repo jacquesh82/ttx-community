@@ -46,7 +46,7 @@ const DIMENSIONS = [
   {
     icon: Zap,
     label: 'Réactivité',
-    color: 'bg-blue-100 text-blue-700 border-blue-200',
+    color: 'bg-primary-100 text-primary-700 border-primary-200',
     desc: 'Délai entre la livraison d\'un inject et la première ouverture. Objectif : < 5 min.',
   },
   {
@@ -138,7 +138,7 @@ function KpiCard({ label, value }: { label: string; value: string | number }) {
 
 const STATUS_BADGE: Record<string, string> = {
   sent: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  treated: 'bg-blue-100 text-blue-700 border-blue-200',
+  treated: 'bg-primary-100 text-primary-700 border-primary-200',
   scheduled: 'bg-amber-100 text-amber-700 border-amber-200',
   draft: 'bg-gray-100 text-gray-500 border-gray-200',
   cancelled: 'bg-red-100 text-red-600 border-red-200',
@@ -196,7 +196,7 @@ function InjectCard({ inject }: { inject: any }) {
 
 const PHASE_PALETTE = [
   { border: 'border-indigo-200', bg: 'bg-indigo-50', text: 'text-indigo-800', bar: 'bg-indigo-400', badge: 'bg-indigo-500' },
-  { border: 'border-blue-200',   bg: 'bg-blue-50',   text: 'text-blue-800',   bar: 'bg-blue-400',   badge: 'bg-blue-500' },
+  { border: 'border-primary-200',   bg: 'bg-primary-50',   text: 'text-primary-800',   bar: 'bg-primary-400',   badge: 'bg-primary-500' },
   { border: 'border-cyan-200',   bg: 'bg-cyan-50',   text: 'text-cyan-800',   bar: 'bg-cyan-400',   badge: 'bg-cyan-500' },
   { border: 'border-violet-200', bg: 'bg-violet-50', text: 'text-violet-800', bar: 'bg-violet-400', badge: 'bg-violet-500' },
   { border: 'border-purple-200', bg: 'bg-purple-50', text: 'text-purple-800', bar: 'bg-purple-400', badge: 'bg-purple-500' },
@@ -225,12 +225,12 @@ function eventTypeClass(type: string): string {
   switch (type) {
     case 'inject_sent':          return 'bg-emerald-100 text-emerald-800 border-emerald-300'
     case 'inject_cancelled':     return 'bg-slate-100 text-slate-600 border-slate-200'
-    case 'phase_change':         return 'bg-blue-100 text-blue-800 border-blue-200'
+    case 'phase_change':         return 'bg-primary-100 text-primary-800 border-primary-200'
     case 'exercise_started':     return 'bg-green-100 text-green-800 border-green-200'
     case 'exercise_paused':      return 'bg-amber-100 text-amber-800 border-amber-200'
     case 'exercise_resumed':     return 'bg-sky-100 text-sky-800 border-sky-200'
     case 'exercise_ended':       return 'bg-red-100 text-red-800 border-red-200'
-    case 'mail_opened':          return 'bg-blue-50 text-blue-700 border-blue-200'
+    case 'mail_opened':          return 'bg-primary-50 text-primary-700 border-primary-200'
     case 'mail_replied':         return 'bg-cyan-50 text-cyan-700 border-cyan-200'
     case 'tv_segment_started':   return 'bg-violet-50 text-violet-700 border-violet-200'
     case 'tv_segment_ended':     return 'bg-purple-50 text-purple-700 border-purple-200'
@@ -434,7 +434,7 @@ export default function ExerciseEvaluationPage() {
       }
     >
       {/* ── Bloc pédagogique ── */}
-      <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-6 mb-6 shadow-lg">
+      <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-primary-700 text-white p-6 mb-6 shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-white/20 rounded-lg">
             <BookOpen size={20} />
@@ -497,10 +497,10 @@ export default function ExerciseEvaluationPage() {
             {KPI_GROUPS.map(({ label, icon: Icon, color, keys, labels }) => {
               const entries = keys.filter(k => k in kpis)
               if (entries.length === 0) return null
-              const borderColor = color === 'blue' ? 'border-blue-100' : color === 'emerald' ? 'border-emerald-100' : 'border-violet-100'
-              const bgColor = color === 'blue' ? 'bg-blue-50' : color === 'emerald' ? 'bg-emerald-50' : 'bg-violet-50'
-              const textColor = color === 'blue' ? 'text-blue-700' : color === 'emerald' ? 'text-emerald-700' : 'text-violet-700'
-              const iconBg = color === 'blue' ? 'bg-blue-100 text-blue-600' : color === 'emerald' ? 'bg-emerald-100 text-emerald-600' : 'bg-violet-100 text-violet-600'
+              const borderColor = color === 'blue' ? 'border-primary-100' : color === 'emerald' ? 'border-emerald-100' : 'border-violet-100'
+              const bgColor = color === 'blue' ? 'bg-primary-50' : color === 'emerald' ? 'bg-emerald-50' : 'bg-violet-50'
+              const textColor = color === 'blue' ? 'text-primary-700' : color === 'emerald' ? 'text-emerald-700' : 'text-violet-700'
+              const iconBg = color === 'blue' ? 'bg-primary-100 text-primary-600' : color === 'emerald' ? 'bg-emerald-100 text-emerald-600' : 'bg-violet-100 text-violet-600'
               return (
                 <div key={label}>
                   <div className={`flex items-center gap-2 mb-2 px-2 py-1 rounded-lg ${bgColor} border ${borderColor}`}>
@@ -522,7 +522,7 @@ export default function ExerciseEvaluationPage() {
       {/* ── Timeline injects — 3 colonnes ── */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Activity size={18} className="text-blue-500" />
+          <Activity size={18} className="text-primary-500" />
           <h2 className="text-base font-semibold text-gray-800">Timelines injects</h2>
           <span className="text-xs text-gray-400">({injectsDetail.length} inject{injectsDetail.length !== 1 ? 's' : ''})</span>
         </div>
@@ -611,7 +611,7 @@ export default function ExerciseEvaluationPage() {
             icon={Mail}
             label="Mails lus"
             value={simInteractions.mail_opened_count ?? 0}
-            color="bg-blue-100 text-blue-700"
+            color="bg-primary-100 text-primary-700"
           />
           <SimBadge
             icon={Mail}
@@ -698,7 +698,7 @@ export default function ExerciseEvaluationPage() {
       {/* ── Timeline phases + événements ── */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Activity size={18} className="text-blue-500" />
+          <Activity size={18} className="text-primary-500" />
           <h2 className="text-base font-semibold text-gray-800">Timeline idéale vs réelle</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

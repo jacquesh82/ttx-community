@@ -109,7 +109,7 @@ export default function AuditPage() {
     if (action.includes('delete')) return 'text-red-400'
     if (action.includes('create')) return 'text-green-400'
     if (action.includes('update')) return 'text-yellow-400'
-    if (action.includes('login')) return 'text-blue-400'
+    if (action.includes('login')) return 'text-primary-400'
     return 'text-gray-300'
   }
 
@@ -135,7 +135,7 @@ export default function AuditPage() {
         </div>
         <button
           onClick={handleExport}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
           <Download className="h-4 w-4 mr-2" />
           Exporter CSV
@@ -147,7 +147,7 @@ export default function AuditPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <Activity className="h-8 w-8 text-blue-500" />
+              <Activity className="h-8 w-8 text-primary-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total événements</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.total_logs}</p>
@@ -195,7 +195,7 @@ export default function AuditPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="Rechercher..."
-                className="w-full pl-10 pr-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
               />
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
@@ -205,14 +205,14 @@ export default function AuditPage() {
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
             placeholder="Action (ex: login, create)"
-            className="w-48 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-48 px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
           />
           <input
             type="text"
             value={entityTypeFilter}
             onChange={(e) => setEntityTypeFilter(e.target.value)}
             placeholder="Type entité (ex: user, exercise)"
-            className="w-48 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-48 px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
           />
           <button
             onClick={handleSearch}
@@ -328,7 +328,7 @@ export default function AuditPage() {
                         className={clsx(
                           'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
                           page === pageNum
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
                             : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                         )}
                       >

@@ -99,7 +99,7 @@ export default function PlayerRightPanel({
         <div className="space-y-2">
           <Link
             to={`/play/${exerciseId}/decisions?action=new`}
-            className="flex items-center gap-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm"
+            className="flex items-center gap-2 p-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors text-sm"
           >
             <Plus size={16} />
             <span>Nouvelle décision</span>

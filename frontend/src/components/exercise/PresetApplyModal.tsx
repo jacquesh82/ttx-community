@@ -50,7 +50,7 @@ export default function PresetApplyModal({
             type="button"
             onClick={onConfirm}
             disabled={isApplying || previewItems.length === 0}
-            className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
           >
             {isApplying ? 'Application...' : 'Appliquer'}
           </button>

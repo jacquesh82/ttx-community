@@ -110,7 +110,7 @@ export default function ImportCSVModal({ isOpen, onClose, exerciseId }: ImportCS
           {/* Download template */}
           <button
             onClick={handleDownloadTemplate}
-            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+            className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700"
           >
             <Download size={16} />
             Télécharger le modèle CSV
@@ -123,7 +123,7 @@ export default function ImportCSVModal({ isOpen, onClose, exerciseId }: ImportCS
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
               dragOver
-                ? 'border-blue-500 bg-blue-50'
+                ? 'border-primary-500 bg-primary-50'
                 : 'border-gray-300 hover:border-gray-400'
             }`}
           >
@@ -137,7 +137,7 @@ export default function ImportCSVModal({ isOpen, onClose, exerciseId }: ImportCS
             
             {file ? (
               <div className="flex items-center justify-center gap-3">
-                <FileText className="text-blue-500" size={24} />
+                <FileText className="text-primary-500" size={24} />
                 <span className="text-sm font-medium text-gray-700">{file.name}</span>
                 <button
                   onClick={() => { setFile(null); setResult(null) }}
@@ -154,7 +154,7 @@ export default function ImportCSVModal({ isOpen, onClose, exerciseId }: ImportCS
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  className="text-sm text-primary-600 hover:text-primary-700"
                 >
                   ou cliquez pour sélectionner
                 </button>
@@ -228,7 +228,7 @@ export default function ImportCSVModal({ isOpen, onClose, exerciseId }: ImportCS
             <button
               onClick={handleImport}
               disabled={!file || importMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {importMutation.isPending ? 'Import en cours...' : 'Importer'}
             </button>

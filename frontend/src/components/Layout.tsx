@@ -80,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const roleBadge: Record<string, { label: string; color: string }> = {
     admin: { label: t('roles.admin'), color: 'bg-red-700 text-red-100' },
-    animateur: { label: t('roles.animateur'), color: 'bg-blue-700 text-blue-100' },
+    animateur: { label: t('roles.animateur'), color: 'bg-primary-700 text-primary-100' },
     observateur: { label: t('roles.observateur'), color: 'bg-purple-700 text-purple-100' },
     participant: { label: t('roles.participant'), color: 'bg-green-700 text-green-100' },
   }

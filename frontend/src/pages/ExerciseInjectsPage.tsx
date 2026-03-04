@@ -54,13 +54,13 @@ import { useAppDialog } from '../contexts/AppDialogContext'
 
 const STATUS_CONFIG: Record<InjectStatus, { label: string; color: string; dot: string }> = {
   draft:     { label: 'Brouillon',  color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400' },
-  scheduled: { label: 'Planifié',   color: 'bg-blue-100 text-blue-700',     dot: 'bg-blue-500' },
+  scheduled: { label: 'Planifié',   color: 'bg-primary-100 text-primary-700',     dot: 'bg-primary-500' },
   sent:      { label: 'Envoyé',     color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
   cancelled: { label: 'Annulé',     color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
 }
 
 const CATEGORY_CONFIG: Record<InjectCategory, { label: string; color: string }> = {
-  information: { label: 'Information', color: 'bg-blue-50 text-blue-700' },
+  information: { label: 'Information', color: 'bg-primary-50 text-primary-700' },
   incident:    { label: 'Incident',    color: 'bg-red-50 text-red-700' },
   decision:    { label: 'Décision',    color: 'bg-orange-50 text-orange-700' },
   media:       { label: 'Média',       color: 'bg-purple-50 text-purple-700' },
@@ -289,7 +289,7 @@ export function InjectFormModal({
               type="text"
               value={form.custom_id}
               onChange={(e) => set('custom_id', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="INJ-J1-005"
             />
           </div>
@@ -301,7 +301,7 @@ export function InjectFormModal({
               type="text"
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Ex: Communiqué de presse urgent"
             />
           </div>
@@ -318,7 +318,7 @@ export function InjectFormModal({
                 const injectType = BANK_KIND_TO_INJECT_TYPE[kind] || 'system'
                 setForm((f) => ({ ...f, bank_kind: kind, type: injectType }))
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {bankTypeOptions.map((opt) => (
                 <option key={opt.kind} value={opt.kind}>{opt.label}</option>
@@ -330,7 +330,7 @@ export function InjectFormModal({
             <select
               value={form.data_format}
               onChange={(e) => set('data_format', e.target.value as InjectDataFormat)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-900"
             >
               {Object.entries(DATA_FORMAT_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -342,7 +342,7 @@ export function InjectFormModal({
             <select
               value={form.inject_category}
               onChange={(e) => set('inject_category', e.target.value as InjectCategory | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
               {Object.entries(CATEGORY_CONFIG).map(([k, v]) => (
@@ -355,7 +355,7 @@ export function InjectFormModal({
             <select
               value={form.channel}
               onChange={(e) => set('channel', e.target.value as InjectChannel | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
               {Object.entries(CHANNEL_CONFIG).map(([k, v]) => (
@@ -372,7 +372,7 @@ export function InjectFormModal({
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Description courte..."
           />
         </div>
@@ -384,7 +384,7 @@ export function InjectFormModal({
             value={form.content_text}
             onChange={(e) => set('content_text', e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
             placeholder="Contenu de l'inject..."
           />
         </div>
@@ -401,7 +401,7 @@ export function InjectFormModal({
               type="number"
               value={form.time_offset}
               onChange={(e) => set('time_offset', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="0, 30, 60..."
               min="0"
             />
@@ -414,7 +414,7 @@ export function InjectFormModal({
               type="datetime-local"
               value={form.scheduled_at}
               onChange={(e) => set('scheduled_at', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </div>
@@ -426,7 +426,7 @@ export function InjectFormModal({
             <select
               value={form.phase_id}
               onChange={(e) => set('phase_id', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Aucune</option>
               {phases.map((phase) => (
@@ -441,7 +441,7 @@ export function InjectFormModal({
             <select
               value={form.trigger_mode}
               onChange={(e) => set('trigger_mode', e.target.value as TriggerMode)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="auto">Automatique</option>
               <option value="manual">Manuel</option>
@@ -463,7 +463,7 @@ export function InjectFormModal({
                   recipient_value: '',
                 }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-900"
             >
               <option value="">Aucun</option>
               <option value="user">Une personne</option>
@@ -477,7 +477,7 @@ export function InjectFormModal({
               <select
                 value={form.recipient_value}
                 onChange={(e) => set('recipient_value', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-900"
               >
                 <option value="">-</option>
                 {recipientUsers.map((user) => (
@@ -490,7 +490,7 @@ export function InjectFormModal({
               <select
                 value={form.recipient_value}
                 onChange={(e) => set('recipient_value', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-900"
               >
                 <option value="">-</option>
                 {recipientTeams.map((team) => (
@@ -503,7 +503,7 @@ export function InjectFormModal({
               <select
                 value={form.recipient_value}
                 onChange={(e) => set('recipient_value', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-900"
               >
                 <option value="">-</option>
                 <option value="joueur">Joueur</option>
@@ -524,7 +524,7 @@ export function InjectFormModal({
             <select
               value={form.target_audience}
               onChange={(e) => set('target_audience', e.target.value as TargetAudience | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
               {Object.entries(AUDIENCE_CONFIG).map(([k, v]) => (
@@ -537,7 +537,7 @@ export function InjectFormModal({
             <select
               value={form.tested_competence}
               onChange={(e) => set('tested_competence', e.target.value as TestedCompetence | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
               {Object.entries(COMPETENCE_CONFIG).map(([k, v]) => (
@@ -550,7 +550,7 @@ export function InjectFormModal({
             <select
               value={form.pressure_level}
               onChange={(e) => set('pressure_level', e.target.value as PressureLevel | '')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
               {Object.entries(PRESSURE_CONFIG).map(([k, v]) => (
@@ -567,7 +567,7 @@ export function InjectFormModal({
             value={form.pedagogical_objective}
             onChange={(e) => set('pedagogical_objective', e.target.value)}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Ce que l'inject doit provoquer..."
           />
         </div>
@@ -581,7 +581,7 @@ export function InjectFormModal({
             type="text"
             value={form.dependency_ids}
             onChange={(e) => set('dependency_ids', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="1, 3, 5"
           />
           {availableDependencies.length > 0 && (
@@ -610,7 +610,7 @@ export function InjectFormModal({
             type="button"
             onClick={() => onSubmit(form)}
             disabled={!form.title.trim() || isPending}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
           >
             {isPending ? 'Sauvegarde...' : submitLabel}
           </button>
@@ -655,7 +655,7 @@ export default function ExerciseInjectsPage() {
       system: Settings,
     }
     const colors: Record<string, { color: string; bg: string }> = {
-      mail: { color: 'text-blue-700', bg: 'bg-blue-100' },
+      mail: { color: 'text-primary-700', bg: 'bg-primary-100' },
       twitter: { color: 'text-sky-700', bg: 'bg-sky-100' },
       tv: { color: 'text-teal-700', bg: 'bg-teal-100' },
       decision: { color: 'text-orange-700', bg: 'bg-orange-100' },
@@ -924,7 +924,7 @@ export default function ExerciseInjectsPage() {
                 to={tab.path}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   active
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-primary-600 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -942,7 +942,7 @@ export default function ExerciseInjectsPage() {
           <select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value as any); setPage(1) }}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Tous types</option>
             {typeFilterOptions.map(([type, label]) => (
@@ -953,7 +953,7 @@ export default function ExerciseInjectsPage() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1) }}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Tous statuts</option>
             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
@@ -964,7 +964,7 @@ export default function ExerciseInjectsPage() {
           <select
             value={categoryFilter}
             onChange={(e) => { setCategoryFilter(e.target.value as any); setPage(1) }}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Toutes catégories</option>
             {Object.entries(CATEGORY_CONFIG).map(([k, v]) => (
@@ -975,7 +975,7 @@ export default function ExerciseInjectsPage() {
           <select
             value={pressureFilter}
             onChange={(e) => { setPressureFilter(e.target.value as any); setPage(1) }}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Toutes pressions</option>
             {Object.entries(PRESSURE_CONFIG).map(([k, v]) => (
@@ -1002,7 +1002,7 @@ export default function ExerciseInjectsPage() {
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700"
           >
             <Plus className="mr-1.5" size={15} />
             Nouvel inject
@@ -1038,7 +1038,7 @@ export default function ExerciseInjectsPage() {
             <p>Aucun inject trouvé</p>
             <button
               onClick={() => setShowCreate(true)}
-              className="mt-3 text-sm text-blue-600 hover:underline"
+              className="mt-3 text-sm text-primary-600 hover:underline"
             >
               Créer le premier inject
             </button>
@@ -1166,7 +1166,7 @@ export default function ExerciseInjectsPage() {
                                     : ''
                                 )
                               }}
-                              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                              className="p-1 text-primary-600 hover:text-primary-800 hover:bg-primary-50 rounded"
                               title="Planifier"
                             >
                               <Clock size={14} />
@@ -1431,7 +1431,7 @@ export default function ExerciseInjectsPage() {
                   </button>
                   <button
                     onClick={() => { setEditInject(viewInject); setViewInject(null) }}
-                    className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="flex-1 px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
                   >
                     <Pencil className="inline mr-1" size={14} /> Modifier
                   </button>
@@ -1470,7 +1470,7 @@ export default function ExerciseInjectsPage() {
               type="datetime-local"
               value={scheduleDate}
               onChange={(e) => setScheduleDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div className="flex justify-end gap-3">
@@ -1490,7 +1490,7 @@ export default function ExerciseInjectsPage() {
                 }
               }}
               disabled={!scheduleDate || scheduleMutation.isPending}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
             >
               {scheduleMutation.isPending ? 'Planification...' : 'Planifier'}
             </button>

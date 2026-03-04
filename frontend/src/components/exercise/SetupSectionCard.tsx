@@ -79,7 +79,7 @@ export default function SetupSectionCard({
 
       {advancedLink && (
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <Link to={advancedLink.to} className="text-sm font-medium text-blue-700 hover:text-blue-800">
+          <Link to={advancedLink.to} className="text-sm font-medium text-primary-700 hover:text-primary-800">
             {advancedLink.label || 'Ouvrir en complet'}
           </Link>
         </div>

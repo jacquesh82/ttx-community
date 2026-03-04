@@ -57,7 +57,7 @@ export default function DecisionSystem({ onBack }: DecisionSystemProps) {
     } else if (decision.created_at) {
       return { label: 'En cours', color: 'text-yellow-400', icon: <Clock size={16} /> }
     }
-    return { label: 'Nouvelle', color: 'text-blue-400', icon: <FileText size={16} /> }
+    return { label: 'Nouvelle', color: 'text-primary-400', icon: <FileText size={16} /> }
   }
 
   const formatTime = (dateString: string) => {

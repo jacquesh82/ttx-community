@@ -32,7 +32,7 @@ import { useDebugTimeline, formatVirtualTime, TimelineEvent } from '../../hooks/
 
 // Event type configurations
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-  mail: { label: 'Email', icon: Mail, color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
+  mail: { label: 'Email', icon: Mail, color: 'text-primary-400', bgColor: 'bg-primary-500/20' },
   twitter: { label: 'Réseau social', icon: MessageCircle, color: 'text-sky-400', bgColor: 'bg-sky-500/20' },
   tv: { label: 'TV / Vidéo', icon: Tv, color: 'text-teal-400', bgColor: 'bg-teal-500/20' },
   decision: { label: 'Décision', icon: AlertTriangle, color: 'text-orange-400', bgColor: 'bg-orange-500/20' },
@@ -211,7 +211,7 @@ export default function DebugEventsPage() {
                 <select
                   value={selectedExerciseId ?? ''}
                   onChange={(e) => handleExerciseSelect(parseInt(e.target.value))}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select an exercise...</option>
                   {exercises?.map((ex) => (
@@ -285,7 +285,7 @@ export default function DebugEventsPage() {
                     onClick={() => handleSpeedChange(s)}
                     className={`px-3 py-1.5 text-sm rounded transition-colors ${
                       currentSpeed === s
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-primary-600 text-white'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
@@ -312,7 +312,7 @@ export default function DebugEventsPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Received in Log</span>
-              <span className="text-blue-400 font-medium">{receivedEvents.length}</span>
+              <span className="text-primary-400 font-medium">{receivedEvents.length}</span>
             </div>
           </div>
           
@@ -360,7 +360,7 @@ export default function DebugEventsPage() {
             </div>
           ) : isLoadingTimeline ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
             </div>
           ) : events.length === 0 ? (
             <div className="bg-gray-800 rounded-lg p-12 text-center">
@@ -411,7 +411,7 @@ export default function DebugEventsPage() {
                                 )}
                               </div>
                               <div className="text-right flex-shrink-0">
-                                <div className="text-sm font-mono text-blue-400">
+                                <div className="text-sm font-mono text-primary-400">
                                   {formatVirtualTime(receivedEvent.receivedAt)}
                                 </div>
                                 <div className="text-xs text-gray-500">

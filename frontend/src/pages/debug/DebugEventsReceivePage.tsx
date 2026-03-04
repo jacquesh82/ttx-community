@@ -42,7 +42,7 @@ type AudienceKind = 'role' | 'team' | 'user'
 
 // Event type configurations
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-  mail: { label: 'Email', icon: Mail, color: 'text-blue-600 dark:text-blue-300', bgColor: 'bg-blue-100 dark:bg-blue-500/20' },
+  mail: { label: 'Email', icon: Mail, color: 'text-primary-600 dark:text-primary-300', bgColor: 'bg-primary-100 dark:bg-primary-500/20' },
   twitter: { label: 'Réseau social', icon: MessageCircle, color: 'text-sky-600 dark:text-sky-300', bgColor: 'bg-sky-100 dark:bg-sky-500/20' },
   tv: { label: 'TV / Vidéo', icon: Tv, color: 'text-teal-600 dark:text-teal-300', bgColor: 'bg-teal-100 dark:bg-teal-500/20' },
   decision: { label: 'Décision', icon: AlertTriangle, color: 'text-orange-600 dark:text-orange-300', bgColor: 'bg-orange-100 dark:bg-orange-500/20' },
@@ -350,7 +350,7 @@ export default function DebugEventsReceivePage() {
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
         </div>
-        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+        <span className="rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">
           {events.length}
         </span>
       </div>
@@ -385,7 +385,7 @@ export default function DebugEventsReceivePage() {
                     <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
                       {event.timestamp.toLocaleTimeString('fr-FR')}
                     </td>
-                    <td className="px-3 py-2 font-mono text-blue-600 dark:text-blue-300">
+                    <td className="px-3 py-2 font-mono text-primary-600 dark:text-primary-300">
                       {formatVirtualTime(event.virtualTime)}
                     </td>
                     <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
@@ -425,9 +425,9 @@ export default function DebugEventsReceivePage() {
         <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <Clock className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+              <Clock className="h-6 w-6 text-primary-600 dark:text-primary-300" />
               <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Debug Events - Receiver</h1>
-              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+              <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-500/20 dark:text-primary-300">
                 RECEIVE
               </span>
             </div>
@@ -437,7 +437,7 @@ export default function DebugEventsReceivePage() {
                 onClick={() => setActiveTab('events')}
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === 'events'
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                 }`}
               >
@@ -451,7 +451,7 @@ export default function DebugEventsReceivePage() {
                 onClick={() => setActiveTab('test_receive')}
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === 'test_receive'
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                 }`}
               >
@@ -465,7 +465,7 @@ export default function DebugEventsReceivePage() {
                 onClick={() => setActiveTab('simulator')}
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === 'simulator'
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                 }`}
               >
@@ -579,7 +579,7 @@ export default function DebugEventsReceivePage() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500 dark:text-slate-400">Events reçus</span>
-                    <span className="font-semibold text-blue-700 dark:text-blue-300">{receivedEvents.length}</span>
+                    <span className="font-semibold text-primary-700 dark:text-primary-300">{receivedEvents.length}</span>
                   </div>
                 </div>
 
@@ -629,7 +629,7 @@ export default function DebugEventsReceivePage() {
                       <select
                         value={selectedExerciseId ?? ''}
                         onChange={(e) => setSelectedExerciseId(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                       >
                         <option value="">Sélectionnez un exercice...</option>
                         {exercises?.map((exercise) => (
@@ -668,7 +668,7 @@ export default function DebugEventsReceivePage() {
                       <select
                         value={selectedExerciseId ?? ''}
                         onChange={(e) => setSelectedExerciseId(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                        className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                       >
                         <option value="">Tous exercices</option>
                         {exercises?.map((exercise) => (
@@ -693,7 +693,7 @@ export default function DebugEventsReceivePage() {
                   <select
                     value={testRole}
                     onChange={(e) => setTestRole(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   >
                     {audiencePools.roles.map((roleValue) => (
                       <option key={roleValue} value={roleValue}>
@@ -708,7 +708,7 @@ export default function DebugEventsReceivePage() {
                   <select
                     value={testTeamId}
                     onChange={(e) => setTestTeamId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     disabled={audiencePools.teams.length === 0}
                   >
                     {audiencePools.teams.length === 0 ? (
@@ -728,7 +728,7 @@ export default function DebugEventsReceivePage() {
                   <select
                     value={testPlayerId}
                     onChange={(e) => setTestPlayerId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     disabled={audiencePools.users.length === 0}
                   >
                     {audiencePools.users.length === 0 ? (
@@ -816,7 +816,7 @@ export default function DebugEventsReceivePage() {
                                   </div>
 
                                   <div className="text-right">
-                                    <p className="font-mono text-sm text-blue-600 dark:text-blue-300">
+                                    <p className="font-mono text-sm text-primary-600 dark:text-primary-300">
                                       {formatVirtualTime(event.virtualTime)}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">{config.label}</p>
@@ -832,7 +832,7 @@ export default function DebugEventsReceivePage() {
                                     event.audiences?.map((audience, audienceIndex) => (
                                       <span
                                         key={`${event.id}-${audienceIndex}`}
-                                        className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
+                                        className="rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-[10px] text-primary-700 dark:border-primary-500/40 dark:bg-primary-500/10 dark:text-primary-300"
                                       >
                                         {formatAudienceSummary([audience])}
                                       </span>

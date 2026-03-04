@@ -192,6 +192,76 @@ TENANT_NATIVE_CONFIG_FIELDS = {
 
 APP_CONFIG_RESPONSE_FIELDS = set(AppConfigurationResponse.model_fields.keys())
 
+TIMELINE_ALLOWED_FORMATS = {"TXT", "AUDIO", "VIDEO", "IMAGE"}
+DEFAULT_TIMELINE_PHASE_TYPE_FORMAT_CONFIG = [
+    {"type": "Mail", "formats": ["TXT"], "simulator": "mail"},
+    {"type": "SMS", "formats": ["TXT", "IMAGE"], "simulator": "sms"},
+    {"type": "Call", "formats": ["AUDIO"], "simulator": "tel"},
+    {"type": "Social network", "formats": ["TXT", "VIDEO", "IMAGE"], "simulator": "social"},
+    {"type": "TV", "formats": ["VIDEO"], "simulator": "tv"},
+    {"type": "Document", "formats": ["TXT", "IMAGE"], "simulator": "mail"},
+    {"type": "Annuaire de crise", "formats": ["TXT"], "simulator": None},
+    {"type": "Scenario", "formats": ["TXT"], "simulator": None},
+]
+DEFAULT_TIMELINE_TYPE_KEYS = {item["type"].lower() for item in DEFAULT_TIMELINE_PHASE_TYPE_FORMAT_CONFIG}
+
+
+def _normalize_timeline_format_value(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    upper = value.strip().upper()
+    if upper in {"TEXT", "TXT"}:
+        return "TXT"
+    if upper in TIMELINE_ALLOWED_FORMATS:
+        return upper
+    return None
+
+
+def _sanitize_timeline_phase_type_format_config(raw: str | None) -> str:
+    parsed_rows: list[dict] = []
+    if isinstance(raw, str) and raw.strip():
+        try:
+            payload = json.loads(raw)
+            if isinstance(payload, list):
+                parsed_rows = [row for row in payload if isinstance(row, dict)]
+        except (TypeError, json.JSONDecodeError):
+            parsed_rows = []
+
+    by_type: dict[str, dict] = {}
+    for row in parsed_rows:
+        row_type = str(row.get("type", "")).strip()
+        if not row_type:
+            continue
+        key = row_type.lower()
+        if key not in DEFAULT_TIMELINE_TYPE_KEYS or key in by_type:
+            continue
+        by_type[key] = row
+
+    normalized: list[dict] = []
+    for default_row in DEFAULT_TIMELINE_PHASE_TYPE_FORMAT_CONFIG:
+        key = default_row["type"].lower()
+        source = by_type.get(key, {})
+        raw_formats = source.get("formats")
+        formats: list[str] = []
+        if isinstance(raw_formats, list):
+            for raw_format in raw_formats:
+                normalized_format = _normalize_timeline_format_value(raw_format)
+                if normalized_format and normalized_format not in formats:
+                    formats.append(normalized_format)
+        if not formats:
+            formats = list(default_row["formats"])
+
+        simulator = source.get("simulator") if isinstance(source.get("simulator"), str) else default_row["simulator"]
+        normalized.append(
+            {
+                "type": default_row["type"],
+                "formats": formats,
+                "simulator": simulator,
+            }
+        )
+
+    return json.dumps(normalized, ensure_ascii=False)
+
 
 def _tenant_overlay_payload(config) -> dict:
     raw = getattr(config, "legacy_app_config_overrides", None) or {}
@@ -426,6 +496,9 @@ def _tenant_merged_app_config_to_response(
 
     # Transitional tenant overrides for fields not yet modeled explicitly.
     payload.update(_tenant_overlay_payload(tenant_config))
+    payload["timeline_phase_type_format_config"] = _sanitize_timeline_phase_type_format_config(
+        payload.get("timeline_phase_type_format_config")
+    )
     return AppConfigurationResponse(**payload)
 
 
@@ -455,6 +528,10 @@ async def _update_tenant_app_configuration(
     tenant_config = await get_or_create_tenant_configuration(db, tenant_id=tenant_id, tenant_name=tenant_name)
 
     update_data = data.model_dump(exclude_unset=True)
+    if "timeline_phase_type_format_config" in update_data:
+        update_data["timeline_phase_type_format_config"] = _sanitize_timeline_phase_type_format_config(
+            update_data.get("timeline_phase_type_format_config")
+        )
 
     # Apply typed tenant config fields.
     for field in TENANT_NATIVE_CONFIG_FIELDS:

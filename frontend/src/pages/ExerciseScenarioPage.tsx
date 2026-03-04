@@ -332,7 +332,7 @@ export default function ExerciseScenarioPage() {
             <button
               onClick={() => importFromBankSelection.mutate()}
               disabled={importFromBankSelection.isPending || selectedBankItemIds.length === 0}
-              className="px-3 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-50"
+              className="px-3 py-2 bg-primary-700 text-white rounded hover:bg-primary-800 disabled:opacity-50"
             >
               Importer la selection
             </button>

@@ -52,7 +52,7 @@ export default function PlayerMediaPage() {
   const getMediaIcon = (type: string) => {
     switch (type) {
       case 'image':
-        return <FileImage size={32} className="text-blue-400" />
+        return <FileImage size={32} className="text-primary-400" />
       case 'video':
         return <FileVideo size={32} className="text-purple-400" />
       case 'audio':
@@ -92,7 +92,7 @@ export default function PlayerMediaPage() {
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-700'
+              viewMode === 'grid' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-gray-700'
             }`}
           >
             <Grid size={20} />
@@ -100,7 +100,7 @@ export default function PlayerMediaPage() {
           <button
             onClick={() => setViewMode('list')}
             className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-700'
+              viewMode === 'list' ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-gray-700'
             }`}
           >
             <List size={20} />
@@ -119,7 +119,7 @@ export default function PlayerMediaPage() {
               placeholder="Rechercher un fichier..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
             />
           </div>
 
@@ -131,7 +131,7 @@ export default function PlayerMediaPage() {
                 onClick={() => setSelectedType(filter.id)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                   selectedType === filter.id
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
               >
