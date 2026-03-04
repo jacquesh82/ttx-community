@@ -6,7 +6,7 @@ import DebugExerciseSeedModal from './DebugExerciseSeedModal'
 
 const devRoles = [
   { role: 'admin' as const, label: 'Admin', color: 'bg-red-600 hover:bg-red-700' },
-  { role: 'animateur' as const, label: 'Animateur', color: 'bg-blue-600 hover:bg-blue-700' },
+  { role: 'animateur' as const, label: 'Animateur', color: 'bg-primary-600 hover:bg-primary-700' },
   { role: 'observateur' as const, label: 'Observateur', color: 'bg-green-600 hover:bg-green-700' },
   { role: 'participant' as const, label: 'Joueur', color: 'bg-purple-600 hover:bg-purple-700' },
 ]
@@ -101,7 +101,7 @@ export default function DevDrawer({ onDevLogin, devLoading }: DevDrawerProps) {
               <Link
                 to="/debug/events_receive"
                 onClick={() => setOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                className="flex items-center justify-center gap-2 rounded-md bg-primary-600 px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-primary-700"
               >
                 <Inbox size={14} />
                 {t('debug.eventsReceiver')}

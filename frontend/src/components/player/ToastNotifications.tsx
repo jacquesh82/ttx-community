@@ -82,7 +82,7 @@ export default function ToastNotifications({ notifications }: ToastNotifications
       case 'important':
         return 'bg-yellow-900 border-yellow-700'
       default:
-        return 'bg-blue-900 border-blue-700'
+        return 'bg-primary-900 border-primary-700'
     }
   }
 

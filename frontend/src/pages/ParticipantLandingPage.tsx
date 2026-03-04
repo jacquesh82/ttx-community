@@ -68,8 +68,8 @@ export default function ParticipantLandingPage() {
     },
     completed: {
       label: 'Terminé',
-      color: 'bg-blue-100 text-blue-700',
-      dot: 'bg-blue-400',
+      color: 'bg-primary-100 text-primary-700',
+      dot: 'bg-primary-400',
       canJoin: false,
     },
     archived: {
@@ -170,7 +170,7 @@ export default function ParticipantLandingPage() {
 
           {isLoading ? (
             <div className="p-8 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-3" />
               Chargement...
             </div>
           ) : sortedExercises.length === 0 ? (
@@ -206,7 +206,7 @@ export default function ParticipantLandingPage() {
                       {cfg.canJoin ? (
                         <button
                           onClick={() => handleJoin(exercise.id)}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          className="text-sm font-medium text-primary-600 hover:text-primary-800 hover:underline"
                         >
                           Rejoindre →
                         </button>

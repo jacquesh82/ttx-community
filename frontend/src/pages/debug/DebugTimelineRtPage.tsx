@@ -42,7 +42,7 @@ type MainTab = 'timeline' | 'events'
 
 // Event type configurations
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string; category: string }> = {
-  mail: { label: 'Email', icon: Mail, color: 'text-blue-400', bgColor: 'bg-blue-500/20', category: 'communication' },
+  mail: { label: 'Email', icon: Mail, color: 'text-primary-400', bgColor: 'bg-primary-500/20', category: 'communication' },
   twitter: { label: 'Réseau social', icon: MessageCircle, color: 'text-sky-400', bgColor: 'bg-sky-500/20', category: 'social' },
   tv: { label: 'TV / Vidéo', icon: Tv, color: 'text-teal-400', bgColor: 'bg-teal-500/20', category: 'media' },
   decision: { label: 'Décision', icon: AlertTriangle, color: 'text-orange-400', bgColor: 'bg-orange-500/20', category: 'decision' },
@@ -200,9 +200,9 @@ export default function DebugTimelineRtPage() {
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Clock className="w-6 h-6 text-blue-500" />
+            <Clock className="w-6 h-6 text-primary-500" />
             <h1 className="text-xl font-bold">Timeline RT - Animateur</h1>
-            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded font-medium">
+            <span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-xs rounded font-medium">
               TEMPS RÉEL
             </span>
           </div>
@@ -213,7 +213,7 @@ export default function DebugTimelineRtPage() {
               onClick={() => setActiveTab('timeline')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'timeline'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -226,7 +226,7 @@ export default function DebugTimelineRtPage() {
               onClick={() => setActiveTab('events')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'events'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
@@ -311,7 +311,7 @@ export default function DebugTimelineRtPage() {
             
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-gray-900 rounded-lg p-3">
-                <div className="text-2xl font-bold text-blue-400">{stats.total}</div>
+                <div className="text-2xl font-bold text-primary-400">{stats.total}</div>
                 <div className="text-xs text-gray-500">Total Events</div>
               </div>
               <div className="bg-gray-900 rounded-lg p-3">
@@ -395,13 +395,13 @@ export default function DebugTimelineRtPage() {
                       placeholder="Search events..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <button
                     onClick={() => setShowFilters(!showFilters)}
                     className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${
-                      showFilters ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      showFilters ? 'bg-primary-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                     }`}
                   >
                     <Filter size={16} />
@@ -416,7 +416,7 @@ export default function DebugTimelineRtPage() {
                       onClick={() => setSelectedCategory(null)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium ${
                         selectedCategory === null
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-primary-600 text-white'
                           : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                       }`}
                     >
@@ -428,7 +428,7 @@ export default function DebugTimelineRtPage() {
                         onClick={() => setSelectedCategory(category)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize ${
                           selectedCategory === category
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-primary-600 text-white'
                             : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                         }`}
                       >
@@ -490,7 +490,7 @@ export default function DebugTimelineRtPage() {
                                       )}
                                     </div>
                                     <div className="text-right flex-shrink-0">
-                                      <div className="text-sm font-mono text-blue-400">
+                                      <div className="text-sm font-mono text-primary-400">
                                         {formatVirtualTime(event.virtualTime)}
                                       </div>
                                       <div className="text-xs text-gray-500">
@@ -597,7 +597,7 @@ export default function DebugTimelineRtPage() {
                                   )}
                                 </div>
                                 <div className="text-right flex-shrink-0">
-                                  <div className="text-sm font-mono text-blue-400">
+                                  <div className="text-sm font-mono text-primary-400">
                                     {formatVirtualTime(event.virtualTime)}
                                   </div>
                                   <div className="text-xs text-gray-500">

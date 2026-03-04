@@ -280,7 +280,7 @@ export default function DebugExerciseSeedModal({ open, onClose }: Props) {
             <li key={i} className="flex items-center gap-3">
               <span className="flex-shrink-0">
                 {step.status === 'done' && <CheckCircle size={18} className="text-green-400" />}
-                {step.status === 'active' && <Loader2 size={18} className="animate-spin text-blue-400" />}
+                {step.status === 'active' && <Loader2 size={18} className="animate-spin text-primary-400" />}
                 {step.status === 'error' && <XCircle size={18} className="text-red-400" />}
                 {step.status === 'pending' && (
                   <span className="block h-[18px] w-[18px] rounded-full border-2 border-gray-600" />
@@ -323,7 +323,7 @@ export default function DebugExerciseSeedModal({ open, onClose }: Props) {
             <button
               onClick={run}
               disabled={running}
-              className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
             >
               {t('debug.seedModal.retry')}
             </button>

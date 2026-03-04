@@ -49,7 +49,7 @@ export default function ExercisesPage() {
     draft: 'bg-gray-100 text-gray-800',
     running: 'bg-green-100 text-green-800',
     paused: 'bg-yellow-100 text-yellow-800',
-    completed: 'bg-blue-100 text-blue-800',
+    completed: 'bg-primary-100 text-primary-800',
     archived: 'bg-gray-100 text-gray-600',
   }
 
@@ -76,8 +76,8 @@ export default function ExercisesPage() {
       </div>
 
       {isParticipant && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800 text-sm">
+        <div className="mb-6 bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <p className="text-primary-800 text-sm">
             <strong>{t('exercises.participantWelcome')}</strong><br />
             {t('exercises.participantInfo')}
           </p>
@@ -147,7 +147,7 @@ export default function ExercisesPage() {
                         {isParticipant && (exercise.status === 'running' || exercise.status === 'paused') ? (
                           <Link
                             to={`/play/${exercise.id}`}
-                            className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            className="inline-flex items-center px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-700"
                           >
                             <Play className="mr-1" size={14} />
                             {t('exercises.join')}

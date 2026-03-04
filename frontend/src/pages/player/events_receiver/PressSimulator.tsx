@@ -22,7 +22,7 @@ interface PressSimulatorProps {
 // Channel icons and colors
 const CHANNEL_CONFIG: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   'libération': { icon: FileText, color: 'text-red-500', bgColor: 'bg-red-500/20' },
-  'le monde': { icon: FileText, color: 'text-blue-600', bgColor: 'bg-blue-600/20' },
+  'le monde': { icon: FileText, color: 'text-primary-600', bgColor: 'bg-primary-600/20' },
   'afp': { icon: FileText, color: 'text-gray-600', bgColor: 'bg-gray-600/20' },
   'canal_press': { icon: FileText, color: 'text-red-500', bgColor: 'bg-red-500/20' },
   'canal_anssi': { icon: Shield, color: 'text-indigo-500', bgColor: 'bg-indigo-500/20' },
@@ -271,7 +271,7 @@ export default function PressSimulator({ exerciseId, refreshKey }: PressSimulato
                           href={selectedArticle.article_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-blue-400 hover:text-blue-300"
+                          className="flex items-center gap-2 text-primary-400 hover:text-primary-300"
                         >
                           <ExternalLink size={14} />
                           Lire l'article original

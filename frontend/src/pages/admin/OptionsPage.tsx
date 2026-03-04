@@ -9,7 +9,7 @@ import LangSelector from '../../components/LangSelector'
 
 const COLORS = [
   { value: 'green', label: 'Vert', class: 'bg-green-500' },
-  { value: 'blue', label: 'Bleu', class: 'bg-blue-500' },
+  { value: 'blue', label: 'Bleu', class: 'bg-primary-500' },
   { value: 'purple', label: 'Violet', class: 'bg-purple-500' },
   { value: 'teal', label: 'Turquoise', class: 'bg-teal-500' },
   { value: 'gray', label: 'Gris', class: 'bg-gray-500' },
@@ -240,15 +240,39 @@ const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
   { type: 'Scenario', formats: ['TXT'], simulator: null },
 ]
 
-const REQUIRED_TIMELINE_INJECT_TYPES = new Set(
-  [
-    ...DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((item) => item.type.toLowerCase()),
-    // Legacy labels kept for backward compatibility with existing tenant configs
-    'email',
-    'post réseau social',
-    'stream tv',
-  ]
+const TIMELINE_ALLOWED_INJECT_TYPE_NAMES = new Set(
+  DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((item) => item.type.toLowerCase())
 )
+
+const normalizeTimelineTypeFormatRows = (rows: TimelinePhaseTypeFormat[]): TimelinePhaseTypeFormat[] => {
+  const rowsByType = new Map<string, TimelinePhaseTypeFormat>()
+  for (const row of rows) {
+    const normalizedType = String(row.type || '').trim().toLowerCase()
+    if (!TIMELINE_ALLOWED_INJECT_TYPE_NAMES.has(normalizedType) || rowsByType.has(normalizedType)) {
+      continue
+    }
+    rowsByType.set(normalizedType, row)
+  }
+
+  return DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((defaultRow) => {
+    const key = defaultRow.type.toLowerCase()
+    const sourceRow = rowsByType.get(key)
+    const formats = sourceRow?.formats?.filter((format): format is TimelineAllowedFormat =>
+      TIMELINE_ALLOWED_FORMATS.includes(format as TimelineAllowedFormat)
+    ) || []
+    const simulator =
+      typeof sourceRow?.simulator === 'string' &&
+      TIMELINE_SIMULATOR_OPTIONS.some((option) => option.value === sourceRow.simulator)
+        ? sourceRow.simulator
+        : defaultRow.simulator
+
+    return {
+      type: defaultRow.type,
+      formats: formats.length > 0 ? Array.from(new Set(formats)) : defaultRow.formats,
+      simulator,
+    }
+  })
+}
 
 const TIMELINE_SOURCE_CATEGORY_ORDER: TimelineSourceCategory[] = ['Press', 'TV', 'Gouvernement']
 
@@ -713,52 +737,15 @@ export default function OptionsPage() {
               ? item.simulator
               : (TIMELINE_DEFAULT_SIMULATOR_BY_TYPE[String(item.type || '').trim().toLowerCase()] || null),
         }))
-      return normalized
+      return normalizeTimelineTypeFormatRows(normalized)
     } catch {
       return DEFAULT_TIMELINE_PHASE_TYPE_FORMATS
     }
   }
 
   const saveTimelinePhaseTypeFormats = (rows: TimelinePhaseTypeFormat[]) => {
-    const sanitized = rows
-      .map((row) => ({
-        type: row.type,
-        formats: row.formats.filter((format): format is TimelineAllowedFormat =>
-          TIMELINE_ALLOWED_FORMATS.includes(format as TimelineAllowedFormat)
-        ),
-        simulator:
-          typeof row.simulator === 'string' &&
-          TIMELINE_SIMULATOR_OPTIONS.some((option) => option.value === row.simulator)
-            ? row.simulator
-            : null,
-      }))
+    const sanitized = normalizeTimelineTypeFormatRows(rows)
     updateAppConfigField('timeline_phase_type_format_config', JSON.stringify(sanitized))
-  }
-
-  const addTimelineInjectType = () => {
-    const rows = getTimelinePhaseTypeFormats()
-    const existing = new Set(rows.map((row) => row.type.toLowerCase()))
-    let candidate = 'Nouvel inject'
-    let counter = 2
-    while (existing.has(candidate.toLowerCase())) {
-      candidate = `Nouvel inject ${counter}`
-      counter += 1
-    }
-    saveTimelinePhaseTypeFormats([...rows, { type: candidate, formats: ['TXT'], simulator: null }])
-  }
-
-  const renameTimelineInjectType = (index: number, nextName: string) => {
-    const rows = getTimelinePhaseTypeFormats()
-    if (!rows[index]) return
-    rows[index] = { ...rows[index], type: nextName }
-    saveTimelinePhaseTypeFormats(rows)
-  }
-
-  const removeTimelineInjectType = (index: number) => {
-    const rows = getTimelinePhaseTypeFormats()
-    if (!rows[index]) return
-    if (REQUIRED_TIMELINE_INJECT_TYPES.has(rows[index].type.trim().toLowerCase())) return
-    saveTimelinePhaseTypeFormats(rows.filter((_, rowIndex) => rowIndex !== index))
   }
 
   const toggleTimelineInjectFormat = (index: number, format: TimelineAllowedFormat, checked: boolean) => {
@@ -944,11 +931,11 @@ export default function OptionsPage() {
             <p className="text-sm text-gray-400 mt-1">
               Configuration du tenant courant (branding, intégrations, sécurité et assistants).
             </p>
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5">
-              <Building2 className="w-4 h-4 text-blue-300" />
-              <span className="text-sm text-blue-200 font-medium">{tenantLabel}</span>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary-500/30 bg-primary-500/10 px-3 py-1.5">
+              <Building2 className="w-4 h-4 text-primary-300" />
+              <span className="text-sm text-primary-200 font-medium">{tenantLabel}</span>
               {tenantSlug && (
-                <code className="text-xs text-blue-300 bg-blue-950/40 px-1.5 py-0.5 rounded">
+                <code className="text-xs text-primary-300 bg-primary-950/40 px-1.5 py-0.5 rounded">
                   {tenantSlug}
                 </code>
               )}
@@ -958,7 +945,7 @@ export default function OptionsPage() {
             <div
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 updateAppConfigMutation.isPending
-                  ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                  ? 'border-primary-500/40 bg-primary-500/10 text-primary-400'
                   : appConfigAutosaveError
                     ? 'border-red-500/40 bg-red-500/10 text-red-400'
                     : appConfigChanged
@@ -1016,7 +1003,7 @@ export default function OptionsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
                   active
-                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+                    ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
                     : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
                 }`}
               >
@@ -1044,7 +1031,7 @@ export default function OptionsPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                       active
-                        ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+                        ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
                         : 'text-gray-300 hover:bg-gray-700/60 border border-transparent'
                     }`}
                   >
@@ -1052,7 +1039,7 @@ export default function OptionsPage() {
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       <span className="truncate">{tab.label}</span>
                     </span>
-                    {active && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                    {active && <span className="w-1.5 h-1.5 rounded-full bg-primary-400" />}
                   </button>
                 )
               })}
@@ -1136,7 +1123,7 @@ export default function OptionsPage() {
                     type="text"
                     value={getAppConfigValue('organization_name')}
                     onChange={(e) => updateAppConfigField('organization_name', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -1147,7 +1134,7 @@ export default function OptionsPage() {
                     type="url"
                     value={getAppConfigValue('organization_logo_url') || ''}
                     onChange={(e) => updateAppConfigField('organization_logo_url', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="https://example.com/logo.png"
                   />
                   <p className="mt-1 text-xs text-gray-500">URL directe vers un fichier image (PNG, SVG, JPG). Ne pas utiliser l'URL d'une page web.</p>
@@ -1159,7 +1146,7 @@ export default function OptionsPage() {
                   <textarea
                     value={getAppConfigValue('organization_description') || ''}
                     onChange={(e) => updateAppConfigField('organization_description', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Décrivez brièvement le métier, le contexte et les enjeux de l'organisation..."
                     rows={3}
                   />
@@ -1172,7 +1159,7 @@ export default function OptionsPage() {
                     type="url"
                     value={getAppConfigValue('organization_reference_url') || ''}
                     onChange={(e) => updateAppConfigField('organization_reference_url', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="https://organisation.exemple"
                   />
                 </div>
@@ -1184,7 +1171,7 @@ export default function OptionsPage() {
                     type="text"
                     value={getAppConfigValue('organization_keywords') || ''}
                     onChange={(e) => updateAppConfigField('organization_keywords', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="secteur, technologies, domaines, filiales, SI, IOC..."
                   />
                 </div>
@@ -1208,7 +1195,7 @@ export default function OptionsPage() {
                     max="72"
                     value={getAppConfigValue('default_exercise_duration_hours')}
                     onChange={(e) => updateAppConfigField('default_exercise_duration_hours', parseInt(e.target.value) || 4)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -1221,7 +1208,7 @@ export default function OptionsPage() {
                     max="10"
                     value={getAppConfigValue('default_time_multiplier')}
                     onChange={(e) => updateAppConfigField('default_time_multiplier', parseInt(e.target.value) || 1)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -1231,7 +1218,7 @@ export default function OptionsPage() {
                   <select
                     value={getAppConfigValue('default_maturity_level')}
                     onChange={(e) => updateAppConfigField('default_maturity_level', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     {MATURITY_LEVELS.map((level) => (
                       <option key={level.value} value={level.value}>{level.label}</option>
@@ -1245,7 +1232,7 @@ export default function OptionsPage() {
                   <select
                     value={getAppConfigValue('default_exercise_mode')}
                     onChange={(e) => updateAppConfigField('default_exercise_mode', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     {EXERCISE_MODES.map((mode) => (
                       <option key={mode.value} value={mode.value}>{mode.label}</option>
@@ -1347,7 +1334,7 @@ export default function OptionsPage() {
                             type="checkbox"
                             checked={editedPluginData.default_enabled || false}
                             onChange={(e) => setEditedPluginData({ ...editedPluginData, default_enabled: e.target.checked })}
-                            className="rounded border-gray-600 bg-gray-900 text-blue-600"
+                            className="rounded border-gray-600 bg-gray-900 text-primary-600"
                           />
                         ) : (
                           plugin.default_enabled && (
@@ -1436,7 +1423,7 @@ export default function OptionsPage() {
                     max="480"
                     value={getAppConfigValue('session_timeout_minutes')}
                     onChange={(e) => updateAppConfigField('session_timeout_minutes', parseInt(e.target.value) || 60)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -1449,7 +1436,7 @@ export default function OptionsPage() {
                     max="10"
                     value={getAppConfigValue('max_login_attempts')}
                     onChange={(e) => updateAppConfigField('max_login_attempts', parseInt(e.target.value) || 5)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -1462,7 +1449,7 @@ export default function OptionsPage() {
                     max="32"
                     value={getAppConfigValue('password_min_length')}
                     onChange={(e) => updateAppConfigField('password_min_length', parseInt(e.target.value) || 8)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -1475,7 +1462,7 @@ export default function OptionsPage() {
                 <h2 className="text-lg font-medium text-white">Clés API (X-API-Key)</h2>
               </div>
               <p className="text-sm text-gray-400 mb-5">
-                Authentification M2M via l'en-tête <code className="bg-gray-900 px-1 py-0.5 rounded text-xs text-blue-300">X-API-Key</code>. Chaque clé a un nom pour l'identifier.
+                Authentification M2M via l'en-tête <code className="bg-gray-900 px-1 py-0.5 rounded text-xs text-primary-300">X-API-Key</code>. Chaque clé a un nom pour l'identifier.
               </p>
 
               {/* Create new key */}
@@ -1485,13 +1472,13 @@ export default function OptionsPage() {
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
                   placeholder="Nom de la clé (ex: CI/CD, Monitoring...)"
-                  className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   onKeyDown={(e) => e.key === 'Enter' && createApiKeyMutation.mutate()}
                 />
                 <button
                   onClick={() => createApiKeyMutation.mutate()}
                   disabled={createApiKeyMutation.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 >
                   {createApiKeyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Générer
@@ -1604,7 +1591,7 @@ export default function OptionsPage() {
                 <button
                   onClick={() => updateAppConfigField('smtp_enabled', !getAppConfigValue('smtp_enabled'))}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    getAppConfigValue('smtp_enabled') ? 'bg-blue-600' : 'bg-gray-600'
+                    getAppConfigValue('smtp_enabled') ? 'bg-primary-600' : 'bg-gray-600'
                   }`}
                 >
                   <span
@@ -1625,7 +1612,7 @@ export default function OptionsPage() {
                       type="text"
                       value={getAppConfigValue('smtp_host') || ''}
                       onChange={(e) => updateAppConfigField('smtp_host', e.target.value || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="smtp.example.com"
                     />
                   </div>
@@ -1639,7 +1626,7 @@ export default function OptionsPage() {
                       max="65535"
                       value={getAppConfigValue('smtp_port') || ''}
                       onChange={(e) => updateAppConfigField('smtp_port', parseInt(e.target.value) || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="587"
                     />
                   </div>
@@ -1651,7 +1638,7 @@ export default function OptionsPage() {
                       type="text"
                       value={getAppConfigValue('smtp_user') || ''}
                       onChange={(e) => updateAppConfigField('smtp_user', e.target.value || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="user@example.com"
                     />
                   </div>
@@ -1663,7 +1650,7 @@ export default function OptionsPage() {
                       type="email"
                       value={getAppConfigValue('smtp_from') || ''}
                       onChange={(e) => updateAppConfigField('smtp_from', e.target.value || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="noreply@example.com"
                     />
                   </div>
@@ -1695,7 +1682,7 @@ export default function OptionsPage() {
                     onClick={() => setTimelineSettingsTab('phase')}
                     className={`px-3 py-1.5 rounded-lg border text-sm transition ${
                       timelineSettingsTab === 'phase'
-                        ? 'bg-blue-600 border-blue-500 text-white'
+                        ? 'bg-primary-600 border-primary-500 text-white'
                         : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
                     }`}
                   >
@@ -1706,7 +1693,7 @@ export default function OptionsPage() {
                     onClick={() => setTimelineSettingsTab('inject_types_formats')}
                     className={`px-3 py-1.5 rounded-lg border text-sm transition ${
                       timelineSettingsTab === 'inject_types_formats'
-                        ? 'bg-blue-600 border-blue-500 text-white'
+                        ? 'bg-primary-600 border-primary-500 text-white'
                         : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
                     }`}
                   >
@@ -1717,7 +1704,7 @@ export default function OptionsPage() {
                     onClick={() => setTimelineSettingsTab('sources')}
                     className={`px-3 py-1.5 rounded-lg border text-sm transition ${
                       timelineSettingsTab === 'sources'
-                        ? 'bg-blue-600 border-blue-500 text-white'
+                        ? 'bg-primary-600 border-primary-500 text-white'
                         : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
                     }`}
                   >
@@ -1746,7 +1733,7 @@ export default function OptionsPage() {
                             onClick={() => applyPhasePreset(id)}
                             className={`px-3 py-1.5 rounded-lg border text-sm transition ${
                               activePreset === id
-                                ? 'bg-blue-600 border-blue-500 text-white'
+                                ? 'bg-primary-600 border-primary-500 text-white'
                                 : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
                             }`}
                           >
@@ -1773,8 +1760,8 @@ export default function OptionsPage() {
                             role="switch"
                             aria-checked={phase.enabled}
                             onClick={() => togglePhase(index)}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                              phase.enabled ? 'bg-blue-600' : 'bg-gray-600'
+                            className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                              phase.enabled ? 'bg-primary-600' : 'bg-gray-600'
                             }`}
                           >
                             <span
@@ -1800,20 +1787,13 @@ export default function OptionsPage() {
                   <div>
                     <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
                     <p className="text-sm text-gray-400 mt-1">
-                      Créez, renommez et supprimez les types d&apos;inject puis attribuez les formats autorisés: TXT, AUDIO, VIDEO, IMAGE.
+                      Les types d&apos;inject sont verrouillés au référentiel global: Mail, SMS, Call, Social network, TV, Document, Annuaire de crise, Scenario.
+                      Vous pouvez uniquement ajuster les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
                     </p>
                     <div className="mt-4 flex items-center justify-between">
                       <p className="text-xs text-gray-500">
                         {timelineRows.length} type(s) d&apos;inject configuré(s)
                       </p>
-                      <button
-                        type="button"
-                        onClick={addTimelineInjectType}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 text-sm"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Ajouter un type d&apos;inject
-                      </button>
                     </div>
                     <div className="mt-3 space-y-3">
                       {timelineRows.length === 0 && (
@@ -1824,24 +1804,9 @@ export default function OptionsPage() {
                       {timelineRows.map((row, index) => (
                         <div key={index} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
                           <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={row.type}
-                              onChange={(e) => renameTimelineInjectType(index, e.target.value)}
-                              placeholder="Nom du type d'inject"
-                              className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            {!REQUIRED_TIMELINE_INJECT_TYPES.has(row.type.trim().toLowerCase()) && (
-                              <button
-                                type="button"
-                                onClick={() => removeTimelineInjectType(index)}
-                                className="inline-flex items-center gap-1 px-2.5 py-2 rounded border border-red-400 bg-red-600 text-white hover:bg-red-500 text-sm font-medium"
-                                title="Supprimer ce type d'inject"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Supprimer
-                              </button>
-                            )}
+                            <div className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white">
+                              {row.type}
+                            </div>
                           </div>
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                             <div className="flex flex-wrap gap-2">
@@ -1864,7 +1829,7 @@ export default function OptionsPage() {
                               <select
                                 value={row.simulator || ''}
                                 onChange={(e) => updateTimelineInjectSimulator(index, e.target.value || null)}
-                                className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                               >
                                 <option value="">Aucun</option>
                                 {TIMELINE_SIMULATOR_OPTIONS.map((simulator) => (
@@ -1913,7 +1878,7 @@ export default function OptionsPage() {
                                           type="checkbox"
                                           checked={selectedSourceIds.includes(source.id)}
                                           onChange={(e) => toggleTimelineSource(source.id, e.target.checked)}
-                                          className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+                                          className="rounded border-gray-600 bg-gray-900 text-primary-600 focus:ring-primary-500"
                                         />
                                         <span className="text-sm text-gray-200 truncate">{source.name}</span>
                                       </label>
@@ -1942,12 +1907,12 @@ export default function OptionsPage() {
                                     }))
                                   }
                                   placeholder={`Ajouter une source ${categoryBlock.category.toLowerCase()} custom`}
-                                  className="flex-1 px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="flex-1 px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => addCustomTimelineSource(countryBlock.country, categoryBlock.category)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 text-sm"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-primary-500/40 bg-primary-500/10 text-primary-300 hover:bg-primary-500/20 text-sm"
                                 >
                                   <Plus className="w-4 h-4" />
                                   Ajouter
@@ -1983,7 +1948,7 @@ export default function OptionsPage() {
                   type="checkbox"
                   checked={exportOptions.appConfiguration}
                   onChange={(e) => setExportOptions(prev => ({ ...prev, appConfiguration: e.target.checked }))}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
                   <p className="text-white font-medium">Configuration de l'application</p>
@@ -1996,7 +1961,7 @@ export default function OptionsPage() {
                   type="checkbox"
                   checked={exportOptions.plugins}
                   onChange={(e) => setExportOptions(prev => ({ ...prev, plugins: e.target.checked }))}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
                   <p className="text-white font-medium">Plugins</p>
@@ -2009,7 +1974,7 @@ export default function OptionsPage() {
                   type="checkbox"
                   checked={exportOptions.crisisContacts}
                   onChange={(e) => setExportOptions(prev => ({ ...prev, crisisContacts: e.target.checked }))}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
                   <p className="text-white font-medium">Contacts de crise</p>
@@ -2022,7 +1987,7 @@ export default function OptionsPage() {
                   type="checkbox"
                   checked={exportOptions.injectBank}
                   onChange={(e) => setExportOptions(prev => ({ ...prev, injectBank: e.target.checked }))}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
                   <p className="text-white font-medium">Banque d'injects</p>
@@ -2035,7 +2000,7 @@ export default function OptionsPage() {
                   type="checkbox"
                   checked={exportOptions.exerciseTemplates}
                   onChange={(e) => setExportOptions(prev => ({ ...prev, exerciseTemplates: e.target.checked }))}
-                  className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
                   <p className="text-white font-medium">Modèles d'exercices</p>
@@ -2054,7 +2019,7 @@ export default function OptionsPage() {
               <button
                 onClick={confirmExportOptions}
                 disabled={isExportingOptions}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >
                 {isExportingOptions ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

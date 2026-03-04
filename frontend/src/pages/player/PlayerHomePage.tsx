@@ -122,13 +122,13 @@ export default function PlayerHomePage() {
             {/* Messages non lus */}
             <Link
               to={`/play/${exerciseId}/mail`}
-              className="flex items-center justify-between p-3 bg-blue-900/30 rounded-lg border border-blue-800 hover:bg-blue-900/50 transition-colors"
+              className="flex items-center justify-between p-3 bg-primary-900/30 rounded-lg border border-primary-800 hover:bg-primary-900/50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Mail size={20} className="text-blue-400" />
-                <span className="text-blue-300">Messages non lus</span>
+                <Mail size={20} className="text-primary-400" />
+                <span className="text-primary-300">Messages non lus</span>
               </div>
-              <span className="text-2xl font-bold text-blue-400">
+              <span className="text-2xl font-bold text-primary-400">
                 {stats?.messages_unread || 0}
               </span>
             </Link>
@@ -161,9 +161,9 @@ export default function PlayerHomePage() {
         </Link>
         <Link
           to={`/play/${exerciseId}/chat`}
-          className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-blue-500 transition-colors"
+          className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-primary-500 transition-colors"
         >
-          <MessageCircle className="text-blue-400" size={20} />
+          <MessageCircle className="text-primary-400" size={20} />
           <span className="text-sm text-gray-300">Chat équipe</span>
         </Link>
         <Link
@@ -193,7 +193,7 @@ function getEventConfig(type: string): { icon: LucideIcon; color: string } {
       return { icon: AlertTriangle, color: 'bg-red-900/40 text-red-400' }
     case 'mail_opened':
     case 'mail.received':
-      return { icon: Mail, color: 'bg-blue-900/40 text-blue-400' }
+      return { icon: Mail, color: 'bg-primary-900/40 text-primary-400' }
     case 'tv_segment_started':
     case 'tv.broadcast':
       return { icon: Tv, color: 'bg-purple-900/40 text-purple-400' }

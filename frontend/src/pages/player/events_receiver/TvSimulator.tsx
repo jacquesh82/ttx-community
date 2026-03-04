@@ -236,7 +236,7 @@ export default function TvSimulator({ exerciseId, refreshKey }: TvSimulatorProps
                       </div>
                       {!event.is_seen && (
                         <div className="mt-2">
-                          <span className="text-xs text-blue-400">Non vu</span>
+                          <span className="text-xs text-primary-400">Non vu</span>
                         </div>
                       )}
                     </button>

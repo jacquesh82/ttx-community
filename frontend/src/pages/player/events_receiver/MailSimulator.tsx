@@ -217,12 +217,12 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
       {/* Header */}
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Mail className="w-5 h-5 text-blue-400" />
+          <Mail className="w-5 h-5 text-primary-400" />
           <h2 className="text-lg font-semibold text-white">Boîte Mail</h2>
         </div>
         <button
           onClick={() => setShowCompose(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white"
+          className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 rounded-lg text-sm text-white"
         >
           <Plus size={16} />
           Nouveau mail
@@ -235,7 +235,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
           onClick={() => { setActiveFolder('inbox'); setSelectedMail(null); }}
           className={`flex-1 px-4 py-2 text-sm font-medium ${
             activeFolder === 'inbox'
-              ? 'text-blue-400 border-b-2 border-blue-400'
+              ? 'text-primary-400 border-b-2 border-primary-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -245,7 +245,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
           onClick={() => { setActiveFolder('sent'); setSelectedMail(null); }}
           className={`flex-1 px-4 py-2 text-sm font-medium ${
             activeFolder === 'sent'
-              ? 'text-blue-400 border-b-2 border-blue-400'
+              ? 'text-primary-400 border-b-2 border-primary-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -265,7 +265,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher..."
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
               />
             </div>
           </div>
@@ -274,7 +274,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
           <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
             {isLoadingMails ? (
               <div className="flex items-center justify-center p-8">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               </div>
             ) : filteredMails.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
@@ -288,7 +288,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                   onClick={() => handleSelectMail(mail)}
                   className={`w-full p-3 text-left border-b border-gray-700 hover:bg-gray-700/50 ${
                     selectedMail?.id === mail.id ? 'bg-gray-700' : ''
-                  } ${!mail.is_read && !mail.is_from_player ? 'bg-blue-900/20' : ''}`}
+                  } ${!mail.is_read && !mail.is_from_player ? 'bg-primary-900/20' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -334,7 +334,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                   <h3 className="text-lg font-medium text-white flex-1">{selectedMail.subject}</h3>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                     <User size={14} />
                   </div>
                   <div>
@@ -395,7 +395,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                     }}
                     onFocus={() => setShowContactDropdown(true)}
                     placeholder="Rechercher un contact..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
                   />
                   {showContactDropdown && contactsData?.contacts && contactsData.contacts.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded-lg max-h-48 overflow-y-auto z-10">
@@ -426,7 +426,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Objet du mail..."
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
                 />
               </div>
 
@@ -438,7 +438,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                   onChange={(e) => setBody(e.target.value)}
                   placeholder="Contenu du mail..."
                   rows={6}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary-500 resize-none"
                 />
               </div>
 
@@ -453,7 +453,7 @@ export default function MailSimulator({ exerciseId, refreshKey }: MailSimulatorP
                 <button
                   onClick={handleSendMail}
                   disabled={!toContactId || !subject.trim() || sendMailMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
                 >
                   {sendMailMutation.isPending ? (
                     <Loader2 size={16} className="animate-spin" />

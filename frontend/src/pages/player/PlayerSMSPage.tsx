@@ -126,7 +126,7 @@ export default function PlayerSMSPage() {
             <>
               <button
                 onClick={() => setSelectedConversation(null)}
-                className="flex items-center gap-2 text-blue-500"
+                className="flex items-center gap-2 text-primary-500"
               >
                 <ChevronLeft size={20} />
                 <span>Retour</span>

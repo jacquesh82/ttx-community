@@ -74,7 +74,7 @@ export default function PlayerTimelinePage() {
       case 'important':
         return 'border-l-yellow-500 bg-yellow-900/20'
       default:
-        return 'border-l-blue-500 bg-blue-900/20'
+        return 'border-l-primary-500 bg-primary-900/20'
     }
   }
 
@@ -170,7 +170,7 @@ export default function PlayerTimelinePage() {
       {/* Events list */}
       {isLoading ? (
         <div className="text-center py-12 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
           <p className="mt-4">Chargement...</p>
         </div>
       ) : events.length === 0 ? (
@@ -229,7 +229,7 @@ function EventCard({ event, onAcknowledge, onTreat }: EventCardProps) {
       case 'important':
         return 'border-l-yellow-500 bg-yellow-900/20'
       default:
-        return 'border-l-blue-500 bg-blue-900/20'
+        return 'border-l-primary-500 bg-primary-900/20'
     }
   }
 
@@ -287,7 +287,7 @@ function EventCard({ event, onAcknowledge, onTreat }: EventCardProps) {
         <div className="px-4 pb-4 border-t border-gray-700 pt-3">
           <div className="flex items-center gap-2">
             {event.actions.includes('open') && (
-              <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm flex items-center gap-1">
+              <button className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 rounded text-sm flex items-center gap-1">
                 <Eye size={14} />
                 Ouvrir
               </button>

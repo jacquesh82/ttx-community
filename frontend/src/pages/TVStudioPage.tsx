@@ -228,7 +228,7 @@ export default function TVStudioPage() {
                   </button>
                   <button
                     onClick={() => handleControl('skip')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                   >
                     ⏭ Suivant
                   </button>
@@ -391,7 +391,7 @@ export default function TVStudioPage() {
                 />
                 <button
                   onClick={handleAddTicker}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                 >
                   +
                 </button>

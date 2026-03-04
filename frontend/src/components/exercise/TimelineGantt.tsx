@@ -66,7 +66,7 @@ const BANK_KIND_CONFIG_BASE: Record<InjectBankKind, { bg: string; color: string;
   social_post: { bg: '#ec4899', color: '#be185d', icon: Twitter },      // pink
   document: { bg: '#6b7280', color: '#374151', icon: FileText },        // gray
   canal_press: { bg: '#ef4444', color: '#b91c1c', icon: AlertCircle },  // red
-  canal_anssi: { bg: '#2563eb', color: '#1d4ed8', icon: Mail },         // blue-deep
+  canal_anssi: { bg: '#2563eb', color: '#1d4ed8', icon: Mail },         // primary-deep
   canal_gouvernement: { bg: '#84cc16', color: '#4d7c0f', icon: Mail },  // lime
   other: { bg: '#6b7280', color: '#374151', icon: Settings },
 }
@@ -186,7 +186,7 @@ const formatOffsetLabel = (offsetMin: number | null | undefined): string => {
 
 const STATUS_CONFIG: Record<InjectStatus, { label: string; color: string; dot: string }> = {
   draft:     { label: 'Brouillon',  color: 'bg-gray-100 text-gray-700', dot: 'bg-gray-400' },
-  scheduled: { label: 'Planifié',   color: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
+  scheduled: { label: 'Planifié',   color: 'bg-primary-100 text-primary-700', dot: 'bg-primary-500' },
   sent:      { label: 'Envoyé',     color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
   cancelled: { label: 'Annulé',     color: 'bg-red-100 text-red-700', dot: 'bg-red-400' },
 }
@@ -1221,7 +1221,7 @@ export default function TimelineGantt({
       const phaseText = phaseLabelG.append('text')
         .attr('x', 10)
         .attr('y', y + h / 2 + 5)
-        .attr('class', `text-xs font-medium ${isSelected ? 'fill-blue-700' : 'fill-gray-700'}`)
+        .attr('class', `text-xs font-medium ${isSelected ? 'fill-primary-700' : 'fill-gray-700'}`)
         .text(displayName)
         .style('cursor', 'pointer')
       phaseText.append('title').text(fullName)
@@ -1780,7 +1780,7 @@ export default function TimelineGantt({
             onClick={() => handleTimelineTypeChange('business')}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
               timelineType === 'business'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -1854,7 +1854,7 @@ export default function TimelineGantt({
             <>
               <button
                 onClick={handleAddInject}
-                className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700"
               >
                 <Plus className="mr-1.5" size={15} />
                 Nouvel inject
@@ -1961,9 +1961,9 @@ export default function TimelineGantt({
                   height: `${totalHeight}px`,
                 }}
               >
-                <div className="h-full border-l-2 border-dashed border-blue-500 opacity-60" />
+                <div className="h-full border-l-2 border-dashed border-primary-500 opacity-60" />
                 <div
-                  className="absolute bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap"
+                  className="absolute bg-primary-600 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap"
                   style={{
                     left: '4px',
                     top: '40px',
@@ -2057,7 +2057,7 @@ export default function TimelineGantt({
               type="text"
               value={editForm.title}
               onChange={(e) => setEditForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Titre de l'inject"
             />
           </div>
@@ -2276,7 +2276,7 @@ export default function TimelineGantt({
                     const f = e.dataTransfer.files?.[0]
                     if (f) setEditFormFile(f)
                   }}
-                  className="w-full flex flex-col items-center gap-2 px-3 py-8 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors cursor-pointer"
+                  className="w-full flex flex-col items-center gap-2 px-3 py-8 border-2 border-dashed border-gray-300 rounded-md text-gray-400 hover:border-primary-400 hover:text-primary-500 transition-colors cursor-pointer"
                 >
                   <Upload size={22} />
                   <span className="text-xs text-center leading-relaxed">
@@ -2336,7 +2336,7 @@ export default function TimelineGantt({
               <button
                 onClick={handleSave}
                 disabled={!editForm.title.trim()}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
               >
                 {updateMutation.isPending || createMutation.isPending ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
@@ -2406,7 +2406,7 @@ export default function TimelineGantt({
                             {item.kind}
                           </span>
                           {item.category && (
-                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                            <span className="px-1.5 py-0.5 text-xs bg-primary-100 text-primary-700 rounded">
                               {item.category}
                             </span>
                           )}
@@ -2494,7 +2494,7 @@ export default function TimelineGantt({
 ]`}
             />
           </div>
-          <div className="text-xs text-gray-700 bg-blue-50 p-2 rounded">
+          <div className="text-xs text-gray-700 bg-primary-50 p-2 rounded">
             💡 Collez le JSON de vos injects ci-dessus puis cliquez sur "Importer".
           </div>
           {importError && (

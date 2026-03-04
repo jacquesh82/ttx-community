@@ -305,8 +305,8 @@ export default function TelSimulator({ exerciseId, refreshKey }: TelSimulatorPro
                       className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
-                          <User size={16} className="text-blue-400" />
+                        <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center">
+                          <User size={16} className="text-primary-400" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-white">{call.callee_name}</p>

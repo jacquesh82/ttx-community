@@ -105,7 +105,7 @@ export default function PlayerSocialFeedPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold">Social</h1>
             {feedData?.unseen_count ? (
-              <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
+              <span className="px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
                 {feedData.unseen_count} new
               </span>
             ) : null}
@@ -121,7 +121,7 @@ export default function PlayerSocialFeedPage() {
 
         {/* Tabs */}
         <div className="flex border-b border-gray-800">
-          <button className="flex-1 py-3 text-center font-medium border-b-2 border-blue-500 text-white">
+          <button className="flex-1 py-3 text-center font-medium border-b-2 border-primary-500 text-white">
             For you
           </button>
           <button className="flex-1 py-3 text-center font-medium text-gray-500 hover:bg-gray-900">
@@ -134,7 +134,7 @@ export default function PlayerSocialFeedPage() {
       <div className="divide-y divide-gray-800">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -155,7 +155,7 @@ export default function PlayerSocialFeedPage() {
                       className="w-10 h-10 rounded-full"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold">
                       {post.author_name.charAt(0)}
                     </div>
                   )}
@@ -169,7 +169,7 @@ export default function PlayerSocialFeedPage() {
                       {post.author_name}
                     </span>
                     {post.is_verified && (
-                      <Verified size={16} className="text-blue-500" />
+                      <Verified size={16} className="text-primary-500" />
                     )}
                     <span className="text-gray-500">@{post.author_handle}</span>
                     <span className="text-gray-500">·</span>
@@ -203,8 +203,8 @@ export default function PlayerSocialFeedPage() {
                   {/* Actions */}
                   <div className="flex items-center justify-between mt-3 max-w-md">
                     {/* Reply */}
-                    <button className="flex items-center gap-2 text-gray-500 hover:text-blue-500 group">
-                      <div className="p-2 rounded-full group-hover:bg-blue-500/10">
+                    <button className="flex items-center gap-2 text-gray-500 hover:text-primary-500 group">
+                      <div className="p-2 rounded-full group-hover:bg-primary-500/10">
                         <MessageCircle size={18} />
                       </div>
                       <span className="text-sm">{formatNumber(post.replies_count)}</span>
@@ -246,14 +246,14 @@ export default function PlayerSocialFeedPage() {
                     </div>
 
                     {/* Share */}
-                    <button className="p-2 rounded-full text-gray-500 hover:text-blue-500 hover:bg-blue-500/10">
+                    <button className="p-2 rounded-full text-gray-500 hover:text-primary-500 hover:bg-primary-500/10">
                       <Share size={18} />
                     </button>
                   </div>
                 </div>
 
                 {/* More options */}
-                <button className="p-2 rounded-full text-gray-500 hover:text-blue-500 hover:bg-blue-500/10">
+                <button className="p-2 rounded-full text-gray-500 hover:text-primary-500 hover:bg-primary-500/10">
                   <MoreHorizontal size={18} />
                 </button>
               </div>
@@ -267,7 +267,7 @@ export default function PlayerSocialFeedPage() {
         <div className="p-4 text-center border-t border-gray-800">
           <button
             onClick={() => setPage(p => p + 1)}
-            className="text-blue-500 hover:text-blue-400"
+            className="text-primary-500 hover:text-primary-400"
           >
             Load more posts
           </button>

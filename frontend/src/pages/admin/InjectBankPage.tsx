@@ -219,6 +219,36 @@ const DEFAULT_TIMELINE_INJECT_TYPE_FORMATS: TimelineInjectTypeFormatConfig[] = [
   { type: 'Scenario', formats: ['text'], simulator: null },
 ]
 
+const TIMELINE_ALLOWED_TYPE_NAMES = new Set(
+  DEFAULT_TIMELINE_INJECT_TYPE_FORMATS.map((row) => row.type.toLowerCase())
+)
+
+const normalizeTimelineInjectTypeRows = (
+  rows: TimelineInjectTypeFormatConfig[]
+): TimelineInjectTypeFormatConfig[] => {
+  const byType = new Map<string, TimelineInjectTypeFormatConfig>()
+  for (const row of rows) {
+    const normalizedType = row.type.trim().toLowerCase()
+    if (!TIMELINE_ALLOWED_TYPE_NAMES.has(normalizedType) || byType.has(normalizedType)) {
+      continue
+    }
+    byType.set(normalizedType, row)
+  }
+
+  return DEFAULT_TIMELINE_INJECT_TYPE_FORMATS.map((defaultRow) => {
+    const source = byType.get(defaultRow.type.toLowerCase())
+    if (!source) return defaultRow
+    const formats = source.formats.filter((format): format is InjectDataFormat =>
+      ['text', 'audio', 'video', 'image'].includes(format)
+    )
+    return {
+      type: defaultRow.type,
+      formats: formats.length > 0 ? Array.from(new Set(formats)) : defaultRow.formats,
+      simulator: source.simulator,
+    }
+  })
+}
+
 const normalizeTimelineFormat = (value: unknown): InjectDataFormat | null => {
   if (typeof value !== 'string') return null
   const upper = value.trim().toUpperCase()
@@ -248,7 +278,8 @@ const parseTimelineInjectTypeFormats = (raw: string | null): TimelineInjectTypeF
           simulator: typeof row.simulator === 'string' && row.simulator.trim().length > 0 ? row.simulator.trim() : null,
         }
       })
-    return normalized.length > 0 ? normalized : DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
+    if (normalized.length === 0) return DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
+    return normalizeTimelineInjectTypeRows(normalized)
   } catch {
     return DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
   }
@@ -454,7 +485,7 @@ function MessagePreview({ payload }: { payload: Record<string, any> }) {
       </div>
       <div className="p-3 text-sm">
         <div className="mb-2 text-xs text-gray-500">{sender || 'Expéditeur inconnu'}</div>
-        <div className="rounded-lg bg-blue-50 p-3 text-gray-800">{message || '-'}</div>
+        <div className="rounded-lg bg-primary-50 p-3 text-gray-800">{message || '-'}</div>
       </div>
     </div>
   )
@@ -519,27 +550,27 @@ function CanalAnssiPreview({ payload }: { payload: Record<string, any> }) {
   const contactPoint = content?.contact_point || payload?.contact_point || ''
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50">
-      <div className="border-b border-blue-200 bg-blue-100 px-4 py-2">
+    <div className="rounded-lg border border-primary-200 bg-primary-50">
+      <div className="border-b border-primary-200 bg-primary-100 px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <Shield className="h-4 w-4 text-blue-600" />
-            <span className="font-medium text-blue-800">ANSSI</span>
+            <Shield className="h-4 w-4 text-primary-600" />
+            <span className="font-medium text-primary-800">ANSSI</span>
           </div>
           {refNumber && (
-            <span className="rounded bg-blue-200 px-2 py-0.5 text-xs text-blue-800">{refNumber}</span>
+            <span className="rounded bg-primary-200 px-2 py-0.5 text-xs text-primary-800">{refNumber}</span>
           )}
         </div>
       </div>
       <div className="space-y-2 p-3 text-sm">
         {commType && (
-          <div className="text-xs text-blue-600 uppercase">{commType}</div>
+          <div className="text-xs text-primary-600 uppercase">{commType}</div>
         )}
         {message && (
           <pre className="whitespace-pre-wrap font-sans text-gray-700">{message}</pre>
         )}
         {contactPoint && (
-          <div className="mt-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
+          <div className="mt-2 rounded bg-primary-100 px-2 py-1 text-xs text-primary-700">
             Contact: {contactPoint}
           </div>
         )}
@@ -1640,7 +1671,7 @@ export default function InjectBankPage() {
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase text-gray-500">Types utilises</p>
-          <p className="text-2xl font-semibold text-blue-700">{Object.keys(stats?.by_kind || {}).length}</p>
+          <p className="text-2xl font-semibold text-primary-700">{Object.keys(stats?.by_kind || {}).length}</p>
         </div>
       </div>
 
@@ -1746,7 +1777,7 @@ export default function InjectBankPage() {
                     {item.kind === 'chronogram' && (
                       <button
                         onClick={() => setChronogramPreviewItem(item)}
-                        className="inline-flex items-center rounded border border-blue-200 px-2 py-1 text-blue-700 hover:bg-blue-50"
+                        className="inline-flex items-center rounded border border-primary-200 px-2 py-1 text-primary-700 hover:bg-primary-50"
                       >
                         <Eye className="mr-1" size={12} />
                         Voir le chrono
@@ -1755,7 +1786,7 @@ export default function InjectBankPage() {
                     {hasUploadedAttachment(item) && (
                       <button
                         onClick={() => setMediaPreviewItem(item)}
-                        className="inline-flex items-center rounded border border-blue-200 px-2 py-1 text-blue-700 hover:bg-blue-50"
+                        className="inline-flex items-center rounded border border-primary-200 px-2 py-1 text-primary-700 hover:bg-primary-50"
                       >
                         <Eye className="mr-1" size={12} />
                         Voir

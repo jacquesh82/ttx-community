@@ -17,7 +17,7 @@ export default function DashboardPage() {
     draft: 'bg-gray-100 text-gray-800',
     running: 'bg-green-100 text-green-800',
     paused: 'bg-yellow-100 text-yellow-800',
-    completed: 'bg-blue-100 text-blue-800',
+    completed: 'bg-primary-100 text-primary-800',
     archived: 'bg-gray-100 text-gray-600',
   }
 
@@ -31,8 +31,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Dumbbell className="text-blue-600" size={24} />
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <Dumbbell className="text-primary-600" size={24} />
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">{t('exercises.stats.active')}</p>

@@ -53,7 +53,7 @@ function statusFill(status: string) {
     case 'sent':
       return 'bg-emerald-500'
     case 'scheduled':
-      return 'bg-blue-500'
+      return 'bg-primary-500'
     case 'cancelled':
       return 'bg-slate-400'
     default:

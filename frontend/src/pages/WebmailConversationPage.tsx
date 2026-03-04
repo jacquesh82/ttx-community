@@ -92,7 +92,7 @@ export default function WebmailConversationPage() {
               key={idx}
               className={`inline-flex items-center px-2 py-1 rounded text-xs ${
                 p.role === 'from'
-                  ? 'bg-blue-100 text-blue-800'
+                  ? 'bg-primary-100 text-primary-800'
                   : p.role === 'to'
                   ? 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-800'
@@ -112,7 +112,7 @@ export default function WebmailConversationPage() {
           <div
             key={message.id}
             className={`bg-white rounded-lg shadow p-4 ${
-              message.author_type === 'user' ? 'border-l-4 border-blue-500' : ''
+              message.author_type === 'user' ? 'border-l-4 border-primary-500' : ''
             }`}
           >
             <div className="flex items-center justify-between mb-2">

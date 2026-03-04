@@ -111,7 +111,7 @@
   color: #b91c1c !important;
 }
 
-:root[data-theme='light'] .text-blue-400 {
+:root[data-theme='light'] .text-primary-400 {
   color: #1d4ed8 !important;
 }
 
@@ -149,8 +149,8 @@
   color: #0f172a;
 }
 
-:root[data-theme='light'] .events-receive-simulators .bg-blue-600.text-white,
-:root[data-theme='light'] .events-receive-simulators .bg-blue-600 .text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-primary-600.text-white,
+:root[data-theme='light'] .events-receive-simulators .bg-primary-600 .text-white,
 :root[data-theme='light'] .events-receive-simulators .bg-purple-600.text-white,
 :root[data-theme='light'] .events-receive-simulators .bg-purple-600 .text-white,
 :root[data-theme='light'] .events-receive-simulators .bg-red-600.text-white,
@@ -471,23 +471,35 @@ body {
   color: var(--opt-text-3) !important;
 }
 
-:root[data-theme='light'] .options-theme .text-blue-300 {
+:root[data-theme='light'] .options-theme .text-primary-300 {
   color: #1d4ed8 !important;
 }
 
-:root[data-theme='light'] .options-theme .text-blue-200 {
+:root[data-theme='light'] .options-theme .text-primary-200 {
   color: #1e3a8a !important;
 }
 
-:root[data-theme='light'] .options-theme .bg-blue-600\/20 {
+:root[data-theme='light'] .options-theme .bg-primary-600 {
+  background-color: var(--sidebar-link-active-bg) !important;
+}
+
+:root[data-theme='light'] .options-theme .hover\:bg-primary-700:hover {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+}
+
+:root[data-theme='light'] .options-theme .border-primary-500 {
+  border-color: var(--sidebar-info-border) !important;
+}
+
+:root[data-theme='light'] .options-theme .bg-primary-600\/20 {
   background-color: rgba(37, 99, 235, 0.12) !important;
 }
 
-:root[data-theme='light'] .options-theme .bg-blue-950\/40 {
+:root[data-theme='light'] .options-theme .bg-primary-950\/40 {
   background-color: rgba(30, 64, 175, 0.08) !important;
 }
 
-:root[data-theme='light'] .options-theme .border-blue-500\/30 {
+:root[data-theme='light'] .options-theme .border-primary-500\/30 {
   border-color: rgba(59, 130, 246, 0.28) !important;
 }
 

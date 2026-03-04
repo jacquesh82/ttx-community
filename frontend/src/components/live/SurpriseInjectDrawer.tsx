@@ -190,7 +190,7 @@ export default function SurpriseInjectDrawer({
               <label className="block text-sm font-medium text-gray-700 mb-1">Mode d'envoi</label>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setDispatchMode('immediate')} className={`rounded-md px-3 py-2 text-sm ${dispatchMode === 'immediate' ? 'bg-emerald-600 text-white' : 'border border-gray-300 text-gray-700'}`}>Live</button>
-                <button type="button" onClick={() => setDispatchMode('planned')} className={`rounded-md px-3 py-2 text-sm ${dispatchMode === 'planned' ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700'}`}>Différé (T+)</button>
+                <button type="button" onClick={() => setDispatchMode('planned')} className={`rounded-md px-3 py-2 text-sm ${dispatchMode === 'planned' ? 'bg-primary-600 text-white' : 'border border-gray-300 text-gray-700'}`}>Différé (T+)</button>
               </div>
             </div>
             {dispatchMode === 'planned' && (

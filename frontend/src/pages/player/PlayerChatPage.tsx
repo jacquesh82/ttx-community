@@ -73,7 +73,7 @@ export default function PlayerChatPage() {
                       onClick={() => setSelectedRoom(room)}
                       className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
                         selectedRoom?.id === room.id
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-primary-600 text-white'
                           : 'hover:bg-gray-700 text-gray-300'
                       }`}
                     >
@@ -137,12 +137,12 @@ export default function PlayerChatPage() {
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Écrire un message..."
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
                 />
                 <button
                   type="submit"
                   disabled={!messageInput.trim() || sendMessageMutation.isPending}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
                 >
                   <Send size={20} />
                 </button>

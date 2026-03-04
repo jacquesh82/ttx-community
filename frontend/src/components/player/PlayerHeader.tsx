@@ -68,7 +68,7 @@ export default function PlayerHeader({
             {getStatusLabel(exercise.status)}
           </span>
           <span className="text-gray-500">|</span>
-          <span className="text-blue-400 font-mono font-bold">
+          <span className="text-primary-400 font-mono font-bold">
             {exerciseTime || 'T+00:00'}
           </span>
         </div>
@@ -106,7 +106,7 @@ export default function PlayerHeader({
         <div className="flex items-center gap-3">
           <span className="text-gray-400 text-sm">Équipe :</span>
           {team ? (
-            <span className="px-2 py-0.5 bg-blue-600 text-xs font-bold rounded">
+            <span className="px-2 py-0.5 bg-primary-600 text-xs font-bold rounded">
               {team.code}
             </span>
           ) : (

@@ -106,7 +106,7 @@ export default function PlayerPressFeedPage() {
         {/* Content */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
           </div>
         ) : articles.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -194,7 +194,7 @@ export default function PlayerPressFeedPage() {
           <div className="p-4 text-center bg-white border-t border-gray-200">
             <button
               onClick={() => setPage(p => p + 1)}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-primary-600 hover:text-primary-700 font-medium"
             >
               Charger plus d'articles
             </button>
@@ -270,11 +270,11 @@ export default function PlayerPressFeedPage() {
             {/* Actions */}
             <div className="p-4 border-t border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button className="flex items-center gap-2 text-gray-500 hover:text-blue-600">
+                <button className="flex items-center gap-2 text-gray-500 hover:text-primary-600">
                   <Bookmark size={18} />
                   <span className="text-sm">Sauvegarder</span>
                 </button>
-                <button className="flex items-center gap-2 text-gray-500 hover:text-blue-600">
+                <button className="flex items-center gap-2 text-gray-500 hover:text-primary-600">
                   <Share2 size={18} />
                   <span className="text-sm">Partager</span>
                 </button>
@@ -284,7 +284,7 @@ export default function PlayerPressFeedPage() {
                   href={selectedArticle.article_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+                  className="flex items-center gap-2 text-primary-600 hover:text-primary-700"
                 >
                   <span className="text-sm">Voir la source</span>
                   <ExternalLink size={16} />
