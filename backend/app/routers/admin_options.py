@@ -100,6 +100,9 @@ class AppConfigurationResponse(BaseModel):
     simulator_inject_mapping: str | None
     default_phases_config: str | None = None
     default_phases_preset: str | None = None
+    timeline_phase_type_format_config: str | None = None
+    timeline_sources_config: str | None = None
+    timeline_sources_custom_config: str | None = None
 
     class Config:
         from_attributes = True
@@ -131,6 +134,9 @@ class AppConfigurationUpdate(BaseModel):
     simulator_inject_mapping: str | None = None
     default_phases_config: str | None = None
     default_phases_preset: str | None = None
+    timeline_phase_type_format_config: str | None = None
+    timeline_sources_config: str | None = None
+    timeline_sources_custom_config: str | None = None
 
 
 # ============== Plugin Configuration Models ==============
@@ -721,4 +727,3 @@ async def import_options_configuration(
         app_configuration=app_config,
         plugins=plugins,
     )
-

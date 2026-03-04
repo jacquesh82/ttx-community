@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as d3 from 'd3'
 import {
+  adminApi,
   injectBankApi,
   mediaApi,
   InjectDataFormat,
@@ -38,11 +39,26 @@ function normalizeTypeToBankKind(typeValue: string, allowedKinds: Set<InjectBank
   return null
 }
 
-const ATTACHMENT_SUPPORTED_KINDS = new Set<InjectBankKind>(['video', 'image', 'document'])
+const ATTACHMENT_SUPPORTED_KINDS = new Set<InjectBankKind>([
+  'video',
+  'image',
+  'audio',
+  'mail',
+  'message',
+  'directory',
+  'reference_url',
+  'social_post',
+  'document',
+  'canal_press',
+  'canal_anssi',
+  'canal_gouvernement',
+  'other',
+])
 
 const getAttachmentAccept = (kind: InjectBankKind): string => {
   if (kind === 'video') return 'video/*'
   if (kind === 'image') return 'image/*'
+  if (kind === 'audio') return 'audio/*'
   if (kind === 'document') return '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf'
   return '*/*'
 }
@@ -80,6 +96,7 @@ const getAttachmentUrlByKind = (kind: InjectBankKind, attachment: Record<string,
 
   if (kind === 'video') return streamUrl || previewUrl || downloadUrl || null
   if (kind === 'image') return previewUrl || downloadUrl || streamUrl || null
+  if (kind === 'audio') return streamUrl || downloadUrl || previewUrl || null
   if (kind === 'document') return previewUrl || downloadUrl || null
   return null
 }
@@ -102,6 +119,7 @@ const getPreviewUrlForItem = (item: InjectBankItem): string | null => {
 
 type FormState = {
   title: string
+  inject_type: string
   kind: InjectBankKind
   status: InjectBankStatus
   data_format: InjectDataFormat
@@ -116,6 +134,7 @@ type InjectBankCreatePayload = {
   title: string
   kind: InjectBankKind
   status: InjectBankStatus
+  category?: string
   data_format: InjectDataFormat
   summary?: string
   content?: string
@@ -128,6 +147,7 @@ const HIDDEN_INJECT_KINDS = new Set<InjectBankKind>(['scenario', 'chronogram', '
 
 const EMPTY_FORM: FormState = {
   title: '',
+  inject_type: 'Mail',
   kind: 'mail',
   status: 'draft',
   data_format: 'text',
@@ -181,6 +201,88 @@ const CHRONOGRAM_ARRAY_KEYS = [
   'entries',
   'chronogram',
 ]
+
+type TimelineInjectTypeFormatConfig = {
+  type: string
+  formats: InjectDataFormat[]
+  simulator: string | null
+}
+
+const DEFAULT_TIMELINE_INJECT_TYPE_FORMATS: TimelineInjectTypeFormatConfig[] = [
+  { type: 'Mail', formats: ['text'], simulator: 'mail' },
+  { type: 'SMS', formats: ['text', 'image'], simulator: 'sms' },
+  { type: 'Call', formats: ['audio'], simulator: 'tel' },
+  { type: 'Social network', formats: ['text', 'video', 'image'], simulator: 'social' },
+  { type: 'TV', formats: ['video'], simulator: 'tv' },
+  { type: 'Document', formats: ['text', 'image'], simulator: 'mail' },
+  { type: 'Annuaire de crise', formats: ['text'], simulator: null },
+  { type: 'Scenario', formats: ['text'], simulator: null },
+]
+
+const normalizeTimelineFormat = (value: unknown): InjectDataFormat | null => {
+  if (typeof value !== 'string') return null
+  const upper = value.trim().toUpperCase()
+  if (upper === 'TXT' || upper === 'TEXT') return 'text'
+  if (upper === 'AUDIO') return 'audio'
+  if (upper === 'VIDEO') return 'video'
+  if (upper === 'IMAGE') return 'image'
+  return null
+}
+
+const parseTimelineInjectTypeFormats = (raw: string | null): TimelineInjectTypeFormatConfig[] => {
+  if (!raw) return DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
+    const normalized = parsed
+      .filter((row) => row && typeof row.type === 'string' && row.type.trim().length > 0)
+      .map((row) => {
+        const formats = Array.isArray(row.formats)
+          ? row.formats
+            .map((format: unknown) => normalizeTimelineFormat(format))
+            .filter((format: InjectDataFormat | null): format is InjectDataFormat => format !== null)
+          : []
+        return {
+          type: row.type.trim(),
+          formats: formats.length > 0 ? Array.from(new Set(formats)) : ['text'],
+          simulator: typeof row.simulator === 'string' && row.simulator.trim().length > 0 ? row.simulator.trim() : null,
+        }
+      })
+    return normalized.length > 0 ? normalized : DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
+  } catch {
+    return DEFAULT_TIMELINE_INJECT_TYPE_FORMATS
+  }
+}
+
+const resolveInjectBankKindFromType = (
+  injectType: string,
+  simulator: string | null,
+  dataFormat: InjectDataFormat
+): InjectBankKind => {
+  const normalizedSimulator = (simulator || '').trim().toLowerCase()
+  if (normalizedSimulator === 'mail') return 'mail'
+  if (normalizedSimulator === 'chat') return 'message'
+  if (normalizedSimulator === 'sms') return 'message'
+  if (normalizedSimulator === 'tel') return 'audio'
+  if (normalizedSimulator === 'tv') return 'video'
+  if (normalizedSimulator === 'social') return 'social_post'
+  if (normalizedSimulator === 'press') return 'canal_press'
+
+  const normalizedType = injectType.trim().toLowerCase()
+  if (normalizedType.includes('annuaire')) return 'directory'
+  if (normalizedType.includes('scenario') || normalizedType.includes('scénario')) return 'scenario'
+  if (normalizedType.includes('document')) return 'document'
+  if (normalizedType.includes('call')) return 'audio'
+  if (normalizedType.includes('mail') || normalizedType.includes('email')) return 'mail'
+  if (normalizedType.includes('sms') || normalizedType.includes('message')) return 'message'
+  if (normalizedType.includes('social')) return 'social_post'
+  if (normalizedType.includes('tv')) return 'video'
+
+  if (dataFormat === 'video') return 'video'
+  if (dataFormat === 'audio') return 'audio'
+  if (dataFormat === 'image') return 'image'
+  return 'other'
+}
 
 const toValidDate = (value: unknown): Date | null => {
   if (value === null || value === undefined) return null
@@ -787,6 +889,10 @@ export default function InjectBankPage() {
     queryKey: ['inject-bank-schema'],
     queryFn: () => injectBankApi.getSchema(),
   })
+  const { data: appConfig } = useQuery({
+    queryKey: ['app-configuration'],
+    queryFn: adminApi.getAppConfiguration,
+  })
 
   const withUploadedAttachment = async (payload: InjectBankCreatePayload, file: File | null): Promise<InjectBankCreatePayload> => {
     if (!file || !ATTACHMENT_SUPPORTED_KINDS.has(payload.kind)) return payload
@@ -925,18 +1031,43 @@ export default function InjectBankPage() {
     return statuses ? statuses.map((s) => ({ value: s, label: INJECT_BANK_STATUS_LABELS[s] || s })) : []
   }, [statuses])
 
+  const timelineInjectTypeOptions = useMemo(() => {
+    return parseTimelineInjectTypeFormats(appConfig?.timeline_phase_type_format_config || null)
+  }, [appConfig?.timeline_phase_type_format_config])
+
+  const selectedInjectTypeConfig = useMemo(() => {
+    return (
+      timelineInjectTypeOptions.find((entry) => entry.type === form.inject_type) ||
+      timelineInjectTypeOptions[0] ||
+      DEFAULT_TIMELINE_INJECT_TYPE_FORMATS[0]
+    )
+  }, [timelineInjectTypeOptions, form.inject_type])
+
+  const allowedFormatOptions = selectedInjectTypeConfig?.formats?.length
+    ? selectedInjectTypeConfig.formats
+    : (['text', 'audio', 'video', 'image'] as InjectDataFormat[])
+
   const closeModal = () => {
     setIsModalOpen(false)
     setEditingItem(null)
     setForm(EMPTY_FORM)
     setAttachmentFile(null)
+    setAttachmentPreview(null)
     setError('')
   }
 
   const openCreateModal = () => {
+    const defaultInjectType = timelineInjectTypeOptions[0] || DEFAULT_TIMELINE_INJECT_TYPE_FORMATS[0]
+    const defaultFormat = defaultInjectType.formats[0] || 'text'
     setEditingItem(null)
-    setForm(EMPTY_FORM)
+    setForm({
+      ...EMPTY_FORM,
+      inject_type: defaultInjectType.type,
+      data_format: defaultFormat,
+      kind: resolveInjectBankKindFromType(defaultInjectType.type, defaultInjectType.simulator, defaultFormat),
+    })
     setAttachmentFile(null)
+    setAttachmentPreview(null)
     setIsModalOpen(true)
     setError('')
   }
@@ -979,10 +1110,13 @@ export default function InjectBankPage() {
   }
 
   const openEditModal = (item: InjectBankItem) => {
+    const selectedInjectType = item.category || item.kind
     setEditingItem(item)
     setAttachmentFile(null)
+    setAttachmentPreview(null)
     setForm({
       title: item.title,
+      inject_type: selectedInjectType,
       kind: item.kind,
       status: item.status,
       data_format: item.data_format || 'text',
@@ -1010,10 +1144,17 @@ export default function InjectBankPage() {
       }
     }
 
+    const injectType = form.inject_type.trim()
+    if (!injectType) {
+      throw new Error("Le type d'inject est requis")
+    }
+    const kind = resolveInjectBankKindFromType(injectType, selectedInjectTypeConfig?.simulator || null, form.data_format)
+
     return {
       title: form.title.trim(),
-      kind: form.kind,
+      kind,
       status: form.status,
+      category: injectType,
       data_format: form.data_format,
       summary: form.summary.trim() || undefined,
       content: form.content.trim() || undefined,
@@ -1368,6 +1509,30 @@ export default function InjectBankPage() {
     }
   }, [dragImportStatus])
 
+  useEffect(() => {
+    if (!isModalOpen || timelineInjectTypeOptions.length === 0) return
+    const current = timelineInjectTypeOptions.find((entry) => entry.type === form.inject_type)
+    if (current) {
+      if (!current.formats.includes(form.data_format)) {
+        const nextFormat = current.formats[0] || 'text'
+        setForm((prev) => ({
+          ...prev,
+          data_format: nextFormat,
+          kind: resolveInjectBankKindFromType(current.type, current.simulator, nextFormat),
+        }))
+      }
+      return
+    }
+    const fallback = timelineInjectTypeOptions[0]
+    const fallbackFormat = fallback.formats[0] || 'text'
+    setForm((prev) => ({
+      ...prev,
+      inject_type: fallback.type,
+      data_format: fallbackFormat,
+      kind: resolveInjectBankKindFromType(fallback.type, fallback.simulator, fallbackFormat),
+    }))
+  }, [isModalOpen, timelineInjectTypeOptions, form.inject_type, form.data_format])
+
   return (
     <div 
       className="space-y-6 relative min-h-screen"
@@ -1554,7 +1719,7 @@ export default function InjectBankPage() {
                   <div>
                     <h3 className="text-base font-semibold text-gray-900">{item.title}</h3>
                     <p className="text-xs text-gray-500">
-                      {kindLabelMap[item.kind] || item.kind} · format {(item.data_format || 'text')}
+                      {(item.category || kindLabelMap[item.kind] || item.kind)} · format {(item.data_format || 'text')}
                     </p>
                   </div>
                   <span className={`rounded px-2 py-1 text-xs font-medium ${cardStatusColor[item.status]}`}>
@@ -1643,222 +1808,254 @@ export default function InjectBankPage() {
         isOpen={isModalOpen}
         onClose={closeModal}
         title={editingItem ? 'Modifier la brique' : 'Nouvelle brique'}
+        maxWidthClassName="max-w-6xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>}
 
-          {/* Titre — pleine largeur */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Titre</label>
-            <input
-              required
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          {/* Ligne 1 : Type · Statut · Format */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
-              <select
-                value={form.kind}
-                onChange={(e) => {
-                  const nextKind = e.target.value as InjectBankKind
-                  setForm((f) => ({ ...f, kind: nextKind }))
-                  if (!ATTACHMENT_SUPPORTED_KINDS.has(nextKind)) {
-                    setAttachmentFile(null)
-                  }
-                }}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              >
-                {kindOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Statut</label>
-              <select
-                value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as InjectBankStatus }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Ligne 2 : Format · Tags */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Format</label>
-              <select
-                value={form.data_format}
-                onChange={(e) => setForm((f) => ({ ...f, data_format: e.target.value as InjectDataFormat }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm bg-white text-gray-900"
-              >
-                <option value="text">Texte</option>
-                <option value="audio">Audio</option>
-                <option value="video">Video</option>
-                <option value="image">Image</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Tags (virgules)</label>
-              <input
-                value={form.tags_csv}
-                onChange={(e) => setForm((f) => ({ ...f, tags_csv: e.target.value }))}
-                placeholder="rancon, comex, urgence"
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Ligne 3 : Résumé · URL source */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Résumé</label>
-              <textarea
-                value={form.summary}
-                onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
-                rows={3}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Contenu brut</label>
-              <textarea
-                value={form.content}
-                onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                rows={3}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">URL source</label>
-            <input
-              value={form.source_url}
-              onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              placeholder="https://..."
-            />
-          </div>
-
-          {ATTACHMENT_SUPPORTED_KINDS.has(form.kind) && (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Piece jointe</label>
-              
-              {/* Zone de drop avec prévisualisation */}
-              <div 
-                className={`relative rounded-lg border-2 border-dashed p-4 transition-all ${
-                  attachmentFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50'
-                }`}
-              >
-                {attachmentFile ? (
-                  <div className="space-y-2">
-                    {/* Prévisualisation */}
-                    {form.kind === 'image' && attachmentPreview && (
-                      <div className="flex justify-center">
-                        <img 
-                          src={attachmentPreview} 
-                          alt="Preview" 
-                          className="max-h-40 rounded object-contain"
-                        />
-                      </div>
-                    )}
-                    {form.kind === 'video' && attachmentPreview && (
-                      <div className="flex justify-center">
-                        <video 
-                          src={attachmentPreview} 
-                          controls
-                          className="max-h-40 rounded"
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {form.kind === 'image' && <ImageIcon className="h-5 w-5 text-green-600" />}
-                        {form.kind === 'video' && <Video className="h-5 w-5 text-green-600" />}
-                        {form.kind === 'document' && <FileIcon className="h-5 w-5 text-green-600" />}
-                        <span className="text-sm font-medium text-green-700">{attachmentFile.name}</span>
-                        <span className="text-xs text-gray-500">
-                          ({(attachmentFile.size / 1024 / 1024).toFixed(2)} Mo)
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAttachmentFile(null)
-                          setAttachmentPreview(null)
-                        }}
-                        className="rounded p-1 text-gray-400 hover:bg-red-100 hover:text-red-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <input
-                      type="file"
-                      accept={getAttachmentAccept(form.kind)}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        setAttachmentFile(file)
-                        if (file && form.kind === 'image') {
-                          const url = URL.createObjectURL(file)
-                          setAttachmentPreview(url)
-                        } else if (file && form.kind === 'video') {
-                          const url = URL.createObjectURL(file)
-                          setAttachmentPreview(url)
-                        } else {
-                          setAttachmentPreview(null)
-                        }
-                      }}
-                      className="absolute inset-0 cursor-pointer opacity-0"
-                    />
-                    <div className="flex flex-col items-center gap-2">
-                      {form.kind === 'image' && <ImageIcon className="h-10 w-10 text-gray-400" />}
-                      {form.kind === 'video' && <Video className="h-10 w-10 text-gray-400" />}
-                      {form.kind === 'document' && <FileIcon className="h-10 w-10 text-gray-400" />}
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          Glissez-deposez ou cliquez pour selectionner
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {form.kind === 'image' && 'PNG, JPG, GIF, WebP...'}
-                          {form.kind === 'video' && 'MP4, WebM, MOV...'}
-                          {form.kind === 'document' && 'PDF, Word, Excel, PowerPoint, TXT...'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Titre</label>
+                <input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
               </div>
-              
-              {/* Fichier existant */}
-              {!attachmentFile && editingItem && getExistingAttachmentName(editingItem.payload || {}) && (
-                <p className="mt-2 text-xs text-gray-500">
-                  <span className="font-medium">Fichier actuel:</span> {getExistingAttachmentName(editingItem.payload || {})}
-                </p>
-              )}
-            </div>
-          )}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Payload JSON (optionnel)</label>
-            <textarea
-              value={form.payload_json}
-              onChange={(e) => setForm((f) => ({ ...f, payload_json: e.target.value }))}
-              rows={4}
-              className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-xs"
-            />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Type d&apos;inject</label>
+                  <select
+                    value={form.inject_type}
+                    onChange={(e) => {
+                      const nextType = e.target.value
+                      const nextConfig =
+                        timelineInjectTypeOptions.find((entry) => entry.type === nextType) ||
+                        timelineInjectTypeOptions[0] ||
+                        DEFAULT_TIMELINE_INJECT_TYPE_FORMATS[0]
+                      const nextFormat = nextConfig.formats.includes(form.data_format)
+                        ? form.data_format
+                        : (nextConfig.formats[0] || 'text')
+                      setForm((f) => ({
+                        ...f,
+                        inject_type: nextType,
+                        data_format: nextFormat,
+                        kind: resolveInjectBankKindFromType(nextType, nextConfig.simulator, nextFormat),
+                      }))
+                    }}
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    {timelineInjectTypeOptions.map((entry) => (
+                      <option key={entry.type} value={entry.type}>
+                        {entry.type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Statut</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as InjectBankStatus }))}
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    {statusOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Format</label>
+                  <select
+                    value={form.data_format}
+                    onChange={(e) => {
+                      const nextFormat = e.target.value as InjectDataFormat
+                      setForm((f) => ({
+                        ...f,
+                        data_format: nextFormat,
+                        kind: resolveInjectBankKindFromType(
+                          f.inject_type,
+                          selectedInjectTypeConfig?.simulator || null,
+                          nextFormat
+                        ),
+                      }))
+                    }}
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm bg-white text-gray-900"
+                  >
+                    {allowedFormatOptions.map((format) => (
+                      <option key={format} value={format}>
+                        {format === 'text' ? 'Texte' : format === 'audio' ? 'Audio' : format === 'video' ? 'Video' : 'Image'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Tags (virgules)</label>
+                  <input
+                    value={form.tags_csv}
+                    onChange={(e) => setForm((f) => ({ ...f, tags_csv: e.target.value }))}
+                    placeholder="rancon, comex, urgence"
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">URL source</label>
+                <input
+                  value={form.source_url}
+                  onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Résumé</label>
+                <textarea
+                  value={form.summary}
+                  onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Contenu brut</label>
+                <textarea
+                  value={form.content}
+                  onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              {ATTACHMENT_SUPPORTED_KINDS.has(form.kind) && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Piece jointe</label>
+                  <div
+                    className={`relative rounded-lg border-2 border-dashed p-4 transition-all ${
+                      attachmentFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50'
+                    }`}
+                  >
+                    {attachmentFile ? (
+                      <div className="space-y-2">
+                        {form.kind === 'image' && attachmentPreview && (
+                          <div className="flex justify-center">
+                            <img
+                              src={attachmentPreview}
+                              alt="Preview"
+                              className="max-h-40 rounded object-contain"
+                            />
+                          </div>
+                        )}
+                        {form.kind === 'video' && attachmentPreview && (
+                          <div className="flex justify-center">
+                            <video
+                              src={attachmentPreview}
+                              controls
+                              className="max-h-40 rounded"
+                            />
+                          </div>
+                        )}
+                        {form.kind === 'audio' && attachmentPreview && (
+                          <div className="flex justify-center">
+                            <audio src={attachmentPreview} controls className="w-full max-w-md" />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {form.kind === 'image' && <ImageIcon className="h-5 w-5 text-green-600" />}
+                            {form.kind === 'video' && <Video className="h-5 w-5 text-green-600" />}
+                            {form.kind === 'audio' && <FileIcon className="h-5 w-5 text-green-600" />}
+                            {form.kind === 'document' && <FileIcon className="h-5 w-5 text-green-600" />}
+                            <span className="text-sm font-medium text-green-700">{attachmentFile.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({(attachmentFile.size / 1024 / 1024).toFixed(2)} Mo)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAttachmentFile(null)
+                              setAttachmentPreview(null)
+                            }}
+                            className="rounded p-1 text-gray-400 hover:bg-red-100 hover:text-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <input
+                          type="file"
+                          accept={getAttachmentAccept(form.kind)}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null
+                            setAttachmentFile(file)
+                            if (file && form.kind === 'image') {
+                              const url = URL.createObjectURL(file)
+                              setAttachmentPreview(url)
+                            } else if (file && form.kind === 'video') {
+                              const url = URL.createObjectURL(file)
+                              setAttachmentPreview(url)
+                            } else if (file && form.kind === 'audio') {
+                              const url = URL.createObjectURL(file)
+                              setAttachmentPreview(url)
+                            } else {
+                              setAttachmentPreview(null)
+                            }
+                          }}
+                          className="absolute inset-0 cursor-pointer opacity-0"
+                        />
+                        <div className="flex flex-col items-center gap-2">
+                          {form.kind === 'image' && <ImageIcon className="h-10 w-10 text-gray-400" />}
+                          {form.kind === 'video' && <Video className="h-10 w-10 text-gray-400" />}
+                          {form.kind === 'audio' && <FileIcon className="h-10 w-10 text-gray-400" />}
+                          {form.kind === 'document' && <FileIcon className="h-10 w-10 text-gray-400" />}
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">
+                              Glissez-deposez ou cliquez pour selectionner
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {form.kind === 'image' && 'PNG, JPG, GIF, WebP...'}
+                              {form.kind === 'video' && 'MP4, WebM, MOV...'}
+                              {form.kind === 'audio' && 'MP3, WAV, OGG...'}
+                              {form.kind === 'document' && 'PDF, Word, Excel, PowerPoint, TXT...'}
+                              {!['image', 'video', 'audio', 'document'].includes(form.kind) && 'Tout type de fichier'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {!attachmentFile && editingItem && getExistingAttachmentName(editingItem.payload || {}) && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      <span className="font-medium">Fichier actuel:</span> {getExistingAttachmentName(editingItem.payload || {})}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Payload JSON (optionnel)</label>
+                <textarea
+                  value={form.payload_json}
+                  onChange={(e) => setForm((f) => ({ ...f, payload_json: e.target.value }))}
+                  rows={7}
+                  className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-xs"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -1971,6 +2168,12 @@ export default function InjectBankPage() {
                         alt={mediaPreviewItem.title}
                         className="max-h-[60vh] w-full rounded object-contain"
                       />
+                    )
+                  }
+
+                  if (mediaPreviewItem.kind === 'audio') {
+                    return (
+                      <audio controls src={previewUrl} className="w-full" />
                     )
                   }
 
@@ -2190,7 +2393,7 @@ export default function InjectBankPage() {
       </Modal>
 
       {/* Fullscreen Media Viewer */}
-      {mediaPreviewItem && (
+      {mediaPreviewItem && (mediaPreviewItem.kind === 'image' || mediaPreviewItem.kind === 'video') && (
         <MediaViewer
           isOpen={Boolean(mediaPreviewItem)}
           onClose={closeMediaPreview}

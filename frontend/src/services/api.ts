@@ -1547,6 +1547,9 @@ export interface AppConfiguration {
   simulator_inject_mapping: string | null
   default_phases_config: string | null
   default_phases_preset: string | null
+  timeline_phase_type_format_config: string | null
+  timeline_sources_config: string | null
+  timeline_sources_custom_config: string | null
 }
 
 export interface PublicConfigurationResponse {
