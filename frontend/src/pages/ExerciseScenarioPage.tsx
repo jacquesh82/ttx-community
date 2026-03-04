@@ -168,6 +168,7 @@ export default function ExerciseScenarioPage() {
       exerciseId={id}
       sectionLabel="Scenario"
       title="Scenario"
+      returnStep={2}
       actions={
         <div className="flex items-center gap-2">
           <button

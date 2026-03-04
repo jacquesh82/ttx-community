@@ -53,6 +53,7 @@ services:
       VITE_WS_URL: ${WS_URL:-ws://localhost:3000}
     volumes:
       - ./frontend:/app:cached
+      - ./.git:/app/.git:ro
       - /app/node_modules
     ports:
       - "5173:5173"

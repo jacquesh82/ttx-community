@@ -52,6 +52,42 @@ DEFAULT_PHASE_NAMES = [
     "Plan d'actions correctives",
 ]
 
+PHASE_PRESETS: dict[str, list[str]] = {
+    "minimal": [
+        "Détection",
+        "Activation de la cellule de crise",
+        "Remédiation technique",
+        "Clôture de crise",
+    ],
+    "classique": [
+        "Détection",
+        "Qualification",
+        "Alerte",
+        "Activation de la cellule de crise",
+        "Analyse de situation",
+        "Décisions stratégiques",
+        "Endiguement",
+        "Remédiation technique",
+        "Clôture de crise",
+    ],
+    "precis": [
+        "Détection",
+        "Qualification",
+        "Alerte",
+        "Activation de la cellule de crise",
+        "Analyse de situation",
+        "Décisions stratégiques",
+        "Endiguement",
+        "Continuité d'activité (mode dégradé)",
+        "Communication interne",
+        "Communication externe (autorités, médias, partenaires)",
+        "Remédiation technique",
+        "Clôture de crise",
+        "RETEX (retour d'expérience)",
+    ],
+    "full": DEFAULT_PHASE_NAMES,
+}
+
 
 def _parse_enabled_phase_names(raw: str | None) -> list[str]:
     """Return ordered enabled phase names from stored JSON config.
@@ -79,15 +115,18 @@ async def _seed_phases_for_exercise(
     *,
     exercise: Exercise,
     tenant_id: int,
+    phase_preset: str | None = None,
 ) -> None:
     """Create initial phases on exercise creation based on tenant presets."""
-    tenant_config = await get_or_create_tenant_configuration(db, tenant_id=tenant_id)
-    overlay = getattr(tenant_config, "legacy_app_config_overrides", None) or {}
-    raw_phases = None
-    if isinstance(overlay, dict):
-        raw_phases = overlay.get("default_phases_config")
-
-    names = _parse_enabled_phase_names(raw_phases)
+    if phase_preset and phase_preset in PHASE_PRESETS:
+        names = PHASE_PRESETS[phase_preset]
+    else:
+        tenant_config = await get_or_create_tenant_configuration(db, tenant_id=tenant_id)
+        overlay = getattr(tenant_config, "legacy_app_config_overrides", None) or {}
+        raw_phases = None
+        if isinstance(overlay, dict):
+            raw_phases = overlay.get("default_phases_config")
+        names = _parse_enabled_phase_names(raw_phases)
     if not names:
         return
 
@@ -316,6 +355,7 @@ async def create_exercise(
         db,
         exercise=exercise,
         tenant_id=tenant_ctx.tenant.id,
+        phase_preset=exercise_data.phase_preset,
     )
 
     await db.commit()
