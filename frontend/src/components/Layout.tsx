@@ -18,6 +18,7 @@ import {
   Settings,
   UserCircle,
   Building2,
+  ExternalLink,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import clsx from 'clsx'
@@ -230,6 +231,27 @@ export default function Layout({ children }: LayoutProps) {
                   <Settings className="mr-3" size={20} />
                   {t('nav.options')}
                 </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Documentation section */}
+          {isAdmin && (
+            <div className="mt-8">
+              <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
+                {t('nav.documentations')}
+              </h3>
+              <div className="mt-3 space-y-1">
+                <a
+                  href="/api/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="sidebar-link flex items-center px-4 py-2 rounded-md transition-colors"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <ExternalLink className="mr-3" size={20} />
+                  {t('nav.apiDocs')}
+                </a>
               </div>
             </div>
           )}
