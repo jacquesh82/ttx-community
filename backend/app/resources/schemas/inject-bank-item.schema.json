@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ttx.local/schemas/inject-bank-item.schema.json",
+  "title": "Inject Bank Item",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "custom_id": { "type": "string", "maxLength": 100 },
+    "title": { "type": "string", "minLength": 3, "maxLength": 255 },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "mail",
+        "sms",
+        "call",
+        "socialnet",
+        "tv",
+        "doc",
+        "directory",
+        "story"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "ready", "archived"]
+    },
+    "category": { "type": "string", "maxLength": 100 },
+    "data_format": {
+      "type": "string",
+      "enum": ["text", "audio", "video", "image"]
+    },
+    "summary": { "type": "string" },
+    "content": { "type": "string" },
+    "source_url": { "type": "string", "maxLength": 500 },
+    "payload": { "type": "object" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["title", "kind", "status", "data_format", "payload", "tags"],
+  "$defs": {
+    "shared_fields": {
+      "type": "object",
+      "properties": {
+        "custom_id": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "category": { "type": "string", "maxLength": 100 },
+        "data_format": {
+          "type": "string",
+          "enum": ["text", "audio", "video", "image"]
+        },
+        "summary": { "type": "string" },
+        "content": { "type": "string" },
+        "source_url": { "type": "string", "maxLength": 500 },
+        "payload": { "type": "object" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

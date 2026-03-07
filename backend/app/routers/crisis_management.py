@@ -51,9 +51,6 @@ from app.models import (
     ExercisePlugin,
     ParticipantCapability,
     InjectVisibilityScope,
-    ExerciseType,
-    ExerciseMaturityLevel,
-    ExerciseMode,
     TVChannel,
     TVSegment,
     TVSegmentStatus,
@@ -1619,6 +1616,13 @@ def _parse_enum(enum_type, value, default=None):
         return default
 
 
+def _normalize_socle_string(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
 def _normalize_plugin_type(value: object, valid_plugin_types: set[str]) -> Optional[str]:
     if value is None:
         return None
@@ -2055,17 +2059,17 @@ async def import_exercise_component_from_bank(
                 exercise.description = str(socle_data.get("description"))
                 summary["scenario_fields_updated"] += 1
             if not exercise.exercise_type and socle_data.get("exercise_type"):
-                parsed_type = _parse_enum(ExerciseType, socle_data.get("exercise_type"))
+                parsed_type = _normalize_socle_string(socle_data.get("exercise_type"))
                 if parsed_type:
                     exercise.exercise_type = parsed_type
                     summary["scenario_fields_updated"] += 1
             if not exercise.maturity_level and socle_data.get("maturity_level"):
-                parsed_maturity = _parse_enum(ExerciseMaturityLevel, socle_data.get("maturity_level"))
+                parsed_maturity = _normalize_socle_string(socle_data.get("maturity_level"))
                 if parsed_maturity:
                     exercise.maturity_level = parsed_maturity
                     summary["scenario_fields_updated"] += 1
             if not exercise.mode and socle_data.get("mode"):
-                parsed_mode = _parse_enum(ExerciseMode, socle_data.get("mode"))
+                parsed_mode = _normalize_socle_string(socle_data.get("mode"))
                 if parsed_mode:
                     exercise.mode = parsed_mode
                     summary["scenario_fields_updated"] += 1
@@ -2270,17 +2274,17 @@ async def import_exercise_component_from_bank_selection(
                 exercise.description = str(socle_data.get("description"))
                 summary["scenario_fields_updated"] += 1
             if not exercise.exercise_type and socle_data.get("exercise_type"):
-                parsed_type = _parse_enum(ExerciseType, socle_data.get("exercise_type"))
+                parsed_type = _normalize_socle_string(socle_data.get("exercise_type"))
                 if parsed_type:
                     exercise.exercise_type = parsed_type
                     summary["scenario_fields_updated"] += 1
             if not exercise.maturity_level and socle_data.get("maturity_level"):
-                parsed_maturity = _parse_enum(ExerciseMaturityLevel, socle_data.get("maturity_level"))
+                parsed_maturity = _normalize_socle_string(socle_data.get("maturity_level"))
                 if parsed_maturity:
                     exercise.maturity_level = parsed_maturity
                     summary["scenario_fields_updated"] += 1
             if not exercise.mode and socle_data.get("mode"):
-                parsed_mode = _parse_enum(ExerciseMode, socle_data.get("mode"))
+                parsed_mode = _normalize_socle_string(socle_data.get("mode"))
                 if parsed_mode:
                     exercise.mode = parsed_mode
                     summary["scenario_fields_updated"] += 1

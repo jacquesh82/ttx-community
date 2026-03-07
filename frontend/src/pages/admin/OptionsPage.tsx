@@ -6,6 +6,7 @@ import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
 import LangSelector from '../../components/LangSelector'
+import { DEFAULT_PHASES_LIST, PHASE_PRESET_LABELS, PHASE_PRESETS, PhasePresetKey } from '../../features/phasePresets'
 
 const COLORS = [
   { value: 'green', label: 'Vert', class: 'bg-green-500' },
@@ -34,6 +35,30 @@ const EXERCISE_MODES = [
   { value: 'compressed', label: 'Compressé' },
   { value: 'simulated', label: 'Simulé' },
 ]
+
+type ExerciseTypeOption = { value: string; label: string }
+
+const DEFAULT_EXERCISE_TYPE_OPTIONS: ExerciseTypeOption[] = [
+  { value: 'cyber', label: 'Cyber' },
+  { value: 'it_outage', label: 'Panne IT' },
+  { value: 'ransomware', label: 'Ransomware' },
+  { value: 'mixed', label: 'Mixte' },
+]
+
+const DEFAULT_EXERCISE_DURATION_OPTIONS = [4, 8, 24, 48]
+
+const DEFAULT_CRISIS_CELL_ROLES = [
+  { role: 'crisis_director', name: 'Directeur de crise', responsibility: 'Décision stratégique et pilotage global' },
+  { role: 'deputy_director', name: 'Directeur adjoint', responsibility: 'Coordination et suivi des décisions' },
+  { role: 'cell_secretary', name: 'Secrétaire de cellule', responsibility: 'Main courante et traçabilité' },
+  { role: 'situation_manager', name: 'Responsable situation', responsibility: 'Analyse et synthèse de la situation' },
+  { role: 'operations_manager', name: 'Responsable opérations', responsibility: 'Pilotage des actions de réponse' },
+  { role: 'communication_manager', name: 'Responsable communication', responsibility: 'Communication interne et externe' },
+  { role: 'legal_advisor', name: 'Responsable juridique', responsibility: 'Gestion des obligations réglementaires' },
+  { role: 'business_representative', name: 'Responsable métier', responsibility: 'Continuité d\'activité' },
+]
+
+type ExercisesSubTab = 'general' | 'organisation'
 
 type OrganizationAutofillField =
   | 'organization_description'
@@ -136,8 +161,15 @@ const parseOrganizationAutofillResponse = (
   return Object.keys(parsedFromLines).length > 0 ? parsedFromLines : null
 }
 
-type TabType = 'general' | 'plugins' | 'security' | 'email' | 'timelines'
-type PhasePreset = 'minimal' | 'classique' | 'precis' | 'full'
+const normalizeExerciseTypeValue = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+type TabType = 'general' | 'exercises' | 'plugins' | 'security' | 'email' | 'timelines'
+type PhasePreset = PhasePresetKey
 type TimelinePhaseTypeFormat = { type: string; formats: string[]; simulator: string | null }
 type TimelineSettingsTab = 'phase' | 'inject_types_formats' | 'sources'
 type TimelineSourceCategory = 'Press' | 'TV' | 'Gouvernement'
@@ -148,62 +180,6 @@ type TimelineSourceItem = {
   name: string
 }
 type TimelineCustomSourceItem = TimelineSourceItem
-
-const DEFAULT_PHASES_LIST = [
-  'Détection',
-  'Qualification',
-  'Alerte',
-  'Activation de la cellule de crise',
-  'Analyse de situation',
-  'Décisions stratégiques',
-  'Endiguement',
-  "Continuité d'activité (mode dégradé)",
-  'Communication interne',
-  'Communication externe (autorités, médias, partenaires)',
-  'Remédiation technique',
-  'Rétablissement progressif des services',
-  'Surveillance renforcée',
-  'Désescalade',
-  'Clôture de crise',
-  'RETEX (retour d\'expérience)',
-  'Plan d\'actions correctives',
-]
-
-const PHASE_PRESETS: Record<PhasePreset, string[]> = {
-  minimal: [
-    'Détection',
-    'Activation de la cellule de crise',
-    'Remédiation technique',
-    'Clôture de crise',
-  ],
-  classique: [
-    'Détection',
-    'Qualification',
-    'Alerte',
-    'Activation de la cellule de crise',
-    'Analyse de situation',
-    'Décisions stratégiques',
-    'Endiguement',
-    'Remédiation technique',
-    'Clôture de crise',
-  ],
-  precis: [
-    'Détection',
-    'Qualification',
-    'Alerte',
-    'Activation de la cellule de crise',
-    'Analyse de situation',
-    'Décisions stratégiques',
-    'Endiguement',
-    "Continuité d'activité (mode dégradé)",
-    'Communication interne',
-    'Communication externe (autorités, médias, partenaires)',
-    'Remédiation technique',
-    'Clôture de crise',
-    "RETEX (retour d'expérience)",
-  ],
-  full: [...DEFAULT_PHASES_LIST],
-}
 
 const TIMELINE_ALLOWED_FORMATS = ['TXT', 'AUDIO', 'VIDEO', 'IMAGE'] as const
 type TimelineAllowedFormat = (typeof TIMELINE_ALLOWED_FORMATS)[number]
@@ -219,44 +195,52 @@ const TIMELINE_SIMULATOR_OPTIONS = [
 
 const TIMELINE_DEFAULT_SIMULATOR_BY_TYPE: Record<string, string> = {
   mail: 'mail',
-  email: 'mail',
   sms: 'sms',
   call: 'tel',
-  'social network': 'social',
-  'post réseau social': 'social',
+  socialnet: 'social',
   tv: 'tv',
-  'stream tv': 'tv',
-  document: 'mail',
+  doc: 'mail',
+}
+
+/** Canonical type keys match inject-bank-item.schema.json enum values. */
+const TIMELINE_INJECT_TYPE_LABELS: Record<string, string> = {
+  mail: 'Email',
+  sms: 'SMS',
+  call: 'Appel téléphonique',
+  socialnet: 'Réseau social',
+  tv: 'TV',
+  doc: 'Document',
+  directory: 'Annuaire de crise',
+  story: 'Scénario',
 }
 
 const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
-  { type: 'Mail', formats: ['TXT'], simulator: 'mail' },
-  { type: 'SMS', formats: ['TXT', 'IMAGE'], simulator: 'sms' },
-  { type: 'Call', formats: ['AUDIO'], simulator: 'tel' },
-  { type: 'Social network', formats: ['TXT', 'VIDEO', 'IMAGE'], simulator: 'social' },
-  { type: 'TV', formats: ['VIDEO'], simulator: 'tv' },
-  { type: 'Document', formats: ['TXT', 'IMAGE'], simulator: 'mail' },
-  { type: 'Annuaire de crise', formats: ['TXT'], simulator: null },
-  { type: 'Scenario', formats: ['TXT'], simulator: null },
+  { type: 'mail', formats: ['TXT'], simulator: 'mail' },
+  { type: 'sms', formats: ['TXT', 'IMAGE'], simulator: 'sms' },
+  { type: 'call', formats: ['AUDIO'], simulator: 'tel' },
+  { type: 'socialnet', formats: ['TXT', 'VIDEO', 'IMAGE'], simulator: 'social' },
+  { type: 'tv', formats: ['VIDEO'], simulator: 'tv' },
+  { type: 'doc', formats: ['TXT', 'IMAGE'], simulator: 'mail' },
+  { type: 'directory', formats: ['TXT'], simulator: null },
+  { type: 'story', formats: ['TXT'], simulator: null },
 ]
 
 const TIMELINE_ALLOWED_INJECT_TYPE_NAMES = new Set(
-  DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((item) => item.type.toLowerCase())
+  DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((item) => item.type)
 )
 
 const normalizeTimelineTypeFormatRows = (rows: TimelinePhaseTypeFormat[]): TimelinePhaseTypeFormat[] => {
   const rowsByType = new Map<string, TimelinePhaseTypeFormat>()
   for (const row of rows) {
-    const normalizedType = String(row.type || '').trim().toLowerCase()
-    if (!TIMELINE_ALLOWED_INJECT_TYPE_NAMES.has(normalizedType) || rowsByType.has(normalizedType)) {
+    const key = String(row.type || '').trim().toLowerCase()
+    if (!TIMELINE_ALLOWED_INJECT_TYPE_NAMES.has(key) || rowsByType.has(key)) {
       continue
     }
-    rowsByType.set(normalizedType, row)
+    rowsByType.set(key, row)
   }
 
   return DEFAULT_TIMELINE_PHASE_TYPE_FORMATS.map((defaultRow) => {
-    const key = defaultRow.type.toLowerCase()
-    const sourceRow = rowsByType.get(key)
+    const sourceRow = rowsByType.get(defaultRow.type)
     const formats = sourceRow?.formats?.filter((format): format is TimelineAllowedFormat =>
       TIMELINE_ALLOWED_FORMATS.includes(format as TimelineAllowedFormat)
     ) || []
@@ -319,6 +303,10 @@ export default function OptionsPage() {
   const tenant = useAuthStore((state) => state.user?.tenant ?? null)
   const [activeTab, setActiveTab] = useState<TabType>('general')
   const [timelineSettingsTab, setTimelineSettingsTab] = useState<TimelineSettingsTab>('phase')
+  const [exercisesSubTab, setExercisesSubTab] = useState<ExercisesSubTab>('general')
+  const [newExerciseTypeLabel, setNewExerciseTypeLabel] = useState('')
+  const [newExerciseTypeValue, setNewExerciseTypeValue] = useState('')
+  const [newExerciseDuration, setNewExerciseDuration] = useState('')
   const [timelineSourceDrafts, setTimelineSourceDrafts] = useState<Record<string, string>>({})
   const importFileInputRef = useRef<HTMLInputElement | null>(null)
   const organizationAutofillFileInputRef = useRef<HTMLInputElement | null>(null)
@@ -593,6 +581,124 @@ export default function OptionsPage() {
     }
     return appConfig?.[key] as AppConfiguration[K]
   }
+
+  const getExerciseTypeOptions = (): ExerciseTypeOption[] => {
+    const stored = getAppConfigValue('exercise_type_options_config')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          const normalized: ExerciseTypeOption[] = []
+          const seen = new Set<string>()
+          for (const item of parsed) {
+            if (!item || typeof item !== 'object') continue
+            const rawValue = (item as Record<string, unknown>).value
+            const rawLabel = (item as Record<string, unknown>).label
+            const value = typeof rawValue === 'string' ? rawValue.trim() : ''
+            const label = typeof rawLabel === 'string' ? rawLabel.trim() : ''
+            if (!value || !label || seen.has(value)) continue
+            seen.add(value)
+            normalized.push({ value, label })
+          }
+          if (normalized.length > 0) return normalized
+        }
+      } catch {
+        return DEFAULT_EXERCISE_TYPE_OPTIONS
+      }
+    }
+    return DEFAULT_EXERCISE_TYPE_OPTIONS
+  }
+
+  const saveExerciseTypeOptions = (options: ExerciseTypeOption[]) => {
+    updateAppConfigField('exercise_type_options_config', JSON.stringify(options))
+  }
+
+  const getExerciseDurationOptions = (): number[] => {
+    const stored = getAppConfigValue('exercise_duration_options_config')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          const normalized: number[] = []
+          const seen = new Set<number>()
+          for (const item of parsed) {
+            const value = typeof item === 'number' ? item : parseInt(String(item), 10)
+            if (!Number.isInteger(value) || value <= 0 || seen.has(value)) continue
+            seen.add(value)
+            normalized.push(value)
+          }
+          if (normalized.length > 0) return normalized
+        }
+      } catch {
+        return DEFAULT_EXERCISE_DURATION_OPTIONS
+      }
+    }
+    return DEFAULT_EXERCISE_DURATION_OPTIONS
+  }
+
+  const saveExerciseDurationOptions = (options: number[]) => {
+    updateAppConfigField('exercise_duration_options_config', JSON.stringify(options))
+  }
+
+  const getCrisisCellRoles = (): typeof DEFAULT_CRISIS_CELL_ROLES => {
+    const stored = getAppConfigValue('crisis_cell_roles_config')
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return DEFAULT_CRISIS_CELL_ROLES
+      }
+    }
+    return DEFAULT_CRISIS_CELL_ROLES
+  }
+
+  const saveCrisisCellRoles = (roles: typeof DEFAULT_CRISIS_CELL_ROLES) => {
+    updateAppConfigField('crisis_cell_roles_config', JSON.stringify(roles))
+  }
+
+  const addExerciseTypeOption = () => {
+    const label = newExerciseTypeLabel.trim()
+    const value = (newExerciseTypeValue.trim() || normalizeExerciseTypeValue(label)).trim()
+    if (!label || !value) return
+    const current = getExerciseTypeOptions()
+    if (current.some((item) => item.value === value)) return
+    saveExerciseTypeOptions([...current, { value, label }])
+    setNewExerciseTypeLabel('')
+    setNewExerciseTypeValue('')
+  }
+
+  const removeExerciseTypeOption = (value: string) => {
+    const current = getExerciseTypeOptions()
+    const next = current.filter((item) => item.value !== value)
+    if (next.length === 0) return
+    saveExerciseTypeOptions(next)
+    if (getAppConfigValue('default_exercise_type') === value) {
+      updateAppConfigField('default_exercise_type', next[0].value)
+    }
+  }
+
+  const addExerciseDurationOption = () => {
+    const parsed = parseInt(newExerciseDuration.trim(), 10)
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 72) return
+    const current = getExerciseDurationOptions()
+    if (current.includes(parsed)) return
+    const next = [...current, parsed].sort((a, b) => a - b)
+    saveExerciseDurationOptions(next)
+    setNewExerciseDuration('')
+  }
+
+  const removeExerciseDurationOption = (duration: number) => {
+    const current = getExerciseDurationOptions()
+    const next = current.filter((item) => item !== duration)
+    if (next.length === 0) return
+    saveExerciseDurationOptions(next)
+    if (getAppConfigValue('default_exercise_duration_hours') === duration) {
+      updateAppConfigField('default_exercise_duration_hours', next[0])
+    }
+  }
+
+  const exerciseTypeOptions = getExerciseTypeOptions()
+  const exerciseDurationOptions = getExerciseDurationOptions()
 
   // Stable ref to the mutation fn – avoids re-triggering the debounce useEffect every render
   const mutateAppConfigRef = useRef(updateAppConfigMutation.mutate)
@@ -897,6 +1003,7 @@ export default function OptionsPage() {
 
   const tabs = [
     { id: 'general' as TabType, label: 'Général', icon: Settings },
+    { id: 'exercises' as TabType, label: 'Exercices', icon: Clock },
     { id: 'plugins' as TabType, label: 'Plugins', icon: Puzzle },
     { id: 'security' as TabType, label: 'Sécurité', icon: Shield },
     { id: 'email' as TabType, label: 'Email', icon: Mail },
@@ -1177,69 +1284,299 @@ export default function OptionsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Default Exercise Settings */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-6">
+        {/* Exercises Tab */}
+        {activeTab === 'exercises' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-6">
+              <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-gray-400" />
-                <h2 className="text-lg font-medium text-white">Paramètres par défaut des exercices</h2>
+                <h2 className="text-lg font-medium text-white">Options des exercices</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Durée par défaut (heures)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="72"
-                    value={getAppConfigValue('default_exercise_duration_hours')}
-                    onChange={(e) => updateAppConfigField('default_exercise_duration_hours', parseInt(e.target.value) || 4)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Multiplicateur de temps
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={getAppConfigValue('default_time_multiplier')}
-                    onChange={(e) => updateAppConfigField('default_time_multiplier', parseInt(e.target.value) || 1)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Niveau de maturité
-                  </label>
-                  <select
-                    value={getAppConfigValue('default_maturity_level')}
-                    onChange={(e) => updateAppConfigField('default_maturity_level', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    {MATURITY_LEVELS.map((level) => (
-                      <option key={level.value} value={level.value}>{level.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Mode d'exercice
-                  </label>
-                  <select
-                    value={getAppConfigValue('default_exercise_mode')}
-                    onChange={(e) => updateAppConfigField('default_exercise_mode', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    {EXERCISE_MODES.map((mode) => (
-                      <option key={mode.value} value={mode.value}>{mode.label}</option>
-                    ))}
-                  </select>
-                </div>
+              <p className="text-sm text-gray-400">
+                Ces options configurent les paramètres par défaut pour les exercices.
+              </p>
+
+              <div className="flex border-b border-gray-600">
+                <button
+                  onClick={() => setExercisesSubTab('general')}
+                  className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${exercisesSubTab === 'general' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                  Général
+                </button>
+                <button
+                  onClick={() => setExercisesSubTab('organisation')}
+                  className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${exercisesSubTab === 'organisation' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                  Organisation
+                </button>
               </div>
+
+              {exercisesSubTab === 'general' && (
+                <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Durée par défaut (heures)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="72"
+                      value={getAppConfigValue('default_exercise_duration_hours')}
+                      onChange={(e) => updateAppConfigField('default_exercise_duration_hours', parseInt(e.target.value) || 4)}
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Multiplicateur de temps
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={getAppConfigValue('default_time_multiplier')}
+                      onChange={(e) => updateAppConfigField('default_time_multiplier', parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-200">Types d'exercice</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {exerciseTypeOptions.map((type) => (
+                        <div key={type.value} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-gray-700 bg-gray-900/30">
+                          <label className="flex items-center gap-2 text-gray-300 min-w-0">
+                            <input
+                              type="radio"
+                              name="default_exercise_type"
+                              value={type.value}
+                              checked={getAppConfigValue('default_exercise_type') === type.value}
+                              onChange={(e) => updateAppConfigField('default_exercise_type', e.target.value)}
+                              className="text-primary-500"
+                            />
+                            <span className="truncate">{type.label}</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeExerciseTypeOption(type.value)}
+                            disabled={exerciseTypeOptions.length <= 1}
+                            className="px-2 py-1 text-xs bg-gray-700 text-gray-200 border border-gray-600 rounded hover:bg-gray-600 disabled:opacity-50"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_auto] gap-2 items-end">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Libellé</label>
+                        <input
+                          type="text"
+                          value={newExerciseTypeLabel}
+                          onChange={(e) => setNewExerciseTypeLabel(e.target.value)}
+                          placeholder="Ex: Fraude interne"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Code (optionnel)</label>
+                        <input
+                          type="text"
+                          value={newExerciseTypeValue}
+                          onChange={(e) => setNewExerciseTypeValue(e.target.value)}
+                          placeholder="Ex: fraude_interne"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addExerciseTypeOption}
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-700 text-gray-100 border border-gray-600 rounded-lg hover:bg-gray-600"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-200">Durées disponibles (heures)</h3>
+                    <div className="space-y-2">
+                      {exerciseDurationOptions.map((duration) => (
+                        <div key={duration} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-gray-700 bg-gray-900/30">
+                          <label className="flex items-center gap-2 text-gray-300">
+                            <input
+                              type="radio"
+                              name="default_exercise_duration_hours"
+                              value={duration}
+                              checked={getAppConfigValue('default_exercise_duration_hours') === duration}
+                              onChange={() => updateAppConfigField('default_exercise_duration_hours', duration)}
+                              className="text-primary-500"
+                            />
+                            {duration}h
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeExerciseDurationOption(duration)}
+                            disabled={exerciseDurationOptions.length <= 1}
+                            className="px-2 py-1 text-xs bg-gray-700 text-gray-200 border border-gray-600 rounded hover:bg-gray-600 disabled:opacity-50"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="w-40">
+                        <label className="block text-xs text-gray-400 mb-1">Nouvelle durée</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="72"
+                          value={newExerciseDuration}
+                          onChange={(e) => setNewExerciseDuration(e.target.value)}
+                          placeholder="Ex: 12"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addExerciseDurationOption}
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-700 text-gray-100 border border-gray-600 rounded-lg hover:bg-gray-600"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 mt-6">
+                  <h3 className="text-sm font-semibold text-gray-200">Niveaux de maturité disponibles</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                      { value: 'beginner', label: 'Débutant' },
+                      { value: 'intermediate', label: 'Intermédiaire' },
+                      { value: 'expert', label: 'Expert' },
+                    ].map((level) => (
+                      <label key={level.value} className="flex items-center gap-2 text-gray-300">
+                        <input
+                          type="radio"
+                          name="default_maturity_level"
+                          value={level.value}
+                          checked={getAppConfigValue('default_maturity_level') === level.value}
+                          onChange={(e) => updateAppConfigField('default_maturity_level', e.target.value)}
+                          className="text-primary-500"
+                        />
+                        {level.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4 mt-6">
+                  <h3 className="text-sm font-semibold text-gray-200">Modes d'exercice disponibles</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                      { value: 'real_time', label: 'Temps réel' },
+                      { value: 'compressed', label: 'Compressé' },
+                      { value: 'simulated', label: 'Simulé' },
+                    ].map((mode) => (
+                      <label key={mode.value} className="flex items-center gap-2 text-gray-300">
+                        <input
+                          type="radio"
+                          name="default_exercise_mode"
+                          value={mode.value}
+                          checked={getAppConfigValue('default_exercise_mode') === mode.value}
+                          onChange={(e) => updateAppConfigField('default_exercise_mode', e.target.value)}
+                          className="text-primary-500"
+                        />
+                        {mode.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                </div>
+              )}
+
+              {exercisesSubTab === 'organisation' && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-200">Organisation de la cellule de crise</h3>
+                  <p className="text-sm text-gray-400">
+                    Configurez les rôles disponibles pour l'organisation de la cellule de crise dans les exercices.
+                  </p>
+                  <div className="space-y-3">
+                    {getCrisisCellRoles().map((role, index) => (
+                      <div key={role.role} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,2fr)_auto] gap-2 items-center">
+                        <input
+                          type="text"
+                          value={role.role}
+                          onChange={(e) => {
+                            const next = getCrisisCellRoles().map((item, i) =>
+                              i === index ? { ...item, role: e.target.value } : item
+                            )
+                            saveCrisisCellRoles(next)
+                          }}
+                          placeholder="role"
+                          className="w-full min-w-0 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                        />
+                        <input
+                          type="text"
+                          value={role.name}
+                          onChange={(e) => {
+                            const next = getCrisisCellRoles().map((item, i) =>
+                              i === index ? { ...item, name: e.target.value } : item
+                            )
+                            saveCrisisCellRoles(next)
+                          }}
+                          placeholder="Nom"
+                          className="w-full min-w-0 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                        />
+                        <input
+                          type="text"
+                          value={role.responsibility}
+                          onChange={(e) => {
+                            const next = getCrisisCellRoles().map((item, i) =>
+                              i === index ? { ...item, responsibility: e.target.value } : item
+                            )
+                            saveCrisisCellRoles(next)
+                          }}
+                          placeholder="Responsabilité"
+                          className="w-full min-w-0 px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = getCrisisCellRoles().filter((_, i) => i !== index)
+                            saveCrisisCellRoles(next)
+                          }}
+                          className="sm:justify-self-end w-full sm:w-auto px-3 py-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg hover:bg-gray-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const suffix = Date.now()
+                        const next = [...getCrisisCellRoles(), { role: `new_role_${suffix}`, name: 'Nouveau rôle', responsibility: 'Description' }]
+                        saveCrisisCellRoles(next)
+                      }}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-gray-700 text-gray-100 border border-gray-600 rounded-lg hover:bg-gray-600"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Ajouter un rôle
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1787,8 +2124,8 @@ export default function OptionsPage() {
                   <div>
                     <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
                     <p className="text-sm text-gray-400 mt-1">
-                      Les types d&apos;inject sont verrouillés au référentiel global: Mail, SMS, Call, Social network, TV, Document, Annuaire de crise, Scenario.
-                      Vous pouvez uniquement ajuster les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
+                      Les types d&apos;inject sont définis par le schéma JSON: <code className="text-indigo-300">mail, sms, call, socialnet, tv, doc, directory, story</code>.
+                      Ajustez les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
                     </p>
                     <div className="mt-4 flex items-center justify-between">
                       <p className="text-xs text-gray-500">
@@ -1804,8 +2141,9 @@ export default function OptionsPage() {
                       {timelineRows.map((row, index) => (
                         <div key={index} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white">
-                              {row.type}
+                            <div className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white flex items-center justify-between">
+                              <span>{TIMELINE_INJECT_TYPE_LABELS[row.type] || row.type}</span>
+                              <span className="text-xs text-gray-500 font-mono">{row.type}</span>
                             </div>
                           </div>
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

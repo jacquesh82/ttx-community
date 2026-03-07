@@ -11,61 +11,30 @@ import {
   InjectBankStatus,
 } from '../../services/api'
 import { INJECT_BANK_KIND_LABELS, INJECT_BANK_STATUS_LABELS } from '../../config/injectBank'
-import { useInjectBankKinds, useInjectBankStatuses } from '../../hooks/useInjectBank'
-import { Plus, Pencil, Trash2, Search, LibraryBig, Tag, Upload, Download, Eye, FileArchive, FileJson, Mail, MessageSquare, BookOpen, Shield, Newspaper, Link2, Lightbulb, FileText, Users, ExternalLink, X, Image as ImageIcon, Video, File as FileIcon, ZoomIn, ZoomOut, RotateCw, Maximize2, Play, Pause, Volume2, VolumeX } from 'lucide-react'
+import { useInjectBankStatuses } from '../../hooks/useInjectBank'
+import { Plus, Pencil, Trash2, Search, LibraryBig, Tag, Upload, Download, Eye, FileArchive, FileJson, Mail, MessageSquare, BookOpen, Shield, Newspaper, Link2, Lightbulb, FileText, Users, ExternalLink, X, Image as ImageIcon, Video, File as FileIcon, ZoomIn, ZoomOut, RotateCw, Maximize2, Play, Pause, Volume2, VolumeX, Repeat2, Heart, BarChart3 } from 'lucide-react'
 import Modal from '../../components/Modal'
 import MediaViewer from '../../components/MediaViewer'
 import { useAppDialog } from '../../contexts/AppDialogContext'
+import { formatSchemaError, validateWithSchema } from '../../utils/jsonSchemaValidation'
 
 
-const SCHEMA_STATUS_TO_BANK_STATUS: Record<string, InjectBankStatus> = {
-  draft: 'draft',
-  validated: 'ready',
-  ready: 'ready',
-  played: 'archived',
-  archived: 'archived',
-}
+const SCHEMA_INJECT_KINDS: InjectBankKind[] = ['mail', 'sms', 'call', 'socialnet', 'tv', 'doc', 'directory', 'story']
+const SCHEMA_INJECT_KIND_SET = new Set<InjectBankKind>(SCHEMA_INJECT_KINDS)
 
-function normalizeTypeToBankKind(typeValue: string, allowedKinds: Set<InjectBankKind>): InjectBankKind | null {
-  const raw = typeValue.trim()
-  if (!raw) return null
+const ATTACHMENT_SUPPORTED_KINDS = SCHEMA_INJECT_KIND_SET
 
-  const exact = raw as InjectBankKind
-  if (allowedKinds.has(exact)) return exact
-
-  const lower = raw.toLowerCase() as InjectBankKind
-  if (allowedKinds.has(lower)) return lower
-
-  return null
-}
-
-const ATTACHMENT_SUPPORTED_KINDS = new Set<InjectBankKind>([
-  'video',
-  'image',
-  'audio',
-  'mail',
-  'message',
-  'directory',
-  'reference_url',
-  'social_post',
-  'document',
-  'canal_press',
-  'canal_anssi',
-  'canal_gouvernement',
-  'other',
-])
-
-const getAttachmentAccept = (kind: InjectBankKind): string => {
-  if (kind === 'video') return 'video/*'
-  if (kind === 'image') return 'image/*'
-  if (kind === 'audio') return 'audio/*'
-  if (kind === 'document') return '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf'
+const getAttachmentAccept = (kind: InjectBankKind, dataFormat: InjectDataFormat): string => {
+  if (dataFormat === 'video') return 'video/*'
+  if (dataFormat === 'image') return 'image/*'
+  if (dataFormat === 'audio') return 'audio/*'
+  if (kind === 'doc') return '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf'
   return '*/*'
 }
 
-const getMediaSourceUrl = (kind: InjectBankKind, mediaId: number): string => {
-  if (kind === 'video') return `/api/media/${mediaId}/stream`
-  if (kind === 'image') return `/api/media/${mediaId}/preview`
+const getMediaSourceUrl = (dataFormat: InjectDataFormat, mediaId: number): string => {
+  if (dataFormat === 'video') return `/api/media/${mediaId}/stream`
+  if (dataFormat === 'image') return `/api/media/${mediaId}/preview`
   return `/api/media/${mediaId}/download`
 }
 
@@ -89,21 +58,18 @@ const hasUploadedAttachment = (item: InjectBankItem): boolean => {
   return typeof mediaId === 'number' && Number.isFinite(mediaId)
 }
 
-const getAttachmentUrlByKind = (kind: InjectBankKind, attachment: Record<string, unknown>): string | null => {
+const getAttachmentUrlByKind = (dataFormat: InjectDataFormat, attachment: Record<string, unknown>): string | null => {
   const streamUrl = typeof attachment.stream_url === 'string' ? attachment.stream_url : ''
   const previewUrl = typeof attachment.preview_url === 'string' ? attachment.preview_url : ''
   const downloadUrl = typeof attachment.download_url === 'string' ? attachment.download_url : ''
 
-  if (kind === 'video') return streamUrl || previewUrl || downloadUrl || null
-  if (kind === 'image') return previewUrl || downloadUrl || streamUrl || null
-  if (kind === 'audio') return streamUrl || downloadUrl || previewUrl || null
-  if (kind === 'document') return previewUrl || downloadUrl || null
-  return null
+  if (dataFormat === 'video') return streamUrl || previewUrl || downloadUrl || null
+  if (dataFormat === 'image') return previewUrl || downloadUrl || streamUrl || null
+  if (dataFormat === 'audio') return streamUrl || downloadUrl || previewUrl || null
+  return previewUrl || downloadUrl || null
 }
 
 const getPreviewUrlForItem = (item: InjectBankItem): string | null => {
-  if (!ATTACHMENT_SUPPORTED_KINDS.has(item.kind)) return null
-
   const attachment = item.payload?.attachment
   if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) return null
 
@@ -111,10 +77,10 @@ const getPreviewUrlForItem = (item: InjectBankItem): string | null => {
   const mediaId = attachmentRecord.media_id
   if (typeof mediaId !== 'number' || !Number.isFinite(mediaId)) return null
 
-  const urlFromAttachment = getAttachmentUrlByKind(item.kind, attachmentRecord)
+  const urlFromAttachment = getAttachmentUrlByKind(item.data_format, attachmentRecord)
   if (urlFromAttachment) return urlFromAttachment
 
-  return getMediaSourceUrl(item.kind, mediaId)
+  return getMediaSourceUrl(item.data_format, mediaId)
 }
 
 type FormState = {
@@ -143,11 +109,9 @@ type InjectBankCreatePayload = {
   tags: string[]
 }
 
-const HIDDEN_INJECT_KINDS = new Set<InjectBankKind>(['scenario', 'chronogram', 'idea', 'other'])
-
 const EMPTY_FORM: FormState = {
   title: '',
-  inject_type: 'Mail',
+  inject_type: 'mail',
   kind: 'mail',
   status: 'draft',
   data_format: 'text',
@@ -209,26 +173,39 @@ type TimelineInjectTypeFormatConfig = {
 }
 
 const DEFAULT_TIMELINE_INJECT_TYPE_FORMATS: TimelineInjectTypeFormatConfig[] = [
-  { type: 'Mail', formats: ['text'], simulator: 'mail' },
-  { type: 'SMS', formats: ['text', 'image'], simulator: 'sms' },
-  { type: 'Call', formats: ['audio'], simulator: 'tel' },
-  { type: 'Social network', formats: ['text', 'video', 'image'], simulator: 'social' },
-  { type: 'TV', formats: ['video'], simulator: 'tv' },
-  { type: 'Document', formats: ['text', 'image'], simulator: 'mail' },
-  { type: 'Annuaire de crise', formats: ['text'], simulator: null },
-  { type: 'Scenario', formats: ['text'], simulator: null },
+  { type: 'mail', formats: ['text'] as InjectDataFormat[], simulator: 'mail' },
+  { type: 'sms', formats: ['text', 'image'] as InjectDataFormat[], simulator: 'sms' },
+  { type: 'call', formats: ['audio'] as InjectDataFormat[], simulator: 'tel' },
+  { type: 'socialnet', formats: ['text', 'video', 'image'] as InjectDataFormat[], simulator: 'social' },
+  { type: 'tv', formats: ['video'] as InjectDataFormat[], simulator: 'tv' },
+  { type: 'doc', formats: ['text', 'image'] as InjectDataFormat[], simulator: 'mail' },
+  { type: 'directory', formats: ['text'] as InjectDataFormat[], simulator: null },
+  { type: 'story', formats: ['text'] as InjectDataFormat[], simulator: null },
 ]
 
 const TIMELINE_ALLOWED_TYPE_NAMES = new Set(
   DEFAULT_TIMELINE_INJECT_TYPE_FORMATS.map((row) => row.type.toLowerCase())
 )
 
+const normalizeTimelineTypeName = (value: string): string => {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'mail' || normalized === 'email') return 'mail'
+  if (normalized === 'sms' || normalized === 'message') return 'sms'
+  if (normalized === 'call' || normalized === 'tel') return 'call'
+  if (normalized === 'social network' || normalized === 'social') return 'socialnet'
+  if (normalized === 'tv') return 'tv'
+  if (normalized === 'document' || normalized === 'doc') return 'doc'
+  if (normalized === 'annuaire de crise' || normalized === 'directory') return 'directory'
+  if (normalized === 'scenario' || normalized === 'scénario' || normalized === 'story') return 'story'
+  return normalized
+}
+
 const normalizeTimelineInjectTypeRows = (
   rows: TimelineInjectTypeFormatConfig[]
 ): TimelineInjectTypeFormatConfig[] => {
   const byType = new Map<string, TimelineInjectTypeFormatConfig>()
   for (const row of rows) {
-    const normalizedType = row.type.trim().toLowerCase()
+    const normalizedType = normalizeTimelineTypeName(row.type)
     if (!TIMELINE_ALLOWED_TYPE_NAMES.has(normalizedType) || byType.has(normalizedType)) {
       continue
     }
@@ -285,34 +262,92 @@ const parseTimelineInjectTypeFormats = (raw: string | null): TimelineInjectTypeF
   }
 }
 
-const resolveInjectBankKindFromType = (
-  injectType: string,
-  simulator: string | null,
-  dataFormat: InjectDataFormat
-): InjectBankKind => {
-  const normalizedSimulator = (simulator || '').trim().toLowerCase()
-  if (normalizedSimulator === 'mail') return 'mail'
-  if (normalizedSimulator === 'chat') return 'message'
-  if (normalizedSimulator === 'sms') return 'message'
-  if (normalizedSimulator === 'tel') return 'audio'
-  if (normalizedSimulator === 'tv') return 'video'
-  if (normalizedSimulator === 'social') return 'social_post'
-  if (normalizedSimulator === 'press') return 'canal_press'
-
+const buildPayloadSkeletonByType = (injectType: string): Record<string, any> => {
   const normalizedType = injectType.trim().toLowerCase()
-  if (normalizedType.includes('annuaire')) return 'directory'
-  if (normalizedType.includes('scenario') || normalizedType.includes('scénario')) return 'scenario'
-  if (normalizedType.includes('document')) return 'document'
-  if (normalizedType.includes('call')) return 'audio'
-  if (normalizedType.includes('mail') || normalizedType.includes('email')) return 'mail'
-  if (normalizedType.includes('sms') || normalizedType.includes('message')) return 'message'
-  if (normalizedType.includes('social')) return 'social_post'
-  if (normalizedType.includes('tv')) return 'video'
 
-  if (dataFormat === 'video') return 'video'
-  if (dataFormat === 'audio') return 'audio'
-  if (dataFormat === 'image') return 'image'
-  return 'other'
+  if (normalizedType === 'mail') {
+    return {
+      from: 'expediteur@organisation.local',
+      to: ['destinataire@organisation.local'],
+      cc: [],
+      subject: 'Sujet du message',
+      timestamp: new Date().toISOString(),
+      body: 'Contenu de l email...',
+    }
+  }
+  if (normalizedType === 'sms') {
+    return {
+      from: '+33600000000',
+      to: ['+33611111111'],
+      message: 'Texte du SMS...',
+      timestamp: new Date().toISOString(),
+    }
+  }
+  if (normalizedType === 'call') {
+    return {
+      from: '+33600000000',
+      to: '+33611111111',
+      duration_sec: 90,
+      transcript: 'Resume de l appel...',
+      timestamp: new Date().toISOString(),
+    }
+  }
+  if (normalizedType === 'socialnet') {
+    return {
+      author_name: 'Cellule Communication',
+      author_handle: '@organisation',
+      text: 'Texte du post...',
+      timestamp: new Date().toISOString(),
+      replies: 0,
+      reposts: 0,
+      likes: 0,
+      views: 0,
+    }
+  }
+  if (normalizedType === 'tv') {
+    return {
+      channel: 'TV News',
+      headline: 'Titre du bandeau',
+      body: 'Contenu du flash info...',
+      timestamp: new Date().toISOString(),
+    }
+  }
+  if (normalizedType === 'doc') {
+    return {
+      document_type: 'note_interne',
+      title: 'Titre du document',
+      body: 'Contenu du document...',
+      issued_at: new Date().toISOString(),
+    }
+  }
+  if (normalizedType === 'directory') {
+    return {
+      directory_type: 'contacts_crise',
+      entries: [
+        {
+          partner: 'Nom contact',
+          contact: 'Role / service',
+          phone: '+33000000000',
+          priority: 'moyenne',
+        },
+      ],
+    }
+  }
+  if (normalizedType === 'story') {
+    return {
+      scenario_title: 'Intitule scenario',
+      context: 'Contexte narratif...',
+      key_points: ['Point 1', 'Point 2'],
+    }
+  }
+
+  return {}
+}
+
+/** In the schema world, inject_type IS the kind (both use canonical schema values). */
+const resolveInjectBankKindFromType = (injectType: string): InjectBankKind => {
+  const normalized = injectType.trim().toLowerCase() as InjectBankKind
+  return SCHEMA_INJECT_KIND_SET.has(normalized) ? normalized : 'doc'
 }
 
 const toValidDate = (value: unknown): Date | null => {
@@ -431,12 +466,114 @@ const parseChronogramPoints = (payload: Record<string, any>): { points: Chronogr
 }
 
 // Preview components for each inject type
-function MailPreview({ payload }: { payload: Record<string, any> }) {
-  const content = payload?.content || payload
-  const from = content?.from || payload?.from || ''
-  const to = content?.to || payload?.to || ''
-  const subject = content?.subject || payload?.subject || ''
-  const body = content?.body || payload?.body || content?.message || ''
+function MailPreview({ payload, fallbackBody }: { payload: Record<string, any>; fallbackBody?: string }) {
+  const content =
+    payload?.content && typeof payload.content === 'object' && !Array.isArray(payload.content)
+      ? payload.content
+      : payload
+
+  const locateValue = (paths: string[]): any => {
+    const sources = [content, payload]
+    for (const source of sources) {
+      if (!source || typeof source !== 'object') continue
+      for (const path of paths) {
+        const parts = path.split('.')
+        let current: any = source
+        for (const part of parts) {
+          if (!current || typeof current !== 'object') {
+            current = undefined
+            break
+          }
+          current = current[part]
+        }
+        if (current != null && current !== '') {
+          return current
+        }
+      }
+    }
+    return undefined
+  }
+
+  const rawFrom = locateValue([
+    'from',
+    'headers.from',
+    'headers.From',
+    'sender',
+    'metadata.from',
+    'envelope.from',
+    'payload.from',
+    'payload.headers.from',
+    'payload.headers.From',
+  ])
+  const rawTo =
+    locateValue([
+      'to',
+      'headers.to',
+      'headers.To',
+      'recipients.to',
+      'envelope.to',
+      'payload.to',
+      'payload.headers.to',
+      'payload.headers.To',
+    ]) ??
+    locateValue(['recipients', 'headers.recipients', 'payload.recipients', 'payload.headers.recipients'])
+  const rawCc = locateValue(['cc', 'headers.cc', 'headers.Cc', 'recipients.cc', 'payload.cc', 'payload.headers.cc', 'payload.headers.Cc'])
+  const rawSubject = locateValue(['subject', 'headers.subject', 'headers.Subject', 'metadata.subject', 'payload.subject', 'payload.headers.subject', 'payload.headers.Subject'])
+  const timestamp = locateValue(['timestamp', 'sent_at', 'date', 'headers.date', 'headers.Date', 'payload.timestamp', 'payload.sent_at', 'payload.date', 'payload.headers.date', 'payload.headers.Date'])
+  const rawBody = locateValue(['body', 'message', 'text', 'content', 'payload.body', 'payload.message', 'payload.text', 'payload.content'])
+  const subject = typeof rawSubject === 'string' ? rawSubject : ''
+  const body =
+    (typeof rawBody === 'string' ? rawBody : '') ||
+    fallbackBody ||
+    ''
+
+  const formatRecipients = (value: string | string[] | Record<string, any> | undefined) => {
+    if (!value && value !== 0) return ''
+    if (Array.isArray(value)) {
+      const filtered = value
+        .map((entry) => {
+          if (typeof entry === 'string') return entry.trim()
+          if (entry && typeof entry === 'object') {
+            return (
+              entry.email ||
+              entry.address ||
+              entry.value ||
+              entry.name ||
+              entry.label ||
+              ''
+            )
+          }
+          return ''
+        })
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry) => entry)
+      return filtered.join(', ')
+    }
+    if (typeof value === 'object') {
+      return (
+        (value.email || value.address || value.value || value.name || value.label || '') as string
+      ).trim()
+    }
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+    return ''
+  }
+
+  const formattedFrom = formatRecipients(rawFrom)
+  const formattedTo = formatRecipients(rawTo)
+  const formattedCc = formatRecipients(rawCc)
+  const parsedDate =
+    typeof timestamp === 'string' || typeof timestamp === 'number'
+      ? new Date(timestamp)
+      : null
+  const formattedTimestamp =
+    parsedDate && !Number.isNaN(parsedDate.getTime())
+      ? parsedDate.toLocaleString('fr-FR', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        })
+      : timestamp
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
@@ -449,16 +586,28 @@ function MailPreview({ payload }: { payload: Record<string, any> }) {
       <div className="space-y-1 p-3 text-sm">
         <div className="flex gap-2">
           <span className="w-12 shrink-0 text-gray-500">De:</span>
-          <span className="text-gray-900">{from || '-'}</span>
+          <span className="text-gray-900">{formattedFrom || '-'}</span>
         </div>
         <div className="flex gap-2">
           <span className="w-12 shrink-0 text-gray-500">À:</span>
-          <span className="text-gray-900">{to || '-'}</span>
+          <span className="text-gray-900">{formattedTo || '-'}</span>
         </div>
+        {formattedCc && (
+          <div className="flex gap-2">
+            <span className="w-12 shrink-0 text-gray-500">Cc:</span>
+            <span className="text-gray-900">{formattedCc}</span>
+          </div>
+        )}
         <div className="flex gap-2">
           <span className="w-12 shrink-0 text-gray-500">Sujet:</span>
           <span className="font-medium text-gray-900">{subject || '-'}</span>
         </div>
+        {formattedTimestamp && (
+          <div className="flex gap-2">
+            <span className="w-12 shrink-0 text-gray-500">Date:</span>
+            <span className="text-gray-900">{formattedTimestamp}</span>
+          </div>
+        )}
       </div>
       {body && (
         <div className="border-t border-gray-200 bg-gray-50 p-3">
@@ -472,20 +621,113 @@ function MailPreview({ payload }: { payload: Record<string, any> }) {
 function MessagePreview({ payload }: { payload: Record<string, any> }) {
   const content = payload?.content || payload
   const channel = content?.channel || payload?.channel || ''
-  const sender = content?.sender || payload?.sender || ''
   const message = content?.message || payload?.message || ''
+  const sender = content?.from || payload?.from || content?.sender || payload?.sender || ''
+  const rawTimestamp = content?.timestamp || payload?.timestamp || content?.received_at || payload?.received_at || ''
+  const parsedTimestamp = typeof rawTimestamp === 'string' || typeof rawTimestamp === 'number'
+    ? new Date(rawTimestamp)
+    : null
+  const receptionDate = parsedTimestamp && !Number.isNaN(parsedTimestamp.getTime())
+    ? parsedTimestamp.toLocaleString('fr-FR')
+    : ''
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
-        <div className="flex items-center gap-2 text-sm">
-          <MessageSquare className="h-4 w-4 text-gray-500" />
-          <span className="font-medium text-gray-700">{channel || 'Message'}</span>
+    <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <div className="flex items-center justify-center rounded border border-gray-200 bg-gray-50 p-4">
+        <div className="relative h-[460px] w-[240px] rounded-[32px] border-[10px] border-gray-900 bg-gradient-to-b from-slate-800 to-slate-900 shadow-xl">
+          <div className="absolute left-1/2 top-2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-gray-700" />
+          <div className="absolute inset-[10px] rounded-[18px] bg-slate-100 p-3">
+            <div className="mb-2 flex items-center justify-center gap-2 text-[11px] font-medium text-slate-500">
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>{channel || 'SMS'}</span>
+            </div>
+            {sender && (
+              <div className="mb-2 text-center text-[11px] text-slate-600">
+                {sender}
+              </div>
+            )}
+            {receptionDate && (
+              <div className="mb-2 text-center text-[10px] text-slate-500">
+                Recu le {receptionDate}
+              </div>
+            )}
+            <div className="ml-auto max-w-[96%] rounded-2xl rounded-tr-sm bg-emerald-500 px-3 py-2 text-xs text-white shadow">
+              {message || '-'}
+            </div>
+          </div>
         </div>
       </div>
-      <div className="p-3 text-sm">
-        <div className="mb-2 text-xs text-gray-500">{sender || 'Expéditeur inconnu'}</div>
-        <div className="rounded-lg bg-primary-50 p-3 text-gray-800">{message || '-'}</div>
+    </div>
+  )
+}
+
+function SocialPostPreview({ payload, fallbackText }: { payload: Record<string, any>; fallbackText?: string }) {
+  const content = payload?.content || payload
+  const authorName = content?.author_name || content?.author || payload?.author_name || payload?.author || 'Compte officiel'
+  const handleRaw = content?.author_handle || content?.handle || payload?.author_handle || payload?.handle || 'organisation'
+  const handle = String(handleRaw).startsWith('@') ? String(handleRaw) : `@${handleRaw}`
+  const message =
+    content?.message ||
+    content?.post ||
+    content?.text ||
+    payload?.message ||
+    payload?.post ||
+    payload?.text ||
+    fallbackText ||
+    ''
+  const timestamp = content?.timestamp || content?.published_at || payload?.timestamp || payload?.published_at || ''
+  const parsedTimestamp = typeof timestamp === 'string' || typeof timestamp === 'number' ? new Date(timestamp) : null
+  const formattedTimestamp = parsedTimestamp && !Number.isNaN(parsedTimestamp.getTime())
+    ? parsedTimestamp.toLocaleString('fr-FR')
+    : ''
+  const replies = Number(content?.replies ?? payload?.replies ?? content?.comments ?? payload?.comments ?? 12)
+  const reposts = Number(content?.reposts ?? payload?.reposts ?? content?.retweets ?? payload?.retweets ?? 27)
+  const likes = Number(content?.likes ?? payload?.likes ?? 143)
+  const views = Number(content?.views ?? payload?.views ?? 3200)
+
+  const fmt = (value: number) => {
+    if (!Number.isFinite(value)) return '0'
+    return new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-start gap-3 p-4">
+          <div className="mt-0.5 h-11 w-11 shrink-0 rounded-full bg-slate-900 text-sm font-semibold text-white flex items-center justify-center">
+            {String(authorName).trim().slice(0, 2).toUpperCase() || 'XO'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-semibold text-slate-900">{authorName}</p>
+              <p className="truncate text-sm text-slate-500">{handle}</p>
+            </div>
+            {message && (
+              <p className="mt-2 whitespace-pre-wrap text-[15px] leading-6 text-slate-900">{message}</p>
+            )}
+            {formattedTimestamp && (
+              <p className="mt-2 text-xs text-slate-500">{formattedTimestamp}</p>
+            )}
+            <div className="mt-3 grid grid-cols-4 gap-2 border-t border-slate-100 pt-3 text-slate-600">
+              <div className="inline-flex items-center gap-1.5 text-sm">
+                <MessageSquare className="h-4 w-4" />
+                <span>{fmt(replies)}</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-sm">
+                <Repeat2 className="h-4 w-4" />
+                <span>{fmt(reposts)}</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-sm">
+                <Heart className="h-4 w-4" />
+                <span>{fmt(likes)}</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-sm">
+                <BarChart3 className="h-4 w-4" />
+                <span>{fmt(views)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -726,23 +968,13 @@ function InjectPreview({ item }: { item: InjectBankItem }) {
 
   switch (item.kind) {
     case 'mail':
-      return <MailPreview payload={payload} />
-    case 'message':
+      return <MailPreview payload={payload} fallbackBody={item.content} />
+    case 'sms':
       return <MessagePreview payload={payload} />
     case 'directory':
       return <DirectoryPreview payload={payload} />
-    case 'canal_anssi':
-      return <CanalAnssiPreview payload={payload} />
-    case 'canal_gouvernement':
-      return <CanalGouvernementPreview payload={payload} />
-    case 'canal_press':
-      return <CanalPressPreview payload={payload} />
-    case 'reference_url':
-      return <ReferenceUrlPreview payload={payload} />
-    case 'idea':
-      return <IdeaPreview item={item} />
-    case 'chronogram':
-      return <ChronogramD3Viewer item={item} />
+    case 'socialnet':
+      return <SocialPostPreview payload={payload} fallbackText={item.content} />
     default:
       return <GenericPreview payload={payload} />
   }
@@ -872,7 +1104,6 @@ export default function InjectBankPage() {
   const [kind, setKind] = useState<InjectBankKind | ''>('')
   const [status, setStatus] = useState<InjectBankStatus | ''>('')
   const [tag, setTag] = useState('')
-  const { data: kinds } = useInjectBankKinds()
   const { data: statuses } = useInjectBankStatuses()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -934,7 +1165,7 @@ export default function InjectBankPage() {
       visibility: 'global',
     })
     const media = uploadResult.media
-    const sourceUrl = getMediaSourceUrl(payload.kind, media.id)
+    const sourceUrl = getMediaSourceUrl(payload.data_format || 'text', media.id)
 
     return {
       ...payload,
@@ -1042,21 +1273,15 @@ export default function InjectBankPage() {
   const total = data?.total || 0
   const totalPages = Math.max(1, Math.ceil(total / 12))
 
-  const kindLabelMap = useMemo(() => {
-    return kinds ? Object.fromEntries(kinds.map((k) => [k, INJECT_BANK_KIND_LABELS[k] || k])) : {}
-  }, [kinds])
+  const kindLabelMap = INJECT_BANK_KIND_LABELS as Record<string, string>
 
   const statusLabelMap = useMemo(() => {
     return statuses ? Object.fromEntries(statuses.map((s) => [s, INJECT_BANK_STATUS_LABELS[s] || s])) : {}
   }, [statuses])
 
   const kindOptions = useMemo(() => {
-    return kinds
-      ? kinds
-          .filter((k) => !HIDDEN_INJECT_KINDS.has(k))
-          .map((k) => ({ value: k, label: INJECT_BANK_KIND_LABELS[k] || k }))
-      : []
-  }, [kinds])
+    return SCHEMA_INJECT_KINDS.map((k) => ({ value: k, label: INJECT_BANK_KIND_LABELS[k] }))
+  }, [])
 
   const statusOptions = useMemo(() => {
     return statuses ? statuses.map((s) => ({ value: s, label: INJECT_BANK_STATUS_LABELS[s] || s })) : []
@@ -1090,12 +1315,14 @@ export default function InjectBankPage() {
   const openCreateModal = () => {
     const defaultInjectType = timelineInjectTypeOptions[0] || DEFAULT_TIMELINE_INJECT_TYPE_FORMATS[0]
     const defaultFormat = defaultInjectType.formats[0] || 'text'
+    const payloadSkeleton = buildPayloadSkeletonByType(defaultInjectType.type)
     setEditingItem(null)
     setForm({
       ...EMPTY_FORM,
       inject_type: defaultInjectType.type,
       data_format: defaultFormat,
-      kind: resolveInjectBankKindFromType(defaultInjectType.type, defaultInjectType.simulator, defaultFormat),
+      kind: resolveInjectBankKindFromType(defaultInjectType.type),
+      payload_json: JSON.stringify(payloadSkeleton, null, 2),
     })
     setAttachmentFile(null)
     setAttachmentPreview(null)
@@ -1124,10 +1351,7 @@ export default function InjectBankPage() {
   }
 
   const openPreview = (item: InjectBankItem) => {
-    // Les types avec preview spécialisé restent sur leurs boutons dédiés
-    if (item.kind === 'chronogram') {
-      setChronogramPreviewItem(item)
-    } else if (ATTACHMENT_SUPPORTED_KINDS.has(item.kind) && hasUploadedAttachment(item)) {
+    if (hasUploadedAttachment(item)) {
       setMediaPreviewItem(item)
     } else {
       setPreviewItem(item)
@@ -1179,9 +1403,9 @@ export default function InjectBankPage() {
     if (!injectType) {
       throw new Error("Le type d'inject est requis")
     }
-    const kind = resolveInjectBankKindFromType(injectType, selectedInjectTypeConfig?.simulator || null, form.data_format)
+    const kind = resolveInjectBankKindFromType(injectType)
 
-    return {
+    const candidate: InjectBankCreatePayload = {
       title: form.title.trim(),
       kind,
       status: form.status,
@@ -1193,6 +1417,15 @@ export default function InjectBankPage() {
       tags,
       payload,
     }
+
+    if (!schemaPayload?.schema) {
+      throw new Error('Schema JSON de la banque indisponible')
+    }
+    const validation = validateWithSchema(schemaPayload.schema, candidate)
+    if (!validation.valid) {
+      throw new Error(formatSchemaError(validation.errors[0]))
+    }
+    return candidate
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1240,14 +1473,9 @@ export default function InjectBankPage() {
       throw new Error('Aucun element a importer')
     }
 
-    const allowedKinds = new Set(kinds || [])
-    const schemaRequired = Array.isArray(schemaPayload?.schema?.required)
-      ? schemaPayload.schema.required.filter((fieldName: unknown): fieldName is string => typeof fieldName === 'string')
-      : ['id', 'type', 'title', 'status', 'created_at']
-    const schemaStatusEnums = Array.isArray(schemaPayload?.schema?.properties?.status?.enum)
-      ? schemaPayload.schema.properties.status.enum.filter((value: unknown): value is string => typeof value === 'string')
-      : Object.keys(SCHEMA_STATUS_TO_BANK_STATUS)
-    const allowedSchemaStatuses = new Set(schemaStatusEnums)
+    if (!schemaPayload?.schema) {
+      throw new Error('Schema JSON de la banque indisponible')
+    }
 
     return entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
@@ -1255,90 +1483,29 @@ export default function InjectBankPage() {
       }
 
       const item = entry as Record<string, unknown>
-      const typeRaw = typeof item.type === 'string'
-        ? item.type.trim()
-        : typeof item.kind === 'string'
-          ? item.kind.trim()
-          : ''
-      const statusRaw = typeof item.status === 'string' ? item.status : ''
-      const title = typeof item.title === 'string' ? item.title.trim() : ''
-
-      const requiredFieldValues: Record<string, unknown> = {
-        id: item.id,
-        type: item.type ?? item.kind,
-        title: item.title,
-        status: item.status,
-        created_at: item.created_at,
-      }
-      const missingField = schemaRequired.find((fieldName) => {
-        const value = requiredFieldValues[fieldName]
-        if (typeof value === 'string') return value.trim().length === 0
-        return value === null || value === undefined
-      })
-      if (missingField) {
-        throw new Error(`Element ${index + 1}: "${missingField}" est obligatoire`)
-      }
-      if (!title) {
-        throw new Error(`Element ${index + 1}: "title" est obligatoire`)
-      }
-      const mappedKind = normalizeTypeToBankKind(typeRaw, allowedKinds)
-      if (!mappedKind) {
-        throw new Error(`Element ${index + 1}: "type" invalide`)
-      }
-      if (!allowedSchemaStatuses.has(statusRaw)) {
-        throw new Error(`Element ${index + 1}: "status" invalide`)
-      }
-      const mappedStatus = SCHEMA_STATUS_TO_BANK_STATUS[statusRaw]
-      if (!mappedStatus) {
-        throw new Error(`Element ${index + 1}: mapping "status" impossible`)
-      }
-      const payloadRaw = item
-      if (payloadRaw === null || typeof payloadRaw !== 'object' || Array.isArray(payloadRaw)) {
-        throw new Error(`Element ${index + 1}: payload invalide`)
+      const validation = validateWithSchema(schemaPayload.schema, item)
+      if (!validation.valid) {
+        throw new Error(`Element ${index + 1}: ${formatSchemaError(validation.errors[0])}`)
       }
 
-      let tags: string[] = []
-      if (Array.isArray(item.tags)) {
-        tags = item.tags
-          .filter((tagValue): tagValue is string => typeof tagValue === 'string')
-          .map((tagValue) => tagValue.trim())
-          .filter(Boolean)
-      } else if (typeof item.tags === 'string') {
-        tags = item.tags
-          .split(',')
-          .map((tagValue) => tagValue.trim())
-          .filter(Boolean)
+      const rawKind = typeof item.kind === 'string' ? item.kind.trim().toLowerCase() : ''
+      if (!SCHEMA_INJECT_KIND_SET.has(rawKind as InjectBankKind)) {
+        throw new Error(`Element ${index + 1}: "kind" invalide (${rawKind})`)
       }
+      const mappedKind = rawKind as InjectBankKind
 
-      const contentObject = item.content && typeof item.content === 'object' && !Array.isArray(item.content)
-        ? (item.content as Record<string, unknown>)
-        : null
-      const sourceUrlFromContent = contentObject && typeof contentObject.url === 'string'
-        ? contentObject.url.trim()
-        : ''
-
-      const summaryRaw = typeof item.summary === 'string' && item.summary.trim() ? item.summary.trim() : undefined
-      const descriptionRaw = typeof item.description === 'string' && item.description.trim() ? item.description.trim() : undefined
-      const sourceUrlRaw = typeof item.source_url === 'string' && item.source_url.trim()
-        ? item.source_url.trim()
-        : sourceUrlFromContent || undefined
-      const dataFormatRaw = typeof item.data_format === 'string' ? item.data_format.trim().toLowerCase() : ''
-      const dataFormat: InjectDataFormat =
-        dataFormatRaw === 'audio' || dataFormatRaw === 'video' || dataFormatRaw === 'image'
-          ? (dataFormatRaw as InjectDataFormat)
-          : 'text'
-
-      return {
-        title,
+      const candidate: InjectBankCreatePayload = {
+        title: item.title as string,
         kind: mappedKind,
-        status: mappedStatus,
-        data_format: dataFormat,
-        summary: summaryRaw,
-        content: descriptionRaw,
-        source_url: sourceUrlRaw,
-        payload: payloadRaw as Record<string, any>,
-        tags,
+        status: item.status as InjectBankStatus,
+        data_format: item.data_format as InjectDataFormat,
+        summary: typeof item.summary === 'string' ? item.summary : undefined,
+        content: typeof item.content === 'string' ? item.content : undefined,
+        source_url: typeof item.source_url === 'string' ? item.source_url : undefined,
+        payload: item.payload as Record<string, any>,
+        tags: item.tags as string[],
       }
+      return candidate
     })
   }
 
@@ -1549,7 +1716,7 @@ export default function InjectBankPage() {
         setForm((prev) => ({
           ...prev,
           data_format: nextFormat,
-          kind: resolveInjectBankKindFromType(current.type, current.simulator, nextFormat),
+          kind: resolveInjectBankKindFromType(current.type),
         }))
       }
       return
@@ -1560,7 +1727,7 @@ export default function InjectBankPage() {
       ...prev,
       inject_type: fallback.type,
       data_format: fallbackFormat,
-      kind: resolveInjectBankKindFromType(fallback.type, fallback.simulator, fallbackFormat),
+      kind: resolveInjectBankKindFromType(fallback.type),
     }))
   }, [isModalOpen, timelineInjectTypeOptions, form.inject_type, form.data_format])
 
@@ -1774,15 +1941,6 @@ export default function InjectBankPage() {
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>Mise a jour {new Date(item.updated_at).toLocaleDateString('fr-FR')}</span>
                   <div className="space-x-2" onClick={(e) => e.stopPropagation()}>
-                    {item.kind === 'chronogram' && (
-                      <button
-                        onClick={() => setChronogramPreviewItem(item)}
-                        className="inline-flex items-center rounded border border-primary-200 px-2 py-1 text-primary-700 hover:bg-primary-50"
-                      >
-                        <Eye className="mr-1" size={12} />
-                        Voir le chrono
-                      </button>
-                    )}
                     {hasUploadedAttachment(item) && (
                       <button
                         onClick={() => setMediaPreviewItem(item)}
@@ -1841,11 +1999,12 @@ export default function InjectBankPage() {
         title={editingItem ? 'Modifier la brique' : 'Nouvelle brique'}
         maxWidthClassName="max-w-6xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && <div className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>}
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="space-y-3">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <section className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Metadonnees</p>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Titre</label>
                 <input
@@ -1870,18 +2029,22 @@ export default function InjectBankPage() {
                       const nextFormat = nextConfig.formats.includes(form.data_format)
                         ? form.data_format
                         : (nextConfig.formats[0] || 'text')
+                      const nextPayload = editingItem
+                        ? form.payload_json
+                        : JSON.stringify(buildPayloadSkeletonByType(nextType), null, 2)
                       setForm((f) => ({
                         ...f,
                         inject_type: nextType,
                         data_format: nextFormat,
-                        kind: resolveInjectBankKindFromType(nextType, nextConfig.simulator, nextFormat),
+                        kind: resolveInjectBankKindFromType(nextType),
+                        payload_json: nextPayload,
                       }))
                     }}
                     className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
                   >
                     {timelineInjectTypeOptions.map((entry) => (
                       <option key={entry.type} value={entry.type}>
-                        {entry.type}
+                        {INJECT_BANK_KIND_LABELS[entry.type as InjectBankKind] || entry.type}
                       </option>
                     ))}
                   </select>
@@ -1910,11 +2073,7 @@ export default function InjectBankPage() {
                       setForm((f) => ({
                         ...f,
                         data_format: nextFormat,
-                        kind: resolveInjectBankKindFromType(
-                          f.inject_type,
-                          selectedInjectTypeConfig?.simulator || null,
-                          nextFormat
-                        ),
+                        kind: resolveInjectBankKindFromType(f.inject_type),
                       }))
                     }}
                     className="w-full rounded border border-gray-300 px-3 py-2 text-sm bg-white text-gray-900"
@@ -1946,9 +2105,10 @@ export default function InjectBankPage() {
                   placeholder="https://..."
                 />
               </div>
-            </div>
+            </section>
 
-            <div className="space-y-3">
+            <section className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Contenu</p>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Résumé</label>
                 <textarea
@@ -1978,7 +2138,7 @@ export default function InjectBankPage() {
                   >
                     {attachmentFile ? (
                       <div className="space-y-2">
-                        {form.kind === 'image' && attachmentPreview && (
+                        {form.data_format === 'image' && attachmentPreview && (
                           <div className="flex justify-center">
                             <img
                               src={attachmentPreview}
@@ -1987,7 +2147,7 @@ export default function InjectBankPage() {
                             />
                           </div>
                         )}
-                        {form.kind === 'video' && attachmentPreview && (
+                        {form.data_format === 'video' && attachmentPreview && (
                           <div className="flex justify-center">
                             <video
                               src={attachmentPreview}
@@ -1996,17 +2156,17 @@ export default function InjectBankPage() {
                             />
                           </div>
                         )}
-                        {form.kind === 'audio' && attachmentPreview && (
+                        {form.data_format === 'audio' && attachmentPreview && (
                           <div className="flex justify-center">
                             <audio src={attachmentPreview} controls className="w-full max-w-md" />
                           </div>
                         )}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {form.kind === 'image' && <ImageIcon className="h-5 w-5 text-green-600" />}
-                            {form.kind === 'video' && <Video className="h-5 w-5 text-green-600" />}
-                            {form.kind === 'audio' && <FileIcon className="h-5 w-5 text-green-600" />}
-                            {form.kind === 'document' && <FileIcon className="h-5 w-5 text-green-600" />}
+                            {form.data_format === 'image' && <ImageIcon className="h-5 w-5 text-green-600" />}
+                            {form.data_format === 'video' && <Video className="h-5 w-5 text-green-600" />}
+                            {form.data_format === 'audio' && <FileIcon className="h-5 w-5 text-green-600" />}
+                            {form.kind === 'doc' && form.data_format === 'text' && <FileIcon className="h-5 w-5 text-green-600" />}
                             <span className="text-sm font-medium text-green-700">{attachmentFile.name}</span>
                             <span className="text-xs text-gray-500">
                               ({(attachmentFile.size / 1024 / 1024).toFixed(2)} Mo)
@@ -2028,19 +2188,12 @@ export default function InjectBankPage() {
                       <div className="text-center">
                         <input
                           type="file"
-                          accept={getAttachmentAccept(form.kind)}
+                          accept={getAttachmentAccept(form.kind, form.data_format)}
                           onChange={(e) => {
                             const file = e.target.files?.[0] || null
                             setAttachmentFile(file)
-                            if (file && form.kind === 'image') {
-                              const url = URL.createObjectURL(file)
-                              setAttachmentPreview(url)
-                            } else if (file && form.kind === 'video') {
-                              const url = URL.createObjectURL(file)
-                              setAttachmentPreview(url)
-                            } else if (file && form.kind === 'audio') {
-                              const url = URL.createObjectURL(file)
-                              setAttachmentPreview(url)
+                            if (file && ['image', 'video', 'audio'].includes(form.data_format)) {
+                              setAttachmentPreview(URL.createObjectURL(file))
                             } else {
                               setAttachmentPreview(null)
                             }
@@ -2048,20 +2201,19 @@ export default function InjectBankPage() {
                           className="absolute inset-0 cursor-pointer opacity-0"
                         />
                         <div className="flex flex-col items-center gap-2">
-                          {form.kind === 'image' && <ImageIcon className="h-10 w-10 text-gray-400" />}
-                          {form.kind === 'video' && <Video className="h-10 w-10 text-gray-400" />}
-                          {form.kind === 'audio' && <FileIcon className="h-10 w-10 text-gray-400" />}
-                          {form.kind === 'document' && <FileIcon className="h-10 w-10 text-gray-400" />}
+                          {form.data_format === 'image' && <ImageIcon className="h-10 w-10 text-gray-400" />}
+                          {form.data_format === 'video' && <Video className="h-10 w-10 text-gray-400" />}
+                          {form.data_format === 'audio' && <FileIcon className="h-10 w-10 text-gray-400" />}
+                          {form.kind === 'doc' && form.data_format === 'text' && <FileIcon className="h-10 w-10 text-gray-400" />}
                           <div>
                             <p className="text-sm font-medium text-gray-700">
                               Glissez-deposez ou cliquez pour selectionner
                             </p>
                             <p className="text-xs text-gray-500">
-                              {form.kind === 'image' && 'PNG, JPG, GIF, WebP...'}
-                              {form.kind === 'video' && 'MP4, WebM, MOV...'}
-                              {form.kind === 'audio' && 'MP3, WAV, OGG...'}
-                              {form.kind === 'document' && 'PDF, Word, Excel, PowerPoint, TXT...'}
-                              {!['image', 'video', 'audio', 'document'].includes(form.kind) && 'Tout type de fichier'}
+                              {form.data_format === 'image' && 'PNG, JPG, GIF, WebP...'}
+                              {form.data_format === 'video' && 'MP4, WebM, MOV...'}
+                              {form.data_format === 'audio' && 'MP3, WAV, OGG...'}
+                              {form.kind === 'doc' && form.data_format === 'text' && 'PDF, Word, Excel, PowerPoint, TXT...'}
                             </p>
                           </div>
                         </div>
@@ -2078,15 +2230,26 @@ export default function InjectBankPage() {
               )}
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Payload JSON (optionnel)</label>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-700">Payload JSON</label>
+                  {!editingItem && (
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, payload_json: JSON.stringify(buildPayloadSkeletonByType(f.inject_type), null, 2) }))}
+                      className="inline-flex items-center rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                    >
+                      Generer squelette
+                    </button>
+                  )}
+                </div>
                 <textarea
                   value={form.payload_json}
                   onChange={(e) => setForm((f) => ({ ...f, payload_json: e.target.value }))}
-                  rows={7}
+                  rows={10}
                   className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-xs"
                 />
               </div>
-            </div>
+            </section>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -2182,7 +2345,7 @@ export default function InjectBankPage() {
                     )
                   }
 
-                  if (mediaPreviewItem.kind === 'video') {
+                  if (mediaPreviewItem.data_format === 'video') {
                     return (
                       <video
                         controls
@@ -2192,7 +2355,7 @@ export default function InjectBankPage() {
                     )
                   }
 
-                  if (mediaPreviewItem.kind === 'image') {
+                  if (mediaPreviewItem.data_format === 'image') {
                     return (
                       <img
                         src={previewUrl}
@@ -2202,7 +2365,7 @@ export default function InjectBankPage() {
                     )
                   }
 
-                  if (mediaPreviewItem.kind === 'audio') {
+                  if (mediaPreviewItem.data_format === 'audio') {
                     return (
                       <audio controls src={previewUrl} className="w-full" />
                     )
@@ -2246,14 +2409,15 @@ export default function InjectBankPage() {
         isOpen={Boolean(previewItem)}
         onClose={closePreview}
         title={previewItem ? `${kindLabelMap[previewItem.kind] || previewItem.kind}: ${previewItem.title}` : 'Apercu'}
+        maxWidthClassName={(previewItem?.kind === 'mail' || previewItem?.kind === 'sms' || previewItem?.kind === 'socialnet') ? 'max-w-2xl' : 'max-w-md'}
       >
         {previewItem && (
           <div className="space-y-3">
-            {previewItem.summary && (
+            {previewItem.summary && previewItem.kind !== 'sms' && (
               <p className="text-sm text-gray-700">{previewItem.summary}</p>
             )}
 
-            {previewItem.content && (
+            {previewItem.content && previewItem.kind !== 'sms' && (
               <div>
                 <p className="mb-1 text-sm font-medium text-gray-700">Description</p>
                 <p className="rounded border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
@@ -2424,15 +2588,15 @@ export default function InjectBankPage() {
       </Modal>
 
       {/* Fullscreen Media Viewer */}
-      {mediaPreviewItem && (mediaPreviewItem.kind === 'image' || mediaPreviewItem.kind === 'video') && (
+      {mediaPreviewItem && (mediaPreviewItem.data_format === 'image' || mediaPreviewItem.data_format === 'video') && (
         <MediaViewer
           isOpen={Boolean(mediaPreviewItem)}
           onClose={closeMediaPreview}
           title={mediaPreviewItem.title}
-          imageUrl={mediaPreviewItem.kind === 'image' ? getPreviewUrlForItem(mediaPreviewItem) : null}
-          videoUrl={mediaPreviewItem.kind === 'video' ? getPreviewUrlForItem(mediaPreviewItem) : null}
+          imageUrl={mediaPreviewItem.data_format === 'image' ? getPreviewUrlForItem(mediaPreviewItem) : null}
+          videoUrl={mediaPreviewItem.data_format === 'video' ? getPreviewUrlForItem(mediaPreviewItem) : null}
           showDownload={true}
-          downloadUrl={mediaPreviewItem.kind === 'document' ? getPreviewUrlForItem(mediaPreviewItem) : null}
+          downloadUrl={mediaPreviewItem.kind === 'doc' ? getPreviewUrlForItem(mediaPreviewItem) : null}
         />
       )}
     </div>

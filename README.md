@@ -198,6 +198,14 @@ docker compose logs -f frontend
 
 - Sessions serveur (pas de JWT stocké côté client)
 - Protection CSRF sur toutes les mutations
+
+## 📚 Documentation
+
+- L’admin dispose d’un guide dédié (`ADMIN.md`) qui détaille les responsabilités de configuration, l’exploitation des données et les nouveaux points d’extension comme les schémas JSON exposés par l’API.
+- Les schémas canoniques accessibles via l’API permettent de valider les imports :
+  - `GET /api/inject-bank/schema` retourne le schéma Draft-07 de la banque d’injects.
+  - `GET /api/injects/schema/timeline` retourne le schéma Draft-07 des injects timeline (réutilise la définition banque via `allOf`).
+  Ces endpoints peuvent être utilisés dans les scripts d’import/export pour garantir la conformité JSON avant de pousser les données via `/inject-bank` ou `/injects`.
 - RBAC à deux niveaux : rôle global + rôle par exercice
 - Verrouillage de compte après échecs de connexion
 - Audit trail complet des actions

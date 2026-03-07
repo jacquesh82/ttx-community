@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
@@ -9,6 +10,7 @@ import {
   crisisManagementApi,
   ExerciseImportComponent,
   ExercisePresetId,
+  ExercisePhase,
   ExerciseRole,
   InjectBankKind,
   PluginInfo,
@@ -21,7 +23,6 @@ import {
   welcomeKitApi,
 } from '../services/api'
 import { INJECT_BANK_KIND_LABELS } from '../config/injectBank'
-import { useInjectBankKinds } from '../hooks/useInjectBank'
 import { simulatedApi } from '../services/simulatedApi'
 import {
   buildTimelineExport,
@@ -42,6 +43,15 @@ import { applyPresetNonDestructive, buildPresetPreview } from '../features/exerc
 import { computeExerciseSetupChecklist } from '../features/exercise-setup/completion'
 import { downloadImportTemplate } from '../features/exercise-setup/importTemplates'
 import { useAppDialog } from '../contexts/AppDialogContext'
+import {
+  DEFAULT_PHASES_LIST,
+  PHASE_COLOR_PALETTE,
+  PHASE_PRESET_DEFAULT_DURATIONS,
+  PHASE_PRESET_LABELS,
+  PHASE_PRESETS,
+  PhasePresetKey,
+} from '../features/phasePresets'
+import { TimelineType } from '../components/exercise/TimelineGantt'
 
 const EXERCISE_TYPE_LABELS: Record<string, string> = {
   cyber: 'Cyber',
@@ -63,6 +73,23 @@ const AXIS_LABELS: Record<string, string> = {
   political: 'Politique',
   media: 'Mediatique',
 }
+
+type CrisisCellRole = {
+  role: string
+  name: string
+  responsibility: string
+}
+
+const ROLE_TEAM_COLORS = [
+  '#f97316',
+  '#e11d48',
+  '#0ea5e9',
+  '#2563eb',
+  '#16a34a',
+  '#a855f7',
+  '#22d3ee',
+  '#fb923c',
+]
 
 function toDatetimeLocal(date?: string | null): string {
   if (!date) return ''
@@ -95,24 +122,22 @@ const DEFAULT_SIMULATOR_CONFIG = {
 }
 
 const DEFAULT_BANK_KIND_BY_COMPONENT: Record<ExerciseImportComponent, InjectBankKind> = {
-  socle: 'scenario',
-  scenario: 'scenario',
+  socle: 'story',
+  scenario: 'story',
   actors: 'directory',
-  timeline: 'chronogram',
+  timeline: 'doc',
   injects: 'mail',
-  plugins: 'video',
-  full: 'scenario',
+  plugins: 'tv',
+  full: 'story',
 }
 
 const CHANNELS_MEDIA_COMPATIBLE_BANK_KINDS: InjectBankKind[] = [
-  'video',
-  'image',
-  'social_post',
+  'tv',
+  'socialnet',
   'mail',
   'directory',
-  'message',
-  'reference_url',
-  'document',
+  'sms',
+  'doc',
 ]
 
 const BANK_CATEGORY_SUGGESTIONS = [
@@ -169,27 +194,77 @@ type SocleChoiceGroupConfig = {
   options: SocleOption[]
 }
 
+const DEFAULT_EXERCISE_TYPE_OPTIONS: SocleOption[] = [
+  { value: 'cyber', label: 'Cyber' },
+  { value: 'it_outage', label: 'Panne IT' },
+  { value: 'ransomware', label: 'Ransomware' },
+  { value: 'mixed', label: 'Mixte' },
+]
+
+const DEFAULT_EXERCISE_DURATION_VALUES = [4, 8, 24, 48]
+const DEFAULT_EXERCISE_DURATION_OPTIONS: SocleOption[] = DEFAULT_EXERCISE_DURATION_VALUES.map((value) => ({
+  value: String(value),
+  label: `${value}h`,
+}))
+
+const PRIMARY_SOCLE_GROUP_KEYS: SocleChoiceGroupConfig['key'][] = ['exercise_type', 'target_duration_hours']
+
+const parseExerciseTypeOptionsFromConfig = (raw: string | null | undefined): SocleOption[] => {
+  if (!raw) return DEFAULT_EXERCISE_TYPE_OPTIONS
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return DEFAULT_EXERCISE_TYPE_OPTIONS
+    const normalized: SocleOption[] = []
+    const seen = new Set<string>()
+    parsed.forEach((item: any) => {
+      if (!item || typeof item !== 'object') return
+      const value = typeof item.value === 'string' ? item.value.trim() : ''
+      const label = typeof item.label === 'string' ? item.label.trim() : ''
+      if (!value || !label || seen.has(value)) return
+      seen.add(value)
+      normalized.push({ value, label })
+    })
+    if (normalized.length > 0) return normalized
+  } catch {
+    // ignore malformed config
+  }
+  return DEFAULT_EXERCISE_TYPE_OPTIONS
+}
+
+const parseExerciseDurationValuesFromConfig = (raw: string | null | undefined): number[] => {
+  if (!raw) return DEFAULT_EXERCISE_DURATION_VALUES
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return DEFAULT_EXERCISE_DURATION_VALUES
+    const normalized: number[] = []
+    const seen = new Set<number>()
+    parsed.forEach((item: any) => {
+      const value = typeof item === 'number' ? item : parseInt(String(item), 10)
+      if (!Number.isInteger(value) || value <= 0 || seen.has(value)) return
+      seen.add(value)
+      normalized.push(value)
+    })
+    if (normalized.length > 0) {
+      return normalized.sort((a, b) => a - b)
+    }
+  } catch {
+    // ignore malformed config
+  }
+  return DEFAULT_EXERCISE_DURATION_VALUES
+}
+
 const SOCLE_GROUPS: SocleChoiceGroupConfig[] = [
   {
     key: 'exercise_type',
     label: "Type d'exercice",
     icon: ShieldCheck,
-    options: [
-      { value: 'cyber', label: 'Cyber' },
-      { value: 'it_outage', label: 'Panne IT' },
-      { value: 'ransomware', label: 'Ransomware' },
-      { value: 'mixed', label: 'Mixte' },
-    ],
+    options: DEFAULT_EXERCISE_TYPE_OPTIONS,
   },
   {
     key: 'target_duration_hours',
     label: 'Duree cible',
     icon: Clock3,
-    options: [
-      { value: '4', label: '4h' },
-      { value: '8', label: '8h' },
-      { value: '24', label: '24h' },
-    ],
+    options: DEFAULT_EXERCISE_DURATION_OPTIONS,
   },
   {
     key: 'maturity_level',
@@ -258,6 +333,7 @@ export default function ExerciseDetailPage() {
   const [selectedActorForTeam, setSelectedActorForTeam] = useState<any | null>(null)
   const [selectedActorTeamId, setSelectedActorTeamId] = useState<string>('0')
   const [selectedExerciseTeamToAttach, setSelectedExerciseTeamToAttach] = useState<string>('')
+  const [creatingCellRoleTeams, setCreatingCellRoleTeams] = useState<Set<string>>(() => new Set())
   const [pendingImportComponent, setPendingImportComponent] = useState<ExerciseImportComponent>('socle')
   const [pendingBankComponent, setPendingBankComponent] = useState<ExerciseImportComponent>('scenario')
   const [isBankModalOpen, setIsBankModalOpen] = useState(false)
@@ -299,6 +375,30 @@ export default function ExerciseDetailPage() {
     initial_context: '',
   })
 
+  const markCellRoleTeamLoading = (role: string, loading: boolean) => {
+    setCreatingCellRoleTeams((prev) => {
+      const next = new Set(prev)
+      if (loading) {
+        next.add(role)
+      } else {
+        next.delete(role)
+      }
+      return next
+    })
+  }
+
+  const buildCellRoleTeamName = (roleName: string) => `${roleName} - Exercice ${exerciseId}`
+
+  const togglePhaseSelection = (phaseName: string) => {
+    setPhaseModalSelection((prev) => {
+      if (prev.includes(phaseName)) {
+        if (prev.length === 1) return prev
+        return prev.filter((name) => name !== phaseName)
+      }
+      return [...prev, phaseName]
+    })
+  }
+
   const [objectivesForm, setObjectivesForm] = useState({
     business_objective: '',
     technical_objective: '',
@@ -309,8 +409,92 @@ export default function ExerciseDetailPage() {
   const [selectedRole, setSelectedRole] = useState<ExerciseRole>('joueur')
   const [actorSearch, setActorSearch] = useState('')
   const [actorRoleFilter, setActorRoleFilter] = useState<'all' | ExerciseRole>('all')
+  const [actorsTab, setActorsTab] = useState<'crisis_cell' | 'manual'>('crisis_cell')
+  const [selectedCrisisCellRoles, setSelectedCrisisCellRoles] = useState<string[]>([])
+  const [phaseModalOpen, setPhaseModalOpen] = useState(false)
+  const [phaseModalAutoOpened, setPhaseModalAutoOpened] = useState(false)
+  const [phaseModalSelection, setPhaseModalSelection] = useState<string[]>(DEFAULT_PHASES_LIST)
+  const [phaseDurations, setPhaseDurations] = useState<Record<string, number>>(() => {
+    const durations: Record<string, number> = {}
+    DEFAULT_PHASES_LIST.forEach((phase) => {
+      durations[phase] = 15
+    })
+    return durations
+  })
+  const initialPhaseConfig = useMemo(
+    () =>
+      phaseModalSelection.map((phase) => ({
+        name: phase,
+        durationMin: Math.max(1, Math.round(phaseDurations[phase] ?? 0)),
+      })),
+    [phaseDurations, phaseModalSelection]
+  )
+  const phaseSelectionInitializedRef = useRef(false)
+  const timelineBarRef = useRef<HTMLDivElement | null>(null)
+  type ActivePhaseResize = {
+    phase: string
+    initialDuration: number
+    initialX: number
+    totalMinutes: number
+  }
+  const [activeResize, setActiveResize] = useState<ActivePhaseResize | null>(null)
+
+  const DEFAULT_CRISIS_CELL_ROLES: CrisisCellRole[] = [
+    { role: 'crisis_director', name: 'Directeur de crise', responsibility: 'Décision stratégique et pilotage global' },
+    { role: 'deputy_director', name: 'Directeur adjoint', responsibility: 'Coordination et suivi des décisions' },
+    { role: 'cell_secretary', name: 'Secrétaire de cellule', responsibility: 'Main courante et traçabilité' },
+    { role: 'situation_manager', name: 'Responsable situation', responsibility: 'Analyse et synthèse de la situation' },
+    { role: 'operations_manager', name: 'Responsable opérations', responsibility: 'Pilotage des actions de réponse' },
+    { role: 'communication_manager', name: 'Responsable communication', responsibility: 'Communication interne et externe' },
+    { role: 'legal_advisor', name: 'Responsable juridique', responsibility: 'Gestion des obligations réglementaires' },
+    { role: 'business_representative', name: 'Responsable métier', responsibility: 'Continuité d\'activité' },
+  ]
+
+  const { data: appConfig } = useQuery({
+    queryKey: ['app-configuration'],
+    queryFn: adminApi.getAppConfiguration,
+  })
+
+  const crisisCellRoles = useMemo(() => {
+    const stored = appConfig?.crisis_cell_roles_config
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return DEFAULT_CRISIS_CELL_ROLES
+      }
+    }
+    return DEFAULT_CRISIS_CELL_ROLES
+  }, [appConfig])
+
+  const exerciseTypeOptions = useMemo(
+    () => parseExerciseTypeOptionsFromConfig(appConfig?.exercise_type_options_config),
+    [appConfig?.exercise_type_options_config]
+  )
+  const exerciseDurationValues = useMemo(
+    () => parseExerciseDurationValuesFromConfig(appConfig?.exercise_duration_options_config),
+    [appConfig?.exercise_duration_options_config]
+  )
+  const socleGroups = useMemo(() => {
+    const durationOptions = exerciseDurationValues.map((value) => ({
+      value: String(value),
+      label: `${value}h`,
+    }))
+    return SOCLE_GROUPS.map((group) => {
+      if (group.key === 'exercise_type') {
+        return { ...group, options: exerciseTypeOptions }
+      }
+      if (group.key === 'target_duration_hours') {
+        return { ...group, options: durationOptions }
+      }
+      return group
+    })
+  }, [exerciseDurationValues, exerciseTypeOptions])
+  const primarySocleGroups = socleGroups.filter((group) => PRIMARY_SOCLE_GROUP_KEYS.includes(group.key))
+  const secondarySocleGroups = socleGroups.filter((group) => !PRIMARY_SOCLE_GROUP_KEYS.includes(group.key))
+
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null)
-  const [bankKind, setBankKind] = useState<InjectBankKind>('scenario')
+  const [bankKind, setBankKind] = useState<InjectBankKind>('story')
   const [bankCategory, setBankCategory] = useState('')
   const [bankLimit, setBankLimit] = useState(25)
   const [bankSearch, setBankSearch] = useState('')
@@ -332,6 +516,11 @@ export default function ExerciseDetailPage() {
     enabled: !!exerciseId,
   })
 
+  const exerciseDurationMinutes = useMemo(
+    () => Math.max(60, (exercise?.target_duration_hours ?? 4) * 60),
+    [exercise?.target_duration_hours]
+  )
+
   const { data: scenario } = useQuery({
     queryKey: ['exercise-scenario', exerciseId],
     queryFn: () => crisisManagementApi.getScenario(exerciseId),
@@ -349,6 +538,92 @@ export default function ExerciseDetailPage() {
     queryFn: () => crisisManagementApi.listPhases(exerciseId),
     enabled: !!exerciseId,
   })
+
+  useEffect(() => {
+    if (phaseSelectionInitializedRef.current) return
+    if (phases.length === 0) return
+    setPhaseModalSelection(phases.map((phase) => phase.name))
+    phaseSelectionInitializedRef.current = true
+  }, [phases])
+
+  useEffect(() => {
+    setPhaseDurations((prev) => {
+      const next = { ...prev }
+      phaseModalSelection.forEach((phase) => {
+        if (!next[phase]) {
+          next[phase] = 15
+        }
+      })
+      return next
+    })
+  }, [phaseModalSelection])
+
+  const computeTotalMinutes = () =>
+    Math.max(
+      1,
+      phaseModalSelection.reduce((sum, phase) => sum + (phaseDurations[phase] || 0), 0)
+    )
+
+  const alignPhaseDurationsToExercise = () => {
+    const total = computeTotalMinutes()
+    if (total <= 0) {
+      return phaseDurations
+    }
+    const factor = exerciseDurationMinutes / total
+    const next: Record<string, number> = { ...phaseDurations }
+    phaseModalSelection.forEach((phase) => {
+      const base = phaseDurations[phase] ?? 15
+      next[phase] = Math.max(5, Math.round(base * factor))
+    })
+    setPhaseDurations(next)
+    return next
+  }
+
+  const applyPresetDurations = (presetKey: PhasePresetKey, presetPhases: string[]) => {
+    const presetDefaults = PHASE_PRESET_DEFAULT_DURATIONS[presetKey] ?? {}
+    const totalBase = presetPhases.reduce(
+      (sum, phase) => sum + (presetDefaults[phase] ?? 15),
+      0
+    )
+    const factor = totalBase > 0 ? exerciseDurationMinutes / totalBase : 1
+    const scaled: Record<string, number> = {}
+    presetPhases.forEach((phase) => {
+      const base = presetDefaults[phase] ?? 15
+      scaled[phase] = Math.max(5, Math.round(base * factor))
+    })
+    setPhaseModalSelection([...presetPhases])
+    setPhaseDurations((prev) => ({ ...prev, ...scaled }))
+  }
+
+  const startPhaseResize = (phase: string, event: ReactPointerEvent<HTMLSpanElement>) => {
+    event.preventDefault()
+    const totalMinutes = computeTotalMinutes()
+    setActiveResize({
+      phase,
+      initialDuration: phaseDurations[phase] || 15,
+      initialX: event.clientX,
+      totalMinutes,
+    })
+  }
+
+  useEffect(() => {
+    if (!activeResize) return undefined
+    const handleMove = (event: PointerEvent) => {
+      const rect = timelineBarRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const ratio = activeResize.totalMinutes / (rect.width || 1)
+      const deltaMinutes = (event.clientX - activeResize.initialX) * ratio
+      const updated = Math.min(180, Math.max(5, activeResize.initialDuration + deltaMinutes))
+      setPhaseDurations((prev) => ({ ...prev, [activeResize.phase]: updated }))
+    }
+    const handleUp = () => setActiveResize(null)
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+    }
+  }, [activeResize])
 
   const { data: triggerRules = [] } = useQuery({
     queryKey: ['exercise-trigger-rules', exerciseId],
@@ -394,10 +669,40 @@ export default function ExerciseDetailPage() {
 
   const users = exerciseUsersData?.users || []
   const injects = injectsData?.injects || []
+  const timelineMarkers = useMemo(() => {
+    if (!injects.length) return []
+    return injects.filter((inject) => inject.content?.marker === 'timeline-config')
+  }, [injects])
+
+  const hasTimelineMarkerFor = (timelineType: TimelineType) =>
+    timelineMarkers.some((inject) => (inject.timeline_type ?? 'business') === timelineType)
+
+  const timelineTypes: TimelineType[] = ['business', 'technical']
+  const hasAllTimelineMarkers = timelineTypes.every((type) => hasTimelineMarkerFor(type))
+
+  const handlePhaseModalConfirm = () => {
+    const alignedDurations = alignPhaseDurationsToExercise()
+    if (phaseModalSelection.length > 0) {
+      configurePhasesMutation.mutate({
+        selection: phaseModalSelection,
+        durations: alignedDurations,
+        existingPhases: phases ?? [],
+      })
+    }
+    timelineTypes.forEach((type) => {
+      if (!hasTimelineMarkerFor(type)) {
+        createTimelineMarkerMutation.mutate({ timelineType: type })
+      }
+    })
+    setPhaseModalOpen(false)
+  }
   const allTeams = teamsData?.teams || []
   const exerciseTeams = exerciseTeamsData?.teams || []
   const attachableTeams = allTeams.filter(
     (team: any) => !exerciseTeams.some((exerciseTeam: TeamSummary) => exerciseTeam.id === team.id)
+  )
+  const allCellRoleTeamsCreated = crisisCellRoles.every((cellRole) =>
+    exerciseTeams.some((team) => team.name === buildCellRoleTeamName(cellRole.name))
   )
   const filteredUsers = useMemo(() => {
     const search = actorSearch.trim().toLowerCase()
@@ -417,6 +722,13 @@ export default function ExerciseDetailPage() {
       return haystack.includes(search)
     })
   }, [users, actorSearch, actorRoleFilter])
+
+  useEffect(() => {
+    if (!canConfigure || phaseModalAutoOpened || injectsData === undefined) return
+    if (hasAllTimelineMarkers) return
+    setPhaseModalOpen(true)
+    setPhaseModalAutoOpened(true)
+  }, [canConfigure, phaseModalAutoOpened, hasAllTimelineMarkers, injectsData])
 
   const { data: bankCatalog, isFetching: isFetchingBankCatalog } = useQuery({
     queryKey: ['inject-bank-catalog', isBankModalOpen, bankKind, bankCategory, bankSearch],
@@ -781,6 +1093,63 @@ export default function ExerciseDetailPage() {
     onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible de detacher cette equipe."),
   })
 
+  const createCellRoleTeamMutation = useMutation({
+    mutationFn: async ({ role, color }: { role: CrisisCellRole; color: string }) => {
+      if (!exerciseId) {
+        throw new Error('Identifiant exercice invalide.')
+      }
+      const teamName = buildCellRoleTeamName(role.name)
+      const team = await teamsApi.create({
+        name: teamName,
+        description: role.responsibility,
+        color,
+      })
+      await exercisesApi.attachTeam(exerciseId, team.id)
+      return role
+    },
+    onSuccess: (_role, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['teams', 'exercise-detail', exerciseId] })
+      queryClient.invalidateQueries({ queryKey: ['exercise-teams', exerciseId] })
+      setFeedbackMessage(`Équipe "${variables.role.name}" créée et rattachée à l'exercice.`)
+    },
+    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible de créer cette équipe."),
+  })
+
+  const handleCreateAllCellRoleTeams = () => {
+    crisisCellRoles.forEach((cellRole, roleIndex) => {
+      const teamName = buildCellRoleTeamName(cellRole.name)
+      if (exerciseTeams.some((team) => team.name === teamName)) return
+      if (creatingCellRoleTeams.has(cellRole.role)) return
+      markCellRoleTeamLoading(cellRole.role, true)
+      createCellRoleTeamMutation.mutate(
+        { role: cellRole, color: ROLE_TEAM_COLORS[roleIndex % ROLE_TEAM_COLORS.length] },
+        {
+          onSettled: () => markCellRoleTeamLoading(cellRole.role, false),
+        }
+      )
+    })
+  }
+
+  const createTimelineMarkerMutation = useMutation({
+    mutationFn: ({ timelineType }: { timelineType: TimelineType }) =>
+      injectsApi.create({
+        exercise_id: exerciseId,
+        title: 'Configuration timeline validée',
+        description: 'Marqueur indiquant que la configuration initiale des phases est appliquée.',
+        type: 'system',
+        content: { marker: 'timeline-config' },
+        time_offset: 0,
+        duration_min: 1,
+        phase_id: undefined,
+        timeline_type: timelineType,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exercise-injects', exerciseId] })
+      setFeedbackMessage('Marqueur de timeline ajouté.')
+    },
+    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible d'ajouter le marqueur de timeline."),
+  })
+
   const applyPresetMutation = useMutation({
     mutationFn: () => {
       if (!exercise) throw new Error('Exercise not loaded')
@@ -1021,6 +1390,49 @@ export default function ExerciseDetailPage() {
     },
   })
 
+  const configurePhasesMutation = useMutation({
+    mutationFn: async ({
+      selection,
+      durations,
+      existingPhases,
+    }: {
+      selection: string[]
+      durations: Record<string, number>
+      existingPhases: ExercisePhase[]
+    }) => {
+      const sortedExisting = [...existingPhases].sort((a, b) => a.phase_order - b.phase_order)
+      let offset = 0
+      for (let index = 0; index < selection.length; index += 1) {
+        const name = selection[index]
+        const duration = Math.max(1, Math.round(durations[name] ?? 0))
+        const payload = {
+          name,
+          phase_order: index + 1,
+          start_offset_min: offset,
+          end_offset_min: offset + duration,
+        }
+        offset += duration
+        if (sortedExisting[index]) {
+          await crisisManagementApi.updatePhase(exerciseId, sortedExisting[index].id, payload)
+        } else {
+          await crisisManagementApi.createPhase(exerciseId, payload)
+        }
+      }
+      for (let index = selection.length; index < sortedExisting.length; index += 1) {
+        await crisisManagementApi.deletePhase(exerciseId, sortedExisting[index].id)
+      }
+    },
+    onSuccess: () => {
+      ;[
+        ['exercise-phases', exerciseId],
+        ['exercise-injects', exerciseId],
+      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
+      setFeedbackMessage('Phases synchronisées avec la configuration.')
+    },
+    onError: (err: any) =>
+      setErrorMessage(err.response?.data?.detail || 'Impossible de synchroniser les phases avec la configuration.'),
+  })
+
   const enabledPluginMap = useMemo(() => {
     const map = new Map<string, boolean>()
     for (const plugin of exercise?.plugins || []) map.set(plugin.plugin_type, plugin.enabled)
@@ -1131,6 +1543,35 @@ export default function ExerciseDetailPage() {
         ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-cyan-400 dark:bg-cyan-500/10 dark:text-cyan-200'
         : 'border-slate-200 bg-white text-slate-700 hover:border-primary-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-cyan-500'
     } ${!canConfigure ? 'cursor-not-allowed opacity-70' : ''}`
+
+  const renderSocleGroupCard = (group: SocleChoiceGroupConfig) => {
+    const Icon = group.icon
+    return (
+      <div key={group.key} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-3">
+        <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <Icon size={16} className="text-primary-600 dark:text-cyan-300" />
+          {group.label}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {group.options.map((opt) => {
+            const selected = socleForm[group.key] === opt.value
+            return (
+              <button
+                key={`${group.key}-${opt.value}`}
+                type="button"
+                disabled={!canConfigure}
+                aria-pressed={selected}
+                onClick={() => canConfigure && setSocleForm((prev) => ({ ...prev, [group.key]: opt.value }))}
+                className={socleOptionClass(selected)}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     const search = new URLSearchParams(location.search)
@@ -1277,35 +1718,11 @@ export default function ExerciseDetailPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {SOCLE_GROUPS.map((group) => {
-                  const Icon = group.icon
-                  return (
-                    <div key={group.key} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-3">
-                      <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        <Icon size={16} className="text-primary-600 dark:text-cyan-300" />
-                        {group.label}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {group.options.map((opt) => {
-                          const selected = socleForm[group.key] === opt.value
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              disabled={!canConfigure}
-                              aria-pressed={selected}
-                              onClick={() => canConfigure && setSocleForm((prev) => ({ ...prev, [group.key]: opt.value }))}
-                              className={socleOptionClass(selected)}
-                            >
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {primarySocleGroups.map(renderSocleGroupCard)}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
+                {secondarySocleGroups.map(renderSocleGroupCard)}
               </div>
             </div>
           </SetupSectionCard>
@@ -1364,6 +1781,115 @@ export default function ExerciseDetailPage() {
             summary={checklistSafe.sections.actors.summary}
             action={canConfigure ? <div className="flex items-center gap-2"><button onClick={() => launchImportFor('actors')} className="inline-flex items-center px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded hover:bg-slate-200"><Upload size={14} className="mr-1" /> Import</button><button onClick={() => downloadImportTemplate('actors')} className="inline-flex items-center px-3 py-2 bg-white border border-slate-300 text-slate-800 rounded hover:bg-slate-50">Exemple JSON</button><button onClick={() => openBankImportModal('actors')} disabled={importFromBankMutation.isPending} className="inline-flex items-center px-3 py-2 bg-primary-700 text-white rounded hover:bg-primary-800 disabled:opacity-50">Banque/type</button><div className="relative group"><button className="inline-flex items-center px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"><FileDown size={14} className="mr-1" /> Kit bienvenue</button><div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10"><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'player'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-joueurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits joueurs téléchargés.'); } catch (err: any) { setErrorMessage(err.response?.data?.detail || 'Erreur génération kits joueurs.'); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Joueurs</button><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'facilitator'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-animateurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits animateurs téléchargés.'); } catch (err: any) { setErrorMessage(err.response?.data?.detail || 'Erreur génération kits animateurs.'); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Animateurs</button></div></div></div> : undefined}
           >
+            <div className="flex border-b mb-4">
+              <button
+                onClick={() => setActorsTab('crisis_cell')}
+                className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${actorsTab === 'crisis_cell' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                Organisation de la cellule de crise
+              </button>
+              <button
+                onClick={() => setActorsTab('manual')}
+                className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${actorsTab === 'manual' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                Configuration manuelle
+              </button>
+            </div>
+
+            {actorsTab === 'crisis_cell' && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <p className="text-sm text-gray-600">Sélectionnez les rôles à inclure dans la cellule de crise de cet exercice.</p>
+                  {canConfigure && (
+                    <button
+                      type="button"
+                      onClick={handleCreateAllCellRoleTeams}
+                      disabled={!canConfigure || allCellRoleTeamsCreated || creatingCellRoleTeams.size > 0}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Plus size={12} />
+                      {creatingCellRoleTeams.size > 0 ? 'Création en cours' : 'Crée les équipes'}
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {crisisCellRoles.map((cellRole, roleIndex) => {
+                    const isSelected = selectedCrisisCellRoles.includes(cellRole.role)
+                    const roleTeamName = buildCellRoleTeamName(cellRole.name)
+                    const isTeamAttached = exerciseTeams.some((team) => team.name === roleTeamName)
+                    const isCreatingRoleTeam = creatingCellRoleTeams.has(cellRole.role)
+                    const containerHighlight = isSelected
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                    const buttonStateClasses = isTeamAttached
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700 cursor-not-allowed'
+                      : isCreatingRoleTeam
+                        ? 'bg-slate-100 border-slate-300 text-slate-500 cursor-wait'
+                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+                    const roleColor = ROLE_TEAM_COLORS[roleIndex % ROLE_TEAM_COLORS.length]
+                    const buttonLabel = isTeamAttached
+                      ? "Équipe prête"
+                      : isCreatingRoleTeam
+                        ? 'Création...'
+                        : "Créer l'équipe"
+
+                    return (
+                      <div
+                        key={cellRole.role}
+                        className={`space-y-2 p-3 border rounded-md ${containerHighlight}`}
+                      >
+                        <label
+                          className="flex items-start gap-3 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedCrisisCellRoles([...selectedCrisisCellRoles, cellRole.role])
+                              } else {
+                                setSelectedCrisisCellRoles(selectedCrisisCellRoles.filter((r) => r !== cellRole.role))
+                              }
+                            }}
+                            className="mt-1"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900">{cellRole.name}</div>
+                            <div className="text-xs text-gray-500">{cellRole.responsibility}</div>
+                          </div>
+                        </label>
+                        {canConfigure && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isTeamAttached || isCreatingRoleTeam) return
+                              markCellRoleTeamLoading(cellRole.role, true)
+                              createCellRoleTeamMutation.mutate(
+                                { role: cellRole, color: roleColor },
+                                {
+                                  onSettled: () => markCellRoleTeamLoading(cellRole.role, false),
+                                }
+                              )
+                            }}
+                            disabled={!canConfigure || isTeamAttached || isCreatingRoleTeam}
+                            className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-md border transition ${buttonStateClasses}`}
+                          >
+                            <Plus size={12} />
+                            {buttonLabel}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {selectedCrisisCellRoles.length} rôle(s) sélectionné(s)
+                </div>
+              </div>
+            )}
+
+            {actorsTab === 'manual' && (
+              <div>
             {canConfigure && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
                 <select value={selectedUserId || ''} onChange={(e) => setSelectedUserId(e.target.value ? parseInt(e.target.value, 10) : null)} className="px-3 py-2 border border-gray-300 rounded-md md:col-span-2">
@@ -1522,6 +2048,8 @@ export default function ExerciseDetailPage() {
                 </div>
               ))}
             </div>
+              </div>
+            )}
           </SetupSectionCard>
         )}
 
@@ -1577,11 +2105,175 @@ export default function ExerciseDetailPage() {
                       >
                         {resetPhasesFromOptionsMutation.isPending ? 'Reset...' : 'Reset phases'}
                       </button>
+                      <button
+                        onClick={() => setPhaseModalOpen(true)}
+                        className="inline-flex items-center px-2 py-1 text-xs bg-slate-100 border border-slate-200 text-slate-700 rounded hover:bg-slate-200"
+                      >
+                        <Clock3 size={14} className="mr-1" />
+                        Configurer la timeline
+                      </button>
                     </>
                   )}
                 </div>
               </div>
             </div>
+
+            {phaseModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+                <div
+                  className="absolute inset-0 bg-black/40"
+                  onClick={() => setPhaseModalOpen(false)}
+                />
+                <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                      <div className="text-lg font-semibold text-gray-900">Configuration initiale de la timeline</div>
+                      <p className="text-sm text-gray-500">Choisissez les phases à traiter et ajustez leur durée avant d’ajouter des injects.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPhaseModalOpen(false)}
+                      className="text-xs uppercase tracking-wide text-slate-400 hover:text-slate-600"
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6 py-6">
+                    <div className="space-y-4">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Presets de phases</div>
+                      <div className="flex flex-wrap gap-3">
+                        {Object.entries(PHASE_PRESETS).map(([key, preset]) => {
+                          const presetKey = key as PhasePresetKey
+                          const isActivePreset =
+                            preset.length === phaseModalSelection.length &&
+                            preset.every((phase) => phaseModalSelection.includes(phase))
+                          const label = PHASE_PRESET_LABELS[presetKey]
+                          const defaultDurations = PHASE_PRESET_DEFAULT_DURATIONS[presetKey] ?? {}
+                          const summaryTitle = preset
+                            .slice(0, 5)
+                            .map((phase) => `${phase} ${defaultDurations[phase] ?? 15}m`)
+                            .join(' · ')
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => applyPresetDurations(presetKey, preset)}
+                              title={`Répartition par défaut : ${summaryTitle}`}
+                              className={`px-3 py-1 text-xs font-semibold rounded border transition ${
+                                isActivePreset
+                                  ? 'bg-slate-900 text-white border-slate-900'
+                                  : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Phases disponibles</div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {DEFAULT_PHASES_LIST.map((phase) => {
+                          const isActive = phaseModalSelection.includes(phase)
+                          return (
+                            <label
+                              key={phase}
+                              className={`flex items-center justify-between px-3 py-2 rounded-lg border ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 text-gray-600'}`}
+                            >
+                              <span className="text-sm">{phase}</span>
+                              <input
+                                type="checkbox"
+                                checked={isActive}
+                                onChange={() => togglePhaseSelection(phase)}
+                                className="form-checkbox h-4 w-4 text-blue-600"
+                              />
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Timeline estimée</div>
+                        <div className="text-xs text-gray-600">
+                          {computeTotalMinutes()} / {exerciseDurationMinutes} min (exercice)
+                        </div>
+                      </div>
+                      <div
+                        ref={timelineBarRef}
+                        className="h-12 rounded-xl overflow-hidden shadow-inner shadow-[0_20px_60px_rgba(15,23,42,0.25)] bg-gradient-to-r from-slate-200 to-slate-300 flex text-[10px] uppercase relative"
+                      >
+                        {phaseModalSelection.length === 0 ? (
+                          <div className="flex-1 flex items-center justify-center text-slate-400">Aucune phase sélectionnée</div>
+                        ) : (
+                          (() => {
+                            const total = computeTotalMinutes()
+                            const timelineBarTotal = Math.max(total, exerciseDurationMinutes)
+                            return (
+                              <>
+                                {phaseModalSelection.map((phase, index) => {
+                                  const duration = phaseDurations[phase] || 0
+                                  const widthPercent = (duration / timelineBarTotal) * 100
+                                  const color = PHASE_COLOR_PALETTE[index % PHASE_COLOR_PALETTE.length]
+                                  return (
+                                    <div
+                                      key={`${phase}-${index}`}
+                                      style={{
+                                        width: `${widthPercent}%`,
+                                        backgroundColor: color,
+                                        boxShadow: 'inset 0 -14px 24px rgba(0,0,0,0.25)',
+                                      }}
+                                      className="relative flex items-center justify-center text-xs font-semibold text-white border-r border-white/30 shadow-[0_10px_20px_rgba(15,23,42,0.25)]"
+                                    >
+                                      <span className="px-2">{phase.substring(0, 3)} {Math.round(duration)}m</span>
+                                      <span
+                                        className="absolute inset-y-0 right-0 w-2 cursor-ew-resize"
+                                        onPointerDown={(event) => startPhaseResize(phase, event)}
+                                      />
+                                    </div>
+                                  )
+                                })}
+                                {total < exerciseDurationMinutes && (
+                                  <div
+                                    className="absolute inset-y-0 right-0 flex items-center justify-center px-2 text-[10px] font-semibold text-slate-600 bg-white/70 border-l border-slate-200"
+                                    style={{ width: `${((exerciseDurationMinutes - total) / timelineBarTotal) * 100}%` }}
+                                  >
+                                    {Math.round(exerciseDurationMinutes - total)} min restantes
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {phaseModalSelection.map((phase) => (
+                          <div key={`duration-${phase}`} className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-gray-700 w-32">{phase}</span>
+                            <span className="text-xs font-semibold text-gray-900">{Math.round(phaseDurations[phase] || 0)} min</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPhaseModalOpen(false)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100"
+                        >
+                          Fermer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePhaseModalConfirm}
+                          className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                        >
+                          Confirmer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="px-3 pt-3 border-b border-gray-100 bg-slate-50">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1663,6 +2355,7 @@ export default function ExerciseDetailPage() {
                   businessObjective={exercise?.business_objective}
                   technicalObjective={exercise?.technical_objective}
                   showTimeGrainSelector={false}
+                  initialPhaseConfig={initialPhaseConfig}
                 />
               </div>
             )}

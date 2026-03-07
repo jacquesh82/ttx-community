@@ -6,7 +6,6 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.crisis_management import ExerciseMaturityLevel, ExerciseMode, ExerciseType
 
 
 class ExerciseStatus(str, enum.Enum):
@@ -40,14 +39,10 @@ class Exercise(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     time_multiplier: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("1.0"), nullable=False)
-    exercise_type: Mapped[ExerciseType] = mapped_column(Enum(ExerciseType), nullable=False, default=ExerciseType.CYBER)
+    exercise_type: Mapped[str] = mapped_column(String(50), nullable=False, default="cyber")
     target_duration_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
-    maturity_level: Mapped[ExerciseMaturityLevel] = mapped_column(
-        Enum(ExerciseMaturityLevel),
-        nullable=False,
-        default=ExerciseMaturityLevel.BEGINNER,
-    )
-    mode: Mapped[ExerciseMode] = mapped_column(Enum(ExerciseMode), nullable=False, default=ExerciseMode.REAL_TIME)
+    maturity_level: Mapped[str] = mapped_column(String(50), nullable=False, default="beginner")
+    mode: Mapped[str] = mapped_column(String(50), nullable=False, default="real_time")
     planned_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     business_objective: Mapped[str | None] = mapped_column(Text, nullable=True)

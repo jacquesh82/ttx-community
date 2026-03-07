@@ -51,6 +51,8 @@ import {
 } from 'lucide-react'
 import Modal from '../Modal'
 import { useAppDialog } from '../../contexts/AppDialogContext'
+import { PHASE_COLOR_PALETTE } from '../../features/phasePresets'
+import { formatSchemaError, validateWithSchema } from '../../utils/jsonSchemaValidation'
 
 const BANK_KIND_CONFIG_BASE: Record<InjectBankKind, { bg: string; color: string; icon: React.ElementType }> = {
   idea: { bg: '#f59e0b', color: '#b45309', icon: Lightbulb },          // amber
@@ -94,26 +96,22 @@ const BANK_KIND_TO_INJECT_TYPE: Record<InjectBankKind, InjectType> = {
 
 const INJECT_TYPE_TO_BANK_KIND: Record<InjectType, InjectBankKind> = {
   mail: 'mail',
-  twitter: 'social_post',
-  tv: 'video',
-  decision: 'scenario',
-  score: 'chronogram',
+  twitter: 'socialnet',
+  tv: 'tv',
+  decision: 'story',
+  score: 'story',
   system: 'directory',
 }
 
 const BANK_KIND_ORDER_FALLBACK: InjectBankKind[] = [
   'mail',
-  'social_post',
-  'message',
-  'scenario',
-  'chronogram',
-  'video',
-  'audio',
-  'image',
-  'document',
+  'sms',
+  'call',
+  'socialnet',
+  'tv',
+  'doc',
   'directory',
-  'reference_url',
-  'idea',
+  'story',
 ]
 
 const isInjectType = (value: unknown): value is InjectType => {
@@ -222,7 +220,12 @@ const DEFAULT_PHASES = [
   { name: 'RETEX', order: 7 },
 ]
 
-type TimelineType = 'business' | 'technical'
+interface InitialPhaseConfig {
+  name: string
+  durationMin: number
+}
+
+export type TimelineType = 'business' | 'technical'
 
 interface TimelineGanttProps {
   exerciseId: number
@@ -236,6 +239,7 @@ interface TimelineGanttProps {
   technicalObjective?: string | null
   showControls?: boolean
   showTimeGrainSelector?: boolean
+  initialPhaseConfig?: InitialPhaseConfig[]
 }
 
 export default function TimelineGantt({
@@ -250,12 +254,49 @@ export default function TimelineGantt({
   technicalObjective,
   showControls = true,
   showTimeGrainSelector = true,
+  initialPhaseConfig = [],
 }: TimelineGanttProps) {
   const appDialog = useAppDialog()
   const queryClient = useQueryClient()
 
+  const initialPhaseDurationMap = useMemo(() => {
+    const map = new Map<string, number>()
+    initialPhaseConfig.forEach((phase) => {
+      const duration = Math.max(0, Math.round(phase.durationMin ?? 0))
+      if (duration > 0) {
+        map.set(phase.name, duration)
+      }
+    })
+    return map
+  }, [initialPhaseConfig])
+
+  const resolvePhaseTiming = (phase: ExercisePhase | null) => {
+    if (!phase) {
+      return { startMin: 0, endMin: 0, durationMin: 0 }
+    }
+    const startMin = phase.start_offset_min ?? 0
+    const rawEnd = phase.end_offset_min
+    const fallbackDuration = initialPhaseDurationMap.get(phase.name) ?? 0
+    const durationFromEnd = typeof rawEnd === 'number' && rawEnd >= startMin ? rawEnd - startMin : null
+    const durationMin = durationFromEnd !== null ? durationFromEnd : fallbackDuration
+    const endMin = durationFromEnd !== null ? rawEnd : startMin + durationMin
+    return {
+      startMin,
+      endMin,
+      durationMin: Math.max(0, durationMin),
+    }
+  }
+
   const { data: bankKinds } = useInjectBankKinds()
   const { data: injectTypes } = useInjectTypes()
+  const { data: bankSchemaPayload } = useQuery({
+    queryKey: ['inject-bank-schema'],
+    queryFn: () => injectBankApi.getSchema(),
+  })
+  const { data: timelineInjectSchemaPayload } = useQuery({
+    queryKey: ['timeline-inject-schema'],
+    queryFn: () => injectsApi.getTimelineSchema(),
+  })
 
   const bankTypeOptions = useMemo(() => {
     const kinds = bankKinds && bankKinds.length > 0 ? bankKinds : BANK_KIND_ORDER_FALLBACK
@@ -579,7 +620,7 @@ export default function TimelineGantt({
   // Legend based on filtered injects
   const legendKinds = useMemo(() => {
     if (filteredInjects.length === 0) {
-      return ['mail', 'social_post', 'scenario', 'video', 'document'] as InjectBankKind[]
+      return ['mail', 'socialnet', 'story', 'tv', 'doc'] as InjectBankKind[]
     }
     const usedKinds = new Set<InjectBankKind>()
     filteredInjects.forEach((inject: Inject) => {
@@ -618,23 +659,33 @@ export default function TimelineGantt({
       phases.sort((a: ExercisePhase, b: ExercisePhase) => a.phase_order - b.phase_order).forEach((p: ExercisePhase) => ordered.push(p))
       return ordered
     }
-    // Sinon, utiliser les phases par défaut localement (sans ID)
+    // Sinon, utiliser les phases par défaut localement (sans ID) ou celles fournies via la configuration initiale
+    const fallbackPhases = initialPhaseConfig && initialPhaseConfig.length > 0
+      ? initialPhaseConfig.map((phase, index) => ({
+        name: phase.name,
+        order: index + 1,
+        durationMin: Math.max(1, Math.round(phase.durationMin ?? 0)),
+      }))
+      : DEFAULT_PHASES.map((p) => ({ name: p.name, order: p.order, durationMin: 15 }))
+
     const defaultOrdered: (ExercisePhase | null)[] = [null]
-    DEFAULT_PHASES.forEach((p) => {
+    let cumulativeOffset = 0
+    fallbackPhases.forEach((phase) => {
       defaultOrdered.push({
-        id: -p.order, // ID négatif pour indiquer que c'est une phase locale
+        id: -phase.order, // ID négatif pour indiquer que c'est une phase locale
         exercise_id: exerciseId,
-        name: p.name,
-        phase_order: p.order,
+        name: phase.name,
+        phase_order: phase.order,
         description: null,
         start_time: null,
         end_time: null,
-        start_offset_min: null,
-        end_offset_min: null,
+        start_offset_min: cumulativeOffset,
+        end_offset_min: cumulativeOffset + phase.durationMin,
       } as ExercisePhase)
+      cumulativeOffset += phase.durationMin
     })
     return defaultOrdered
-  }, [phases, exerciseId])
+  }, [phases, exerciseId, initialPhaseConfig])
   
   // Initialisation automatique des phases par défaut
   const initDefaultPhasesMutation = useMutation({
@@ -782,6 +833,8 @@ export default function TimelineGantt({
   }, [orderedPhases, injectsByPhase])
   
   // Calculer la largeur du SVG (étendue en mode scroll)
+  const getPhaseColor = (index: number) => PHASE_COLOR_PALETTE[index % PHASE_COLOR_PALETTE.length]
+
   const svgWidth = useMemo(() => {
     if (scrollMode && filteredInjects.length > 0) {
       // En mode scroll, calculer une largeur qui permet d'afficher tous les injects
@@ -869,6 +922,33 @@ export default function TimelineGantt({
       currentY += phaseHeight
     })
     
+    // Marqueurs de fin théorique par phase
+    const phaseMarkerG = g.append('g')
+    phaseRowLayouts.forEach((layout, phaseIndex) => {
+      const phase = orderedPhases[phaseIndex]
+      if (!phase) return
+      const markerTiming = resolvePhaseTiming(phase)
+      if (markerTiming.endMin <= timeRange.startMin && markerTiming.endMin <= markerTiming.startMin) return
+      const markerX = xScale(markerTiming.endMin)
+      if (Number.isNaN(markerX) || markerX < -10 || markerX > timelineWidth + 10) return
+      const y = phaseYPositions[phaseIndex]
+      const h = phaseHeights[phaseIndex]
+      phaseMarkerG.append('line')
+        .attr('x1', markerX)
+        .attr('x2', markerX)
+        .attr('y1', y + 2)
+        .attr('y2', y + h - 2)
+        .attr('stroke', getPhaseColor(phaseIndex))
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '6 3')
+        .attr('opacity', 0.65)
+      phaseMarkerG.append('text')
+        .attr('x', markerX + 3)
+        .attr('y', y + 14)
+        .attr('class', 'text-[10px] font-semibold fill-slate-600')
+        .text('Fin théorique')
+    })
+    
     // Fond rouge translucide pour le dépassement de temps (au-delà de targetDurationHours)
     const targetDurationMin = targetDurationHours * 60
     if (timeRange.endMin > targetDurationMin) {
@@ -913,15 +993,16 @@ export default function TimelineGantt({
     phaseRowLayouts.forEach((layout, phaseIndex) => {
       const y = phaseYPositions[phaseIndex]
       const h = phaseHeights[phaseIndex]
-      
-      // Fond de ligne
+      const baseColor = getPhaseColor(phaseIndex)
+      const fillColor = d3.color(baseColor)
+      if (fillColor) fillColor.opacity = 0.08
       g.append('rect')
         .attr('x', 0)
         .attr('y', y)
         .attr('width', timelineWidth)
         .attr('height', h)
-        .attr('fill', phaseIndex % 2 === 0 ? '#f9fafb' : '#ffffff')
-        .attr('stroke', '#e5e7eb')
+        .attr('fill', fillColor ? fillColor.toString() : '#f9fafb')
+        .attr('stroke', baseColor)
         .attr('stroke-width', 0.5)
     })
     
@@ -1201,6 +1282,10 @@ export default function TimelineGantt({
       const phase = orderedPhases[phaseIndex]
       const fullName = phase?.name ?? 'Sans phase'
       const displayName = fullName.length > 28 ? `${fullName.slice(0, 27)}…` : fullName
+      const phaseTiming = phase ? resolvePhaseTiming(phase) : null
+      const durationSuffix = phaseTiming ? ` (${Math.round(phaseTiming.durationMin)} min)` : ''
+      const labelText = phase ? `${displayName}${durationSuffix}` : displayName
+      const tooltipText = phase ? `${fullName}${durationSuffix}` : fullName
       const phaseId = phase?.id ?? null
       const isSelected = selectedPhaseId === phaseId
       const isLoading = false
@@ -1222,9 +1307,9 @@ export default function TimelineGantt({
         .attr('x', 10)
         .attr('y', y + h / 2 + 5)
         .attr('class', `text-xs font-medium ${isSelected ? 'fill-primary-700' : 'fill-gray-700'}`)
-        .text(displayName)
+        .text(labelText)
         .style('cursor', 'pointer')
-      phaseText.append('title').text(fullName)
+      phaseText.append('title').text(tooltipText)
       
       
       // Clic pour sélectionner la phase
@@ -1658,6 +1743,13 @@ export default function TimelineGantt({
       // Valider et créer chaque inject
       const errors: string[] = []
       const created: string[] = []
+
+      if (!timelineInjectSchemaPayload?.schema) {
+        throw new Error('Schema timeline indisponible')
+      }
+      if (!bankSchemaPayload?.schema) {
+        throw new Error('Schema banque indisponible')
+      }
       
       for (let i = 0; i < injectsToImport.length; i++) {
         const inj = injectsToImport[i]
@@ -1692,18 +1784,42 @@ export default function TimelineGantt({
         
         // Créer l'inject
         try {
-          await injectsApi.create({
+          const candidate = {
             exercise_id: exerciseId,
             title: inj.title,
             type: inj.type,
+            kind: INJECT_TYPE_TO_BANK_KIND[inj.type] || 'other',
+            status: 'draft' as const,
             time_offset: inj.time_offset,
             duration_min: inj.duration_min || 15,
-            phase_id: resolvedPhaseId,
+            phase_id: resolvedPhaseId ?? null,
             description: inj.description,
             data_format: inj.data_format || 'text',
             audiences: Array.isArray(inj.audiences) ? inj.audiences : [],
             content: inj.content || {},
             timeline_type: timelineType,
+          }
+          const validation = validateWithSchema(
+            timelineInjectSchemaPayload.schema,
+            candidate,
+            [bankSchemaPayload.schema]
+          )
+          if (!validation.valid) {
+            errors.push(`Inject #${i + 1} (${inj.title}): ${formatSchemaError(validation.errors[0])}`)
+            continue
+          }
+          await injectsApi.create({
+            exercise_id: candidate.exercise_id,
+            title: candidate.title,
+            type: candidate.type,
+            time_offset: candidate.time_offset,
+            duration_min: candidate.duration_min,
+            phase_id: resolvedPhaseId,
+            description: candidate.description,
+            data_format: candidate.data_format,
+            audiences: candidate.audiences,
+            content: candidate.content,
+            timeline_type: candidate.timeline_type,
           })
           created.push(inj.title)
         } catch (e) {

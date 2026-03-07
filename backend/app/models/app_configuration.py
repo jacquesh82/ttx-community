@@ -28,8 +28,14 @@ class AppConfiguration(Base):
     # Default exercise settings
     default_exercise_duration_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     default_time_multiplier: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    default_exercise_type: Mapped[str] = mapped_column(String(50), nullable=False, default="cyber")
     default_maturity_level: Mapped[str] = mapped_column(String(20), nullable=False, default="intermediate")
     default_exercise_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="real_time")
+    exercise_type_options_config: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exercise_duration_options_config: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exercise_maturity_options_config: Mapped[str | None] = mapped_column(Text, nullable=True)
+    exercise_mode_options_config: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crisis_cell_roles_config: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Features toggles
     enable_tv_plugin: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -78,8 +84,14 @@ DEFAULT_APP_CONFIG = {
     "organization_keywords": None,
     "default_exercise_duration_hours": 4,
     "default_time_multiplier": 1,
+    "default_exercise_type": "cyber",
     "default_maturity_level": "intermediate",
     "default_exercise_mode": "real_time",
+    "exercise_type_options_config": '[{"value":"cyber","label":"Cyber"},{"value":"it_outage","label":"Panne IT"},{"value":"ransomware","label":"Ransomware"},{"value":"mixed","label":"Mixte"}]',
+    "exercise_duration_options_config": "[4,8,24]",
+    "exercise_maturity_options_config": '[{"value":"beginner","label":"Débutant"},{"value":"intermediate","label":"Intermédiaire"},{"value":"expert","label":"Expert"}]',
+    "exercise_mode_options_config": '[{"value":"real_time","label":"Temps réel"},{"value":"compressed","label":"Compressé"},{"value":"simulated","label":"Simulé"}]',
+    "crisis_cell_roles_config": None,
     "enable_tv_plugin": True,
     "enable_social_plugin": True,
     "enable_welcome_kits": True,

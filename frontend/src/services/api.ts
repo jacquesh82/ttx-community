@@ -3,9 +3,9 @@ import { useAuthStore } from '../stores/authStore'
 
 // User Types
 export type ExerciseRole = 'animateur' | 'observateur' | 'joueur'
-export type ExerciseType = 'cyber' | 'it_outage' | 'ransomware' | 'mixed'
-export type ExerciseMaturityLevel = 'beginner' | 'intermediate' | 'expert'
-export type ExerciseMode = 'real_time' | 'compressed' | 'simulated'
+export type ExerciseType = string
+export type ExerciseMaturityLevel = string
+export type ExerciseMode = string
 export type ExercisePhasePreset = 'minimal' | 'classique' | 'precis' | 'full'
 export type InjectVisibilityScope = 'team_only' | 'user_only' | 'all'
 
@@ -56,23 +56,16 @@ export interface WsTicketResponse {
   scope: WsTicketScope
 }
 
+/** Canonical inject kinds — defined by inject-bank-item.schema.json */
 export type InjectBankKind =
-  | 'idea'
-  | 'video'
-  | 'audio'
-  | 'scenario'
-  | 'chronogram'
-  | 'image'
   | 'mail'
-  | 'message'
+  | 'sms'
+  | 'call'
+  | 'socialnet'
+  | 'tv'
+  | 'doc'
   | 'directory'
-  | 'reference_url'
-  | 'social_post'
-  | 'document'
-  | 'canal_press'
-  | 'canal_anssi'
-  | 'canal_gouvernement'
-  | 'other'
+  | 'story'
 
 export type InjectBankStatus = 'draft' | 'ready' | 'archived'
 export type InjectDataFormat = 'text' | 'audio' | 'video' | 'image'
@@ -117,6 +110,10 @@ export interface InjectBankSchemaPayload {
   schema: Record<string, any>
 }
 
+export interface TimelineInjectSchemaPayload {
+  schema: Record<string, any>
+}
+
 // Plugin Types
 export type PluginType = string
 
@@ -136,6 +133,22 @@ export interface ExercisePlugin {
   enabled: boolean
   configuration: Record<string, any> | null
   info: PluginInfo
+}
+
+export interface ExerciseSelectOption {
+  value: string
+  label: string
+}
+
+export interface ExerciseCreationOptions {
+  exercise_type_options: ExerciseSelectOption[]
+  exercise_duration_options: number[]
+  exercise_maturity_options: ExerciseSelectOption[]
+  exercise_mode_options: ExerciseSelectOption[]
+  default_exercise_type: string
+  default_exercise_duration_hours: number
+  default_maturity_level: string
+  default_exercise_mode: string
 }
 
 export interface Exercise {
@@ -258,6 +271,10 @@ export const authApi = {
 
 // Exercises API
 export const exercisesApi = {
+  getCreationOptions: async (): Promise<ExerciseCreationOptions> => {
+    const response = await api.get('/exercises/creation-options')
+    return response.data
+  },
   list: async (params?: { page?: number; page_size?: number; status?: string }) => {
     const response = await api.get('/exercises', { params })
     return response.data
@@ -546,6 +563,10 @@ export const injectsApi = {
   getTypes: async (): Promise<InjectType[]> => {
     const response = await api.get('/injects/types')
     return response.data.types
+  },
+  getTimelineSchema: async (): Promise<TimelineInjectSchemaPayload> => {
+    const response = await api.get('/injects/schema/timeline')
+    return response.data
   },
 }
 
@@ -1532,8 +1553,14 @@ export interface AppConfiguration {
   organization_keywords: string | null
   default_exercise_duration_hours: number
   default_time_multiplier: number
+  default_exercise_type: string
   default_maturity_level: string
   default_exercise_mode: string
+  exercise_type_options_config: string | null
+  exercise_duration_options_config: string | null
+  exercise_maturity_options_config: string | null
+  exercise_mode_options_config: string | null
+  crisis_cell_roles_config: string | null
   enable_tv_plugin: boolean
   enable_social_plugin: boolean
   enable_welcome_kits: boolean

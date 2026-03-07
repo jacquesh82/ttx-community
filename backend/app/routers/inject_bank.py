@@ -17,13 +17,30 @@ from app.models import Media, MediaVisibility
 from app.models.inject_bank import InjectBankItem, InjectBankKind, InjectBankStatus
 from app.models.user import UserRole
 from app.routers.auth import require_auth, require_role
-from app.services.inject_bank_schema import get_inject_bank_schema
+from app.services.inject_bank_schema import (
+    SchemaValidationException,
+    get_inject_bank_schema,
+    validate_schema_payload,
+)
 from app.services.media_service import media_service
 from app.utils.tenancy import TenantRequestContext, require_tenant_context
 
 router = APIRouter()
 
 INJECT_DATA_FORMATS = {"text", "audio", "video", "image"}
+BANK_SCHEMA_FIELDS = {
+    "custom_id",
+    "title",
+    "kind",
+    "status",
+    "category",
+    "data_format",
+    "summary",
+    "content",
+    "source_url",
+    "payload",
+    "tags",
+}
 
 
 def _normalize_data_format(value: str | None) -> str:
@@ -35,25 +52,6 @@ def _normalize_data_format(value: str | None) -> str:
     return normalized
 
 
-# Mapping for uppercase kind values to lowercase enum values
-_UPPERCASE_KIND_MAP = {
-    "IDEA": InjectBankKind.IDEA,
-    "VIDEO": InjectBankKind.VIDEO,
-    "AUDIO": InjectBankKind.AUDIO,
-    "SCENARIO": InjectBankKind.SCENARIO,
-    "CHRONOGRAM": InjectBankKind.CHRONOGRAM,
-    "IMAGE": InjectBankKind.IMAGE,
-    "MAIL": InjectBankKind.MAIL,
-    "MESSAGE": InjectBankKind.MESSAGE,
-    "DIRECTORY": InjectBankKind.DIRECTORY,
-    "REFERENCE_URL": InjectBankKind.REFERENCE_URL,
-    "SOCIAL_POST": InjectBankKind.SOCIAL_POST,
-    "DOCUMENT": InjectBankKind.DOCUMENT,
-    "CANAL_PRESS": InjectBankKind.CANAL_PRESS,
-    "CANAL_ANSSI": InjectBankKind.CANAL_ANSSI,
-    "CANAL_GOUVERNEMENT": InjectBankKind.CANAL_GOUVERNEMENT,
-    "OTHER": InjectBankKind.OTHER,
-}
 
 # Mapping for uppercase status values to lowercase enum values
 _UPPERCASE_STATUS_MAP = {
@@ -66,24 +64,15 @@ _UPPERCASE_STATUS_MAP = {
 
 
 def _normalize_kind(value: InjectBankKind | str) -> InjectBankKind:
-    """Normalize kind value, handling both uppercase and lowercase strings."""
+    """Normalize kind value. Canonical values are the JSON schema enum values."""
     if isinstance(value, InjectBankKind):
         return value
     if isinstance(value, str):
-        # Try uppercase mapping first
-        if value in _UPPERCASE_KIND_MAP:
-            return _UPPERCASE_KIND_MAP[value]
-        # Try converting to uppercase and creating enum
         try:
-            return InjectBankKind(value.upper())
+            return InjectBankKind(value.strip().lower())
         except ValueError:
             pass
-        # Try the value as-is
-        try:
-            return InjectBankKind(value)
-        except ValueError:
-            pass
-    raise ValueError(f"Invalid kind value: {value}")
+    raise ValueError(f"Invalid kind value: {value!r}. Valid values: {[k.value for k in InjectBankKind]}")
 
 
 def _normalize_status(value: InjectBankStatus | str) -> InjectBankStatus:
@@ -109,6 +98,95 @@ def _normalize_status(value: InjectBankStatus | str) -> InjectBankStatus:
         except ValueError:
             pass
     raise ValueError(f"Invalid status value: {value}")
+
+
+def _normalize_legacy_bank_entry(raw_data: dict, *, for_update: bool = False) -> dict:
+    """Normalize legacy/import payload into canonical inject-bank shape."""
+    data = dict(raw_data)
+
+    if "kind" not in data and "type" in data:
+        data["kind"] = data.get("type")
+    if "content" not in data and "description" in data:
+        data["content"] = data.get("description")
+    if "custom_id" not in data and "id" in data:
+        data["custom_id"] = str(data.get("id"))
+
+    if "kind" in data and data.get("kind") is not None:
+        data["kind"] = _normalize_kind(data["kind"]).value
+    if "status" in data and data.get("status") is not None:
+        data["status"] = _normalize_status(data["status"]).value
+    if "data_format" in data and data.get("data_format") is not None:
+        data["data_format"] = _normalize_data_format(data["data_format"])
+
+    content_value = data.get("content")
+    if isinstance(content_value, dict):
+        payload = data.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {}
+        payload = {**payload, **content_value}
+        data["payload"] = payload
+
+        summary_parts: list[str] = []
+        for text_field in ("headline", "article_body", "official_message", "official_statement"):
+            field_value = content_value.get(text_field)
+            if isinstance(field_value, str) and field_value.strip():
+                summary_parts.append(field_value[:500])
+        data["content"] = "\n\n".join(summary_parts) if summary_parts else None
+
+        if not data.get("source_url"):
+            url_value = content_value.get("url")
+            if isinstance(url_value, str) and url_value.strip():
+                data["source_url"] = url_value.strip()
+
+    tags_value = data.get("tags")
+    if isinstance(tags_value, str):
+        data["tags"] = [tag.strip() for tag in tags_value.split(",") if tag.strip()]
+    elif tags_value is None:
+        data["tags"] = []
+
+    payload_value = data.get("payload")
+    if payload_value is None:
+        data["payload"] = {}
+    elif not isinstance(payload_value, dict):
+        data["payload"] = {}
+
+    if not for_update:
+        data.setdefault("status", InjectBankStatus.DRAFT.value)
+        data.setdefault("data_format", "text")
+        data.setdefault("payload", {})
+        data.setdefault("tags", [])
+
+    normalized = {
+        key: value
+        for key, value in data.items()
+        if key in BANK_SCHEMA_FIELDS and value is not None
+    }
+    return normalized
+
+
+def _validate_bank_payload_or_400(payload: dict, *, item_index: int | None = None) -> None:
+    try:
+        validate_schema_payload("inject_bank", payload)
+    except SchemaValidationException as exc:
+        prefix = f"Element {item_index}: " if item_index is not None else ""
+        raise HTTPException(status_code=400, detail=f"{prefix}{exc.path} - {exc.message}") from exc
+
+
+def _bank_item_to_schema_instance(item: InjectBankItem) -> dict:
+    payload = {
+        "custom_id": item.custom_id,
+        "title": item.title,
+        "kind": item.kind.value if hasattr(item.kind, "value") else item.kind,
+        "status": item.status.value if hasattr(item.status, "value") else item.status,
+        "category": item.category,
+        "data_format": item.data_format,
+        "summary": item.summary,
+        "content": item.content,
+        "source_url": item.source_url,
+        "payload": item.payload or {},
+        "tags": item.tags or [],
+    }
+    return {key: value for key, value in payload.items() if value is not None}
 
 
 class InjectBankBase(BaseModel):
@@ -643,7 +721,10 @@ async def import_inject_bank_zip(
             raise HTTPException(status_code=400, detail=f"Element {index + 1}: format invalide")
 
         try:
-            item_data = InjectBankCreate.model_validate(raw_entry)
+            # Enforce the canonical JSON schema as-is for ZIP imports.
+            _validate_bank_payload_or_400(raw_entry, item_index=index + 1)
+            normalized_entry = _normalize_legacy_bank_entry(raw_entry, for_update=False)
+            item_data = InjectBankCreate.model_validate(normalized_entry)
         except ValidationError as exc:
             # Extract specific validation error details
             errors = exc.errors()
@@ -765,6 +846,9 @@ async def create_inject_bank_item(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Create a new inject bank item (admin only)."""
+    create_payload = _normalize_legacy_bank_entry(item_data.model_dump(mode="json"), for_update=False)
+    _validate_bank_payload_or_400(create_payload)
+
     item = InjectBankItem(
         owner_tenant_id=tenant_ctx.tenant.id,
         title=item_data.title,
@@ -835,6 +919,14 @@ async def update_inject_bank_item(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Inject bank item not found")
+
+    merged_payload = _bank_item_to_schema_instance(item)
+    update_payload_json = _normalize_legacy_bank_entry(
+        item_data.model_dump(exclude_unset=True, mode="json"),
+        for_update=True,
+    )
+    merged_payload.update(update_payload_json)
+    _validate_bank_payload_or_400(merged_payload)
 
     for field, value in item_data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)

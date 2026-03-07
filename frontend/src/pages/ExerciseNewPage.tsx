@@ -1,21 +1,46 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { crisisManagementApi, exercisesApi, type ExercisePhasePreset } from '../services/api'
 import { ArrowLeft } from 'lucide-react'
 
+const FALLBACK_CREATION_OPTIONS = {
+  exercise_type_options: [
+    { value: 'cyber', label: 'Cyber' },
+    { value: 'it_outage', label: 'Panne IT' },
+    { value: 'ransomware', label: 'Ransomware' },
+    { value: 'mixed', label: 'Mixte' },
+  ],
+  exercise_duration_options: [4, 8, 24],
+  exercise_maturity_options: [
+    { value: 'beginner', label: 'Débutant' },
+    { value: 'intermediate', label: 'Intermédiaire' },
+    { value: 'expert', label: 'Expert' },
+  ],
+  exercise_mode_options: [
+    { value: 'real_time', label: 'Temps réel' },
+    { value: 'compressed', label: 'Compressé' },
+    { value: 'simulated', label: 'Simulé' },
+  ],
+  default_exercise_type: 'cyber',
+  default_exercise_duration_hours: 4,
+  default_maturity_level: 'intermediate',
+  default_exercise_mode: 'real_time',
+}
+
 export default function ExerciseNewPage() {
   const navigate = useNavigate()
+  const hasAppliedServerDefaultsRef = useRef(false)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     strategic_intent: '',
     initial_context: '',
     time_multiplier: '1.0',
-    exercise_type: 'cyber',
-    target_duration_hours: '4',
-    maturity_level: 'beginner',
-    mode: 'real_time',
+    exercise_type: FALLBACK_CREATION_OPTIONS.default_exercise_type,
+    target_duration_hours: String(FALLBACK_CREATION_OPTIONS.default_exercise_duration_hours),
+    maturity_level: FALLBACK_CREATION_OPTIONS.default_maturity_level,
+    mode: FALLBACK_CREATION_OPTIONS.default_exercise_mode,
     phase_preset: 'classique' as ExercisePhasePreset,
     planned_date: '',
   })
@@ -25,6 +50,43 @@ export default function ExerciseNewPage() {
     queryKey: ['available-plugins'],
     queryFn: exercisesApi.getAvailablePlugins,
   })
+  const { data: creationOptions } = useQuery({
+    queryKey: ['exercise-creation-options'],
+    queryFn: exercisesApi.getCreationOptions,
+  })
+
+  const resolvedCreationOptions = useMemo(
+    () => creationOptions || FALLBACK_CREATION_OPTIONS,
+    [creationOptions]
+  )
+
+  useEffect(() => {
+    const nextTypes = resolvedCreationOptions.exercise_type_options.map((item) => item.value)
+    const nextMaturity = resolvedCreationOptions.exercise_maturity_options.map((item) => item.value)
+    const nextModes = resolvedCreationOptions.exercise_mode_options.map((item) => item.value)
+    const nextDurations = resolvedCreationOptions.exercise_duration_options.map((item) => String(item))
+    const shouldApplyServerDefaults = Boolean(creationOptions) && !hasAppliedServerDefaultsRef.current
+    setFormData((prev) => ({
+      ...prev,
+      exercise_type: shouldApplyServerDefaults
+        ? resolvedCreationOptions.default_exercise_type
+        : (nextTypes.includes(prev.exercise_type) ? prev.exercise_type : resolvedCreationOptions.default_exercise_type),
+      maturity_level: shouldApplyServerDefaults
+        ? resolvedCreationOptions.default_maturity_level
+        : (nextMaturity.includes(prev.maturity_level) ? prev.maturity_level : resolvedCreationOptions.default_maturity_level),
+      mode: shouldApplyServerDefaults
+        ? resolvedCreationOptions.default_exercise_mode
+        : (nextModes.includes(prev.mode) ? prev.mode : resolvedCreationOptions.default_exercise_mode),
+      target_duration_hours: shouldApplyServerDefaults
+        ? String(resolvedCreationOptions.default_exercise_duration_hours)
+        : (nextDurations.includes(prev.target_duration_hours)
+          ? prev.target_duration_hours
+          : String(resolvedCreationOptions.default_exercise_duration_hours)),
+    }))
+    if (shouldApplyServerDefaults) {
+      hasAppliedServerDefaultsRef.current = true
+    }
+  }, [creationOptions, resolvedCreationOptions])
 
   const enabledPlugins = (plugins || [])
     .filter((p) => !p.coming_soon)
@@ -215,10 +277,9 @@ export default function ExerciseNewPage() {
                     onChange={(e) => setFormData({ ...formData, exercise_type: e.target.value })}
                     className={inputCls}
                   >
-                    <option value="cyber">Cyber</option>
-                    <option value="it_outage">Panne IT</option>
-                    <option value="ransomware">Ransomware</option>
-                    <option value="mixed">Mixte</option>
+                    {resolvedCreationOptions.exercise_type_options.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -230,9 +291,9 @@ export default function ExerciseNewPage() {
                       onChange={(e) => setFormData({ ...formData, target_duration_hours: e.target.value })}
                       className={inputCls}
                     >
-                      <option value="4">4h</option>
-                      <option value="8">8h</option>
-                      <option value="24">24h</option>
+                      {resolvedCreationOptions.exercise_duration_options.map((duration) => (
+                        <option key={duration} value={String(duration)}>{duration}h</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -242,9 +303,9 @@ export default function ExerciseNewPage() {
                       onChange={(e) => setFormData({ ...formData, maturity_level: e.target.value })}
                       className={inputCls}
                     >
-                      <option value="beginner">Débutant</option>
-                      <option value="intermediate">Intermédiaire</option>
-                      <option value="expert">Expert</option>
+                      {resolvedCreationOptions.exercise_maturity_options.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -257,9 +318,9 @@ export default function ExerciseNewPage() {
                       onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
                       className={inputCls}
                     >
-                      <option value="real_time">Temps réel</option>
-                      <option value="compressed">Compressé</option>
-                      <option value="simulated">Simulé</option>
+                      {resolvedCreationOptions.exercise_mode_options.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

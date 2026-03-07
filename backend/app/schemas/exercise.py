@@ -6,7 +6,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 from app.models.exercise import ExerciseStatus
-from app.models.crisis_management import ExerciseType, ExerciseMaturityLevel, ExerciseMode
 
 
 class ExerciseBase(BaseModel):
@@ -14,10 +13,10 @@ class ExerciseBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     time_multiplier: Decimal = Field(default=Decimal("1.0"), ge=0.1, le=10.0)
-    exercise_type: ExerciseType = ExerciseType.CYBER
+    exercise_type: str = Field(default="cyber", min_length=1, max_length=50)
     target_duration_hours: int = Field(default=4, ge=1, le=72)
-    maturity_level: ExerciseMaturityLevel = ExerciseMaturityLevel.BEGINNER
-    mode: ExerciseMode = ExerciseMode.REAL_TIME
+    maturity_level: str = Field(default="beginner", min_length=1, max_length=50)
+    mode: str = Field(default="real_time", min_length=1, max_length=50)
     planned_date: Optional[datetime] = None
     business_objective: Optional[str] = None
     technical_objective: Optional[str] = None
@@ -59,10 +58,10 @@ class ExerciseUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[ExerciseStatus] = None
     time_multiplier: Optional[Decimal] = Field(None, ge=0.1, le=10.0)
-    exercise_type: Optional[ExerciseType] = None
+    exercise_type: Optional[str] = Field(None, min_length=1, max_length=50)
     target_duration_hours: Optional[int] = Field(None, ge=1, le=72)
-    maturity_level: Optional[ExerciseMaturityLevel] = None
-    mode: Optional[ExerciseMode] = None
+    maturity_level: Optional[str] = Field(None, min_length=1, max_length=50)
+    mode: Optional[str] = Field(None, min_length=1, max_length=50)
     planned_date: Optional[datetime] = None
     business_objective: Optional[str] = None
     technical_objective: Optional[str] = None

@@ -87,7 +87,7 @@ export default function ExerciseChronogrammePage() {
   const [statusFilter, setStatusFilter] = useState<InjectStatus | ''>('')
   const [selectedTriggerMode, setSelectedTriggerMode] = useState<TriggerMode>('auto')
   const [selectedPhaseId, setSelectedPhaseId] = useState<string>('')
-  const [bankKind, setBankKind] = useState<InjectBankKind>('chronogram')
+  const [bankKind, setBankKind] = useState<InjectBankKind>('story')
   const [bankCategory, setBankCategory] = useState('')
 
   const { data: exercise } = useQuery({
