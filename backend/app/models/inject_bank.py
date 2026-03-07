@@ -10,23 +10,15 @@ from app.models.tenant import InjectBankItemSourceType, InjectBankVisibilityScop
 
 
 class InjectBankKind(str, enum.Enum):
-    """Type of reusable inject brick."""
-    IDEA = "idea"
-    VIDEO = "video"
-    AUDIO = "audio"
-    SCENARIO = "scenario"
-    CHRONOGRAM = "chronogram"
-    IMAGE = "image"
+    """Type of reusable inject brick — canonical values from JSON schema."""
     MAIL = "mail"
-    MESSAGE = "message"
+    SMS = "sms"
+    CALL = "call"
+    SOCIALNET = "socialnet"
+    TV = "tv"
+    DOC = "doc"
     DIRECTORY = "directory"
-    REFERENCE_URL = "reference_url"
-    SOCIAL_POST = "social_post"
-    DOCUMENT = "document"
-    CANAL_PRESS = "canal_press"
-    CANAL_ANSSI = "canal_anssi"
-    CANAL_GOUVERNEMENT = "canal_gouvernement"
-    OTHER = "other"
+    STORY = "story"
 
 
 class InjectBankStatus(str, enum.Enum):

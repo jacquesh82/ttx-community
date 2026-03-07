@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # Media storage
     media_storage_path: str = "/app/media"
     inject_bank_schema_path: str = str(
-        Path(__file__).resolve().parent / "resources" / "schemas" / "crisis-inject.schema.json"
+        Path(__file__).resolve().parent / "resources" / "schemas" / "inject-bank-item.schema.json"
     )
     max_upload_size: int = 50 * 1024 * 1024  # 50 MB
     allowed_mime_types: List[str] = [

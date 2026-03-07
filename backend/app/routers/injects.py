@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -23,10 +23,24 @@ from app.models.event import EventType, EventActorType, EventAudience
 from app.models.exercise_user import ExerciseRole
 from app.models.user import UserRole
 from app.routers.auth import require_auth, require_role
+from app.services.inject_bank_schema import (
+    SchemaValidationException,
+    get_timeline_inject_schema,
+    validate_schema_payload,
+)
 from app.services.websocket_manager import ws_manager
 from app.utils.tenancy import TenantRequestContext, require_tenant_context
 
 router = APIRouter()
+
+INJECT_TYPE_TO_BANK_KIND: dict[str, str] = {
+    "mail": "mail",
+    "twitter": "social_post",
+    "tv": "video",
+    "decision": "scenario",
+    "score": "chronogram",
+    "system": "directory",
+}
 
 
 async def _get_exercise_in_tenant_or_404(
@@ -189,6 +203,107 @@ def _audiences_payload(inject: Inject) -> list[dict] | None:
     return [{"kind": aud.kind.value, "value": aud.value} for aud in (inject.audiences or [])] or None
 
 
+def _validate_timeline_payload_or_400(payload: dict, *, row: int | None = None) -> None:
+    try:
+        validate_schema_payload("timeline_inject", payload)
+    except SchemaValidationException as exc:
+        prefix = f"Row {row}: " if row is not None else ""
+        raise HTTPException(status_code=400, detail=f"{prefix}{exc.path} - {exc.message}") from exc
+
+
+def _inject_to_timeline_schema_payload(inject: Inject) -> dict:
+    inject_type = inject.type.value if hasattr(inject.type, "value") else str(inject.type)
+    inject_status = inject.status.value if hasattr(inject.status, "value") else str(inject.status)
+    timeline_type = inject.timeline_type.value if hasattr(inject.timeline_type, "value") else str(inject.timeline_type)
+    payload = {
+        "exercise_id": inject.exercise_id,
+        "custom_id": inject.custom_id,
+        "title": inject.title,
+        "type": inject_type,
+        "kind": INJECT_TYPE_TO_BANK_KIND.get(inject_type, "other"),
+        "status": inject_status,
+        "timeline_type": timeline_type,
+        "time_offset": inject.time_offset,
+        "duration_min": inject.duration_min,
+        "phase_id": inject.phase_id,
+        "description": inject.description,
+        "data_format": inject.data_format,
+        "content": inject.content or {},
+        "scheduled_at": inject.scheduled_at.isoformat() if inject.scheduled_at else None,
+        "is_surprise": bool(getattr(inject, "is_surprise", False)),
+        "audiences": _audiences_payload(inject) or [],
+        "category": inject.inject_category.value if getattr(inject, "inject_category", None) else None,
+        "summary": None,
+        "source_url": None,
+        "payload": {},
+        "tags": [],
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def _inject_create_to_timeline_schema_payload(inject_data: "InjectCreate") -> dict:
+    inject_type = inject_data.type.value if hasattr(inject_data.type, "value") else str(inject_data.type)
+    status_value = InjectStatus.DRAFT.value
+    payload = {
+        "exercise_id": inject_data.exercise_id,
+        "custom_id": inject_data.custom_id,
+        "title": inject_data.title,
+        "type": inject_type,
+        "kind": INJECT_TYPE_TO_BANK_KIND.get(inject_type, "other"),
+        "status": status_value,
+        "timeline_type": (inject_data.timeline_type or TimelineType.BUSINESS).value,
+        "time_offset": inject_data.time_offset,
+        "duration_min": inject_data.duration_min or 15,
+        "phase_id": inject_data.phase_id,
+        "description": inject_data.description,
+        "data_format": inject_data.data_format.value if hasattr(inject_data.data_format, "value") else str(inject_data.data_format),
+        "content": inject_data.content or {},
+        "scheduled_at": inject_data.scheduled_at.isoformat() if inject_data.scheduled_at else None,
+        "is_surprise": bool(inject_data.is_surprise or False),
+        "target_user_ids": inject_data.target_user_ids or [],
+        "target_team_ids": inject_data.target_team_ids or [],
+        "audiences": [
+            {
+                "kind": aud.kind.value if hasattr(aud.kind, "value") else str(aud.kind),
+                "value": str(aud.value),
+            }
+            for aud in (inject_data.audiences or [])
+        ],
+        "category": inject_data.inject_category.value if inject_data.inject_category else None,
+        "summary": None,
+        "source_url": None,
+        "payload": {},
+        "tags": [],
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def _apply_update_payload_to_timeline_schema_payload(base_payload: dict, update_payload: dict) -> dict:
+    merged = dict(base_payload)
+    for field in (
+        "custom_id",
+        "title",
+        "description",
+        "data_format",
+        "scheduled_at",
+        "status",
+        "timeline_type",
+        "is_surprise",
+        "time_offset",
+        "duration_min",
+        "phase_id",
+    ):
+        if field in update_payload:
+            merged[field] = update_payload[field]
+    if "content" in update_payload:
+        merged["content"] = update_payload["content"] or {}
+    if "audiences" in update_payload:
+        merged["audiences"] = update_payload["audiences"] or []
+    if "inject_category" in update_payload:
+        merged["category"] = update_payload["inject_category"]
+    return merged
+
+
 async def _create_inject_created_event(
     db: AsyncSession,
     inject: Inject,
@@ -311,6 +426,21 @@ async def _send_inject_now(db: AsyncSession, inject: Inject):
 async def get_inject_types():
     """Get all available inject types from the enum."""
     return {"types": [t.value for t in InjectType]}
+
+
+class TimelineInjectSchemaResponse(BaseModel):
+    """Timeline inject JSON schema payload."""
+
+    json_schema: dict = Field(serialization_alias="schema")
+    model_config = {"populate_by_name": True}
+
+
+@router.get("/schema/timeline", response_model=TimelineInjectSchemaResponse)
+async def get_timeline_inject_import_schema(
+    _: any = Depends(require_auth),
+):
+    """Return JSON schema used to validate timeline inject payloads."""
+    return TimelineInjectSchemaResponse(json_schema=get_timeline_inject_schema())
 
 
 # Schemas
@@ -509,6 +639,8 @@ async def create_inject(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Create a new inject (admin/animateur only)."""
+    _validate_timeline_payload_or_400(_inject_create_to_timeline_schema_payload(inject_data))
+
     # Verify exercise exists and is in correct state
     exercise = await _get_exercise_in_tenant_or_404(db, inject_data.exercise_id, tenant_ctx.tenant.id)
     
@@ -593,6 +725,11 @@ async def update_inject(
     
     if inject.status == InjectStatus.SENT:
         raise HTTPException(status_code=400, detail="Cannot update a sent inject")
+
+    base_payload = _inject_to_timeline_schema_payload(inject)
+    update_payload_json = inject_data.model_dump(exclude_unset=True, mode="json")
+    merged_payload = _apply_update_payload_to_timeline_schema_payload(base_payload, update_payload_json)
+    _validate_timeline_payload_or_400(merged_payload)
     
     if inject_data.title is not None:
         inject.title = inject_data.title
@@ -876,10 +1013,40 @@ async def import_injects_csv(
                     else:
                         errors.append({
                             "row": row_num,
-                            "warning": f"Team '{team_name}' not found in exercise"
+                            "error": f"Team '{team_name}' not found in exercise"
                         })
+                        target_team_ids = []
+                        break
+
+                if any("error" in err and err.get("row") == row_num for err in errors):
+                    continue
             
             # Create inject
+            timeline_payload = {
+                "exercise_id": exercise_id,
+                "title": title,
+                "type": inject_type.value if hasattr(inject_type, "value") else str(inject_type),
+                "kind": INJECT_TYPE_TO_BANK_KIND.get(
+                    inject_type.value if hasattr(inject_type, "value") else str(inject_type),
+                    "other",
+                ),
+                "status": InjectStatus.DRAFT.value,
+                "timeline_type": TimelineType.BUSINESS.value,
+                "time_offset": time_offset,
+                "duration_min": 15,
+                "description": description,
+                "data_format": "text",
+                "content": content,
+                "scheduled_at": None,
+                "is_surprise": False,
+                "target_team_ids": target_team_ids,
+                "target_user_ids": [],
+                "audiences": [],
+                "payload": {},
+                "tags": [],
+            }
+            _validate_timeline_payload_or_400(timeline_payload, row=row_num)
+
             inject = Inject(
                 exercise_id=exercise_id,
                 type=inject_type,
@@ -904,7 +1071,16 @@ async def import_injects_csv(
             
         except Exception as e:
             errors.append({"row": row_num, "error": str(e)})
-    
+
+    if errors:
+        await db.rollback()
+        first = errors[0]
+        if "row" in first and "error" in first:
+            detail = f"Import rejected (row {first['row']}): {first['error']}"
+        else:
+            detail = "Import rejected: invalid CSV payload"
+        raise HTTPException(status_code=400, detail=detail)
+
     await db.commit()
     serialized_injects = [
         InjectResponse.model_validate(

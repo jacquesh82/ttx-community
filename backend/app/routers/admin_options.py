@@ -83,8 +83,13 @@ class AppConfigurationResponse(BaseModel):
     organization_keywords: str | None
     default_exercise_duration_hours: int
     default_time_multiplier: int
+    default_exercise_type: str
     default_maturity_level: str
     default_exercise_mode: str
+    exercise_type_options_config: str | None = None
+    exercise_duration_options_config: str | None = None
+    exercise_maturity_options_config: str | None = None
+    exercise_mode_options_config: str | None = None
     enable_tv_plugin: bool
     enable_social_plugin: bool
     enable_welcome_kits: bool
@@ -117,8 +122,13 @@ class AppConfigurationUpdate(BaseModel):
     organization_keywords: str | None = None
     default_exercise_duration_hours: int | None = None
     default_time_multiplier: int | None = None
+    default_exercise_type: str | None = None
     default_maturity_level: str | None = None
     default_exercise_mode: str | None = None
+    exercise_type_options_config: str | None = None
+    exercise_duration_options_config: str | None = None
+    exercise_maturity_options_config: str | None = None
+    exercise_mode_options_config: str | None = None
     enable_tv_plugin: bool | None = None
     enable_social_plugin: bool | None = None
     enable_welcome_kits: bool | None = None
@@ -204,6 +214,130 @@ DEFAULT_TIMELINE_PHASE_TYPE_FORMAT_CONFIG = [
     {"type": "Scenario", "formats": ["TXT"], "simulator": None},
 ]
 DEFAULT_TIMELINE_TYPE_KEYS = {item["type"].lower() for item in DEFAULT_TIMELINE_PHASE_TYPE_FORMAT_CONFIG}
+DEFAULT_EXERCISE_TYPE_OPTIONS = [
+    {"value": "cyber", "label": "Cyber"},
+    {"value": "it_outage", "label": "Panne IT"},
+    {"value": "ransomware", "label": "Ransomware"},
+    {"value": "mixed", "label": "Mixte"},
+]
+DEFAULT_EXERCISE_DURATION_OPTIONS = [4, 8, 24]
+DEFAULT_EXERCISE_MATURITY_OPTIONS = [
+    {"value": "beginner", "label": "Débutant"},
+    {"value": "intermediate", "label": "Intermédiaire"},
+    {"value": "expert", "label": "Expert"},
+]
+DEFAULT_EXERCISE_MODE_OPTIONS = [
+    {"value": "real_time", "label": "Temps réel"},
+    {"value": "compressed", "label": "Compressé"},
+    {"value": "simulated", "label": "Simulé"},
+]
+
+
+def _sanitize_select_options_config(raw: str | None, *, fallback: list[dict[str, str]]) -> str:
+    fallback_rows = [
+        {"value": str(item.get("value", "")).strip(), "label": str(item.get("label", "")).strip()}
+        for item in fallback
+        if str(item.get("value", "")).strip() and str(item.get("label", "")).strip()
+    ]
+    parsed_rows: list[dict] = []
+    if isinstance(raw, str) and raw.strip():
+        try:
+            payload = json.loads(raw)
+            if isinstance(payload, list):
+                parsed_rows = [row for row in payload if isinstance(row, dict)]
+        except (TypeError, json.JSONDecodeError):
+            parsed_rows = []
+
+    normalized: list[dict[str, str]] = []
+    seen_values: set[str] = set()
+    for row in parsed_rows:
+        value = str(row.get("value", "")).strip()
+        label = str(row.get("label", "")).strip()
+        if not value or not label or value in seen_values:
+            continue
+        seen_values.add(value)
+        normalized.append({"value": value, "label": label})
+
+    if not normalized:
+        normalized = fallback_rows
+    return json.dumps(normalized, ensure_ascii=False)
+
+
+def _sanitize_duration_options_config(raw: str | None) -> str:
+    parsed: list[int] = []
+    if isinstance(raw, str) and raw.strip():
+        try:
+            payload = json.loads(raw)
+            if isinstance(payload, list):
+                for item in payload:
+                    value: int | None = None
+                    if isinstance(item, int):
+                        value = item
+                    elif isinstance(item, float) and item.is_integer():
+                        value = int(item)
+                    elif isinstance(item, str):
+                        stripped = item.strip()
+                        if stripped.isdigit():
+                            value = int(stripped)
+                    if value is None or value <= 0 or value in parsed:
+                        continue
+                    parsed.append(value)
+        except (TypeError, json.JSONDecodeError):
+            parsed = []
+
+    if not parsed:
+        parsed = list(DEFAULT_EXERCISE_DURATION_OPTIONS)
+    return json.dumps(parsed, ensure_ascii=False)
+
+
+def _extract_option_values(raw: str | None, *, fallback: list[dict[str, str]]) -> list[str]:
+    sanitized = _sanitize_select_options_config(raw, fallback=fallback)
+    try:
+        payload = json.loads(sanitized)
+        if isinstance(payload, list):
+            return [str(item.get("value", "")).strip() for item in payload if isinstance(item, dict) and str(item.get("value", "")).strip()]
+    except (TypeError, json.JSONDecodeError):
+        pass
+    return [item["value"] for item in fallback]
+
+
+def _extract_duration_values(raw: str | None) -> list[int]:
+    sanitized = _sanitize_duration_options_config(raw)
+    try:
+        payload = json.loads(sanitized)
+        if isinstance(payload, list):
+            values = [int(item) for item in payload if isinstance(item, int) and item > 0]
+            if values:
+                return values
+    except (TypeError, json.JSONDecodeError, ValueError):
+        pass
+    return list(DEFAULT_EXERCISE_DURATION_OPTIONS)
+
+
+def _sanitize_default_from_allowed(raw_value: object, allowed: list[str], fallback: str) -> str:
+    candidate = str(raw_value or "").strip()
+    if candidate and candidate in allowed:
+        return candidate
+    if fallback in allowed:
+        return fallback
+    return allowed[0]
+
+
+def _sanitize_duration_default(raw_value: object, allowed: list[int], fallback: int) -> int:
+    candidate: int | None = None
+    if isinstance(raw_value, int):
+        candidate = raw_value
+    elif isinstance(raw_value, float) and raw_value.is_integer():
+        candidate = int(raw_value)
+    elif isinstance(raw_value, str):
+        stripped = raw_value.strip()
+        if stripped.isdigit():
+            candidate = int(stripped)
+    if candidate in allowed:
+        return candidate
+    if fallback in allowed:
+        return fallback
+    return allowed[0]
 
 
 def _normalize_timeline_format_value(value: object) -> str | None:
@@ -436,8 +570,13 @@ def _app_config_to_response(config: AppConfiguration) -> AppConfigurationRespons
         organization_keywords=config.organization_keywords,
         default_exercise_duration_hours=config.default_exercise_duration_hours,
         default_time_multiplier=config.default_time_multiplier,
+        default_exercise_type=getattr(config, "default_exercise_type", "cyber"),
         default_maturity_level=config.default_maturity_level,
         default_exercise_mode=config.default_exercise_mode,
+        exercise_type_options_config=getattr(config, "exercise_type_options_config", None),
+        exercise_duration_options_config=getattr(config, "exercise_duration_options_config", None),
+        exercise_maturity_options_config=getattr(config, "exercise_maturity_options_config", None),
+        exercise_mode_options_config=getattr(config, "exercise_mode_options_config", None),
         enable_tv_plugin=config.enable_tv_plugin,
         enable_social_plugin=config.enable_social_plugin,
         enable_welcome_kits=config.enable_welcome_kits,
@@ -496,6 +635,41 @@ def _tenant_merged_app_config_to_response(
 
     # Transitional tenant overrides for fields not yet modeled explicitly.
     payload.update(_tenant_overlay_payload(tenant_config))
+    payload["exercise_type_options_config"] = _sanitize_select_options_config(
+        payload.get("exercise_type_options_config"),
+        fallback=DEFAULT_EXERCISE_TYPE_OPTIONS,
+    )
+    payload["exercise_duration_options_config"] = _sanitize_duration_options_config(
+        payload.get("exercise_duration_options_config")
+    )
+    payload["exercise_maturity_options_config"] = _sanitize_select_options_config(
+        payload.get("exercise_maturity_options_config"),
+        fallback=DEFAULT_EXERCISE_MATURITY_OPTIONS,
+    )
+    payload["exercise_mode_options_config"] = _sanitize_select_options_config(
+        payload.get("exercise_mode_options_config"),
+        fallback=DEFAULT_EXERCISE_MODE_OPTIONS,
+    )
+    payload["default_exercise_type"] = _sanitize_default_from_allowed(
+        payload.get("default_exercise_type"),
+        _extract_option_values(payload["exercise_type_options_config"], fallback=DEFAULT_EXERCISE_TYPE_OPTIONS),
+        "cyber",
+    )
+    payload["default_exercise_duration_hours"] = _sanitize_duration_default(
+        payload.get("default_exercise_duration_hours"),
+        _extract_duration_values(payload["exercise_duration_options_config"]),
+        4,
+    )
+    payload["default_maturity_level"] = _sanitize_default_from_allowed(
+        payload.get("default_maturity_level"),
+        _extract_option_values(payload["exercise_maturity_options_config"], fallback=DEFAULT_EXERCISE_MATURITY_OPTIONS),
+        "intermediate",
+    )
+    payload["default_exercise_mode"] = _sanitize_default_from_allowed(
+        payload.get("default_exercise_mode"),
+        _extract_option_values(payload["exercise_mode_options_config"], fallback=DEFAULT_EXERCISE_MODE_OPTIONS),
+        "real_time",
+    )
     payload["timeline_phase_type_format_config"] = _sanitize_timeline_phase_type_format_config(
         payload.get("timeline_phase_type_format_config")
     )
@@ -532,6 +706,93 @@ async def _update_tenant_app_configuration(
         update_data["timeline_phase_type_format_config"] = _sanitize_timeline_phase_type_format_config(
             update_data.get("timeline_phase_type_format_config")
         )
+    if "exercise_type_options_config" in update_data:
+        update_data["exercise_type_options_config"] = _sanitize_select_options_config(
+            update_data.get("exercise_type_options_config"),
+            fallback=DEFAULT_EXERCISE_TYPE_OPTIONS,
+        )
+    if "exercise_duration_options_config" in update_data:
+        update_data["exercise_duration_options_config"] = _sanitize_duration_options_config(
+            update_data.get("exercise_duration_options_config")
+        )
+    if "exercise_maturity_options_config" in update_data:
+        update_data["exercise_maturity_options_config"] = _sanitize_select_options_config(
+            update_data.get("exercise_maturity_options_config"),
+            fallback=DEFAULT_EXERCISE_MATURITY_OPTIONS,
+        )
+    if "exercise_mode_options_config" in update_data:
+        update_data["exercise_mode_options_config"] = _sanitize_select_options_config(
+            update_data.get("exercise_mode_options_config"),
+            fallback=DEFAULT_EXERCISE_MODE_OPTIONS,
+        )
+    effective_type_options = update_data.get(
+        "exercise_type_options_config",
+        _tenant_overlay_payload(tenant_config).get("exercise_type_options_config"),
+    )
+    effective_duration_options = update_data.get(
+        "exercise_duration_options_config",
+        _tenant_overlay_payload(tenant_config).get("exercise_duration_options_config"),
+    )
+    effective_maturity_options = update_data.get(
+        "exercise_maturity_options_config",
+        _tenant_overlay_payload(tenant_config).get("exercise_maturity_options_config"),
+    )
+    effective_mode_options = update_data.get(
+        "exercise_mode_options_config",
+        _tenant_overlay_payload(tenant_config).get("exercise_mode_options_config"),
+    )
+    if "default_exercise_type" in update_data:
+        update_data["default_exercise_type"] = _sanitize_default_from_allowed(
+            update_data.get("default_exercise_type"),
+            _extract_option_values(effective_type_options, fallback=DEFAULT_EXERCISE_TYPE_OPTIONS),
+            "cyber",
+        )
+    if "default_exercise_duration_hours" in update_data:
+        update_data["default_exercise_duration_hours"] = _sanitize_duration_default(
+            update_data.get("default_exercise_duration_hours"),
+            _extract_duration_values(effective_duration_options),
+            4,
+        )
+    if "default_maturity_level" in update_data:
+        update_data["default_maturity_level"] = _sanitize_default_from_allowed(
+            update_data.get("default_maturity_level"),
+            _extract_option_values(effective_maturity_options, fallback=DEFAULT_EXERCISE_MATURITY_OPTIONS),
+            "intermediate",
+        )
+    if "default_exercise_mode" in update_data:
+        update_data["default_exercise_mode"] = _sanitize_default_from_allowed(
+            update_data.get("default_exercise_mode"),
+            _extract_option_values(effective_mode_options, fallback=DEFAULT_EXERCISE_MODE_OPTIONS),
+            "real_time",
+        )
+    if "exercise_type_options_config" in update_data and "default_exercise_type" not in update_data:
+        current_default = _tenant_overlay_payload(tenant_config).get("default_exercise_type")
+        update_data["default_exercise_type"] = _sanitize_default_from_allowed(
+            current_default,
+            _extract_option_values(effective_type_options, fallback=DEFAULT_EXERCISE_TYPE_OPTIONS),
+            "cyber",
+        )
+    if "exercise_duration_options_config" in update_data and "default_exercise_duration_hours" not in update_data:
+        current_default = _tenant_overlay_payload(tenant_config).get("default_exercise_duration_hours")
+        update_data["default_exercise_duration_hours"] = _sanitize_duration_default(
+            current_default,
+            _extract_duration_values(effective_duration_options),
+            4,
+        )
+    if "exercise_maturity_options_config" in update_data and "default_maturity_level" not in update_data:
+        current_default = _tenant_overlay_payload(tenant_config).get("default_maturity_level")
+        update_data["default_maturity_level"] = _sanitize_default_from_allowed(
+            current_default,
+            _extract_option_values(effective_maturity_options, fallback=DEFAULT_EXERCISE_MATURITY_OPTIONS),
+            "intermediate",
+        )
+    if "exercise_mode_options_config" in update_data and "default_exercise_mode" not in update_data:
+        current_default = _tenant_overlay_payload(tenant_config).get("default_exercise_mode")
+        update_data["default_exercise_mode"] = _sanitize_default_from_allowed(
+            current_default,
+            _extract_option_values(effective_mode_options, fallback=DEFAULT_EXERCISE_MODE_OPTIONS),
+            "real_time",
+        )
 
     # Apply typed tenant config fields.
     for field in TENANT_NATIVE_CONFIG_FIELDS:
@@ -564,6 +825,7 @@ async def _get_or_create_app_config(db: AsyncSession) -> AppConfiguration:
             organization_name="Organisation",
             default_exercise_duration_hours=4,
             default_time_multiplier=1,
+            default_exercise_type="cyber",
             default_maturity_level="intermediate",
             default_exercise_mode="real_time",
             enable_tv_plugin=True,

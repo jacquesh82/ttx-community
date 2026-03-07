@@ -87,6 +87,133 @@ PHASE_PRESETS: dict[str, list[str]] = {
     ],
     "full": DEFAULT_PHASE_NAMES,
 }
+DEFAULT_EXERCISE_TYPE_OPTIONS = [
+    {"value": "cyber", "label": "Cyber"},
+    {"value": "it_outage", "label": "Panne IT"},
+    {"value": "ransomware", "label": "Ransomware"},
+    {"value": "mixed", "label": "Mixte"},
+]
+DEFAULT_EXERCISE_DURATION_OPTIONS = [4, 8, 24]
+DEFAULT_EXERCISE_MATURITY_OPTIONS = [
+    {"value": "beginner", "label": "Débutant"},
+    {"value": "intermediate", "label": "Intermédiaire"},
+    {"value": "expert", "label": "Expert"},
+]
+DEFAULT_EXERCISE_MODE_OPTIONS = [
+    {"value": "real_time", "label": "Temps réel"},
+    {"value": "compressed", "label": "Compressé"},
+    {"value": "simulated", "label": "Simulé"},
+]
+
+
+def _sanitize_select_options_config(raw: object, *, fallback: list[dict[str, str]]) -> list[dict[str, str]]:
+    parsed_rows: list[dict] = []
+    if isinstance(raw, str) and raw.strip():
+        try:
+            payload = json.loads(raw)
+            if isinstance(payload, list):
+                parsed_rows = [row for row in payload if isinstance(row, dict)]
+        except (TypeError, json.JSONDecodeError):
+            parsed_rows = []
+
+    normalized: list[dict[str, str]] = []
+    seen_values: set[str] = set()
+    for row in parsed_rows:
+        value = str(row.get("value", "")).strip()
+        label = str(row.get("label", "")).strip()
+        if not value or not label or value in seen_values:
+            continue
+        seen_values.add(value)
+        normalized.append({"value": value, "label": label})
+    return normalized or fallback
+
+
+def _sanitize_duration_options(raw: object) -> list[int]:
+    parsed: list[int] = []
+    if isinstance(raw, str) and raw.strip():
+        try:
+            payload = json.loads(raw)
+            if isinstance(payload, list):
+                for item in payload:
+                    value: int | None = None
+                    if isinstance(item, int):
+                        value = item
+                    elif isinstance(item, float) and item.is_integer():
+                        value = int(item)
+                    elif isinstance(item, str):
+                        stripped = item.strip()
+                        if stripped.isdigit():
+                            value = int(stripped)
+                    if value is None or value <= 0 or value in parsed:
+                        continue
+                    parsed.append(value)
+        except (TypeError, json.JSONDecodeError):
+            parsed = []
+    return parsed or list(DEFAULT_EXERCISE_DURATION_OPTIONS)
+
+
+def _resolve_socle_options(tenant_config) -> dict[str, object]:
+    overlay = getattr(tenant_config, "legacy_app_config_overrides", None) or {}
+    type_options = _sanitize_select_options_config(
+        overlay.get("exercise_type_options_config"),
+        fallback=DEFAULT_EXERCISE_TYPE_OPTIONS,
+    )
+    maturity_options = _sanitize_select_options_config(
+        overlay.get("exercise_maturity_options_config"),
+        fallback=DEFAULT_EXERCISE_MATURITY_OPTIONS,
+    )
+    mode_options = _sanitize_select_options_config(
+        overlay.get("exercise_mode_options_config"),
+        fallback=DEFAULT_EXERCISE_MODE_OPTIONS,
+    )
+    duration_options = _sanitize_duration_options(overlay.get("exercise_duration_options_config"))
+
+    type_values = [item["value"] for item in type_options]
+    maturity_values = [item["value"] for item in maturity_options]
+    mode_values = [item["value"] for item in mode_options]
+    duration_values = duration_options
+
+    default_exercise_type = str(overlay.get("default_exercise_type") or "cyber").strip()
+    if default_exercise_type not in type_values:
+        default_exercise_type = type_values[0]
+
+    default_maturity_level = str(overlay.get("default_maturity_level") or "intermediate").strip()
+    if default_maturity_level not in maturity_values:
+        default_maturity_level = maturity_values[0]
+
+    default_exercise_mode = str(overlay.get("default_exercise_mode") or "real_time").strip()
+    if default_exercise_mode not in mode_values:
+        default_exercise_mode = mode_values[0]
+
+    raw_duration = overlay.get("default_exercise_duration_hours")
+    if isinstance(raw_duration, int):
+        default_duration = raw_duration
+    else:
+        try:
+            default_duration = int(raw_duration)
+        except (TypeError, ValueError):
+            default_duration = 4
+    if default_duration not in duration_values:
+        default_duration = duration_values[0]
+
+    return {
+        "exercise_type_options": type_options,
+        "exercise_duration_options": duration_values,
+        "exercise_maturity_options": maturity_options,
+        "exercise_mode_options": mode_options,
+        "default_exercise_type": default_exercise_type,
+        "default_exercise_duration_hours": default_duration,
+        "default_maturity_level": default_maturity_level,
+        "default_exercise_mode": default_exercise_mode,
+    }
+
+
+def _validate_socle_value(value: str, allowed_values: list[str], field_name: str) -> None:
+    if value not in allowed_values:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_name}: '{value}' is not configured in Options > Exercices",
+        )
 
 
 def _parse_enabled_phase_names(raw: str | None) -> list[str]:
@@ -187,6 +314,22 @@ class ExerciseTeamListResponse(BaseModel):
     teams: list[ExerciseTeamResponse]
 
 
+class ExerciseSelectOption(BaseModel):
+    value: str
+    label: str
+
+
+class ExerciseCreationOptionsResponse(BaseModel):
+    exercise_type_options: list[ExerciseSelectOption]
+    exercise_duration_options: list[int]
+    exercise_maturity_options: list[ExerciseSelectOption]
+    exercise_mode_options: list[ExerciseSelectOption]
+    default_exercise_type: str
+    default_exercise_duration_hours: int
+    default_maturity_level: str
+    default_exercise_mode: str
+
+
 def _build_plugin_response(
     plugin: ExercisePlugin,
     config_map: dict[str, PluginConfiguration],
@@ -237,6 +380,30 @@ def _build_exercise_response(
         created_at=exercise.created_at,
         updated_at=exercise.updated_at,
         plugins=plugins,
+    )
+
+
+@router.get("/creation-options", response_model=ExerciseCreationOptionsResponse)
+async def get_exercise_creation_options(
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    tenant_config = await get_or_create_tenant_configuration(
+        db,
+        tenant_id=tenant_ctx.tenant.id,
+        tenant_name=tenant_ctx.tenant.name,
+    )
+    resolved = _resolve_socle_options(tenant_config)
+    return ExerciseCreationOptionsResponse(
+        exercise_type_options=[ExerciseSelectOption(**item) for item in resolved["exercise_type_options"]],
+        exercise_duration_options=resolved["exercise_duration_options"],
+        exercise_maturity_options=[ExerciseSelectOption(**item) for item in resolved["exercise_maturity_options"]],
+        exercise_mode_options=[ExerciseSelectOption(**item) for item in resolved["exercise_mode_options"]],
+        default_exercise_type=resolved["default_exercise_type"],
+        default_exercise_duration_hours=resolved["default_exercise_duration_hours"],
+        default_maturity_level=resolved["default_maturity_level"],
+        default_exercise_mode=resolved["default_exercise_mode"],
     )
 
 
@@ -296,6 +463,33 @@ async def create_exercise(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Create a new exercise (admin/animateur only)."""
+    tenant_config = await get_or_create_tenant_configuration(
+        db,
+        tenant_id=tenant_ctx.tenant.id,
+        tenant_name=tenant_ctx.tenant.name,
+    )
+    resolved_options = _resolve_socle_options(tenant_config)
+    _validate_socle_value(
+        exercise_data.exercise_type,
+        [item["value"] for item in resolved_options["exercise_type_options"]],
+        "exercise_type",
+    )
+    _validate_socle_value(
+        exercise_data.maturity_level,
+        [item["value"] for item in resolved_options["exercise_maturity_options"]],
+        "maturity_level",
+    )
+    _validate_socle_value(
+        exercise_data.mode,
+        [item["value"] for item in resolved_options["exercise_mode_options"]],
+        "mode",
+    )
+    if exercise_data.target_duration_hours not in resolved_options["exercise_duration_options"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid target_duration_hours: '{exercise_data.target_duration_hours}' is not configured in Options > Exercices",
+        )
+
     exercise = Exercise(
         tenant_id=tenant_ctx.tenant.id,
         name=exercise_data.name,
@@ -510,6 +704,12 @@ async def update_exercise(
         tenant_ctx.tenant.id,
         with_plugins=True,
     )
+    tenant_config = await get_or_create_tenant_configuration(
+        db,
+        tenant_id=tenant_ctx.tenant.id,
+        tenant_name=tenant_ctx.tenant.name,
+    )
+    resolved_options = _resolve_socle_options(tenant_config)
     
     if exercise_data.name is not None:
         exercise.name = exercise_data.name
@@ -518,12 +718,32 @@ async def update_exercise(
     if exercise_data.time_multiplier is not None:
         exercise.time_multiplier = exercise_data.time_multiplier
     if exercise_data.exercise_type is not None:
+        _validate_socle_value(
+            exercise_data.exercise_type,
+            [item["value"] for item in resolved_options["exercise_type_options"]],
+            "exercise_type",
+        )
         exercise.exercise_type = exercise_data.exercise_type
     if exercise_data.target_duration_hours is not None:
+        if exercise_data.target_duration_hours not in resolved_options["exercise_duration_options"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid target_duration_hours: '{exercise_data.target_duration_hours}' is not configured in Options > Exercices",
+            )
         exercise.target_duration_hours = exercise_data.target_duration_hours
     if exercise_data.maturity_level is not None:
+        _validate_socle_value(
+            exercise_data.maturity_level,
+            [item["value"] for item in resolved_options["exercise_maturity_options"]],
+            "maturity_level",
+        )
         exercise.maturity_level = exercise_data.maturity_level
     if exercise_data.mode is not None:
+        _validate_socle_value(
+            exercise_data.mode,
+            [item["value"] for item in resolved_options["exercise_mode_options"]],
+            "mode",
+        )
         exercise.mode = exercise_data.mode
     if exercise_data.planned_date is not None:
         exercise.planned_date = exercise_data.planned_date

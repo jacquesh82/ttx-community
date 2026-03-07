@@ -143,27 +143,22 @@ export const BANK_KIND_TO_INJECT_TYPE: Record<InjectBankKind, InjectType> = {
 
 export const INJECT_TYPE_TO_BANK_KIND: Record<InjectType, InjectBankKind> = {
   mail: 'mail',
-  twitter: 'social_post',
-  tv: 'video',
-  decision: 'scenario',
-  score: 'chronogram',
-  system: 'other',
+  twitter: 'socialnet',
+  tv: 'tv',
+  decision: 'story',
+  score: 'story',
+  system: 'doc',
 }
 
 export const BANK_KIND_ORDER_FALLBACK: InjectBankKind[] = [
   'mail',
-  'social_post',
-  'message',
-  'scenario',
-  'chronogram',
-  'video',
-  'audio',
-  'image',
-  'document',
+  'sms',
+  'call',
+  'socialnet',
+  'tv',
+  'doc',
   'directory',
-  'reference_url',
-  'idea',
-  'other',
+  'story',
 ]
 
 // ─── Formulaire inject (create / edit) ───────────────────────────────────────

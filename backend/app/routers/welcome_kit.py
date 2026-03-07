@@ -546,7 +546,7 @@ async def preview_welcome_kit(
         "exercise_name": exercise.name,
         "exercise_date": exercise.planned_date.strftime("%d/%m/%Y %H:%M") if exercise.planned_date else "Non définie",
         "exercise_location": exercise.location or "Non défini",
-        "exercise_type": exercise.exercise_type.value if exercise.exercise_type else "",
+        "exercise_type": exercise.exercise_type if exercise.exercise_type else "",
         "exercise_duration": f"{exercise.target_duration_hours}h" if exercise.target_duration_hours else "",
         "player_name": user.username,
         "player_email": user.email,

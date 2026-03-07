@@ -54,13 +54,14 @@ export default function ExerciseScenarioPage() {
     intensity: 1,
     notes: '',
   })
-  const [bankKind, setBankKind] = useState<InjectBankKind>('scenario')
+  const [bankKind, setBankKind] = useState<InjectBankKind>('story')
   const [bankCategory, setBankCategory] = useState('')
   const [bankSearch, setBankSearch] = useState('')
   const [isBankModalOpen, setIsBankModalOpen] = useState(false)
   const [selectedBankItemIds, setSelectedBankItemIds] = useState<number[]>([])
 
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [activeTab, setActiveTab] = useState<'scenario' | 'axes'>('scenario')
   const isLoadedRef = useRef(false)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -173,7 +174,7 @@ export default function ExerciseScenarioPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              setBankKind('scenario')
+              setBankKind('story')
               setBankCategory('')
               setBankSearch('')
               setSelectedBankItemIds([])
@@ -186,29 +187,42 @@ export default function ExerciseScenarioPage() {
         </div>
       }
     >
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Definition complete du scenario</h2>
-        </div>
-        <Field label="Intention strategique" value={currentScenarioValues.strategic_intent} onChange={(v) => setForm((f) => ({ ...f, strategic_intent: v }))} />
-        <Field label="Contexte initial" value={currentScenarioValues.initial_context} onChange={(v) => setForm((f) => ({ ...f, initial_context: v }))} multiline />
-        <Field label="Situation de depart" value={currentScenarioValues.initial_situation} onChange={(v) => setForm((f) => ({ ...f, initial_situation: v }))} multiline />
-        <Field label="Hypotheses implicites" value={currentScenarioValues.implicit_hypotheses} onChange={(v) => setForm((f) => ({ ...f, implicit_hypotheses: v }))} multiline />
-        <Field label="Elements caches (animateur)" value={currentScenarioValues.hidden_brief} onChange={(v) => setForm((f) => ({ ...f, hidden_brief: v }))} multiline />
-        <Field label="Objectifs pedagogiques (separes par virgules)" value={currentScenarioValues.pedagogical_objectives} onChange={(v) => setForm((f) => ({ ...f, pedagogical_objectives: v }))} />
-        <Field label="Criteres d evaluation (separes par virgules)" value={currentScenarioValues.evaluation_criteria} onChange={(v) => setForm((f) => ({ ...f, evaluation_criteria: v }))} />
-        <Field label="Facteurs de stress (separes par virgules)" value={currentScenarioValues.stress_factors} onChange={(v) => setForm((f) => ({ ...f, stress_factors: v }))} />
-
-        <div className="flex items-center justify-end h-6">
-          <AutoSaveIndicator status={autoSaveStatus} />
-        </div>
-      </div>
-
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Axes d'escalade</h2>
+        <div className="flex border-b mb-4">
+          <button
+            onClick={() => setActiveTab('scenario')}
+            className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${activeTab === 'scenario' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Definition complete du scenario
+          </button>
+          <button
+            onClick={() => setActiveTab('axes')}
+            className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${activeTab === 'axes' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Axes d'escalade
+          </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+
+        {activeTab === 'scenario' && (
+          <div className="space-y-4">
+            <Field label="Intention strategique" value={currentScenarioValues.strategic_intent} onChange={(v) => setForm((f) => ({ ...f, strategic_intent: v }))} />
+            <Field label="Contexte initial" value={currentScenarioValues.initial_context} onChange={(v) => setForm((f) => ({ ...f, initial_context: v }))} multiline />
+            <Field label="Situation de depart" value={currentScenarioValues.initial_situation} onChange={(v) => setForm((f) => ({ ...f, initial_situation: v }))} multiline />
+            <Field label="Hypotheses implicites" value={currentScenarioValues.implicit_hypotheses} onChange={(v) => setForm((f) => ({ ...f, implicit_hypotheses: v }))} multiline />
+            <Field label="Elements caches (animateur)" value={currentScenarioValues.hidden_brief} onChange={(v) => setForm((f) => ({ ...f, hidden_brief: v }))} multiline />
+            <Field label="Objectifs pedagogiques (separes par virgules)" value={currentScenarioValues.pedagogical_objectives} onChange={(v) => setForm((f) => ({ ...f, pedagogical_objectives: v }))} />
+            <Field label="Criteres d evaluation (separes par virgules)" value={currentScenarioValues.evaluation_criteria} onChange={(v) => setForm((f) => ({ ...f, evaluation_criteria: v }))} />
+            <Field label="Facteurs de stress (separes par virgules)" value={currentScenarioValues.stress_factors} onChange={(v) => setForm((f) => ({ ...f, stress_factors: v }))} />
+
+            <div className="flex items-center justify-end h-6">
+              <AutoSaveIndicator status={autoSaveStatus} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'axes' && (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
           <select value={axisForm.axis_type} onChange={(e) => setAxisForm((a) => ({ ...a, axis_type: e.target.value as EscalationAxisType }))} className="px-3 py-2 border rounded-md">
             {AXIS_OPTIONS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
           </select>
@@ -242,7 +256,9 @@ export default function ExerciseScenarioPage() {
             </div>
           ))}
         </div>
-      </div>
+          </div>
+        )}
+        </div>
       </ExerciseSubpageShell>
 
       <Modal
@@ -259,11 +275,14 @@ export default function ExerciseScenarioPage() {
                 onChange={(e) => setBankKind(e.target.value as InjectBankKind)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
-                <option value="scenario">scenario</option>
-                <option value="idea">idea</option>
-                <option value="chronogram">chronogram</option>
-                <option value="document">document</option>
-                <option value="reference_url">reference_url</option>
+                <option value="story">Scénario</option>
+                <option value="doc">Document</option>
+                <option value="mail">Email</option>
+                <option value="sms">SMS</option>
+                <option value="call">Appel téléphonique</option>
+                <option value="socialnet">Réseau social</option>
+                <option value="tv">TV</option>
+                <option value="directory">Annuaire de crise</option>
               </select>
             </div>
             <div>
@@ -362,7 +381,7 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       {multiline ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
       ) : (
         <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
       )}
