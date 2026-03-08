@@ -67,6 +67,8 @@ import InjectBankPage from './pages/admin/InjectBankPage'
 import ChatGptConnectionPage from './pages/admin/ChatGptConnectionPage'
 import WelcomeKitTemplatesPage from './pages/admin/WelcomeKitTemplatesPage'
 import OptionsPage from './pages/admin/OptionsPage'
+import LogsPage from './pages/admin/LogsPage'
+import ExercisePreparationHubPage from './pages/ExercisePreparationHubPage'
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -462,6 +464,58 @@ function App() {
         {/* Profil utilisateur – accessible à tous les rôles connectés */}
         <Route path="/profile" element={<UserProfilePage />} />
 
+        {/* Exercices – Préparation (admin + animateur) */}
+        <Route
+          path="/exercises/preparation/organisation"
+          element={
+            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
+              <ExercisePreparationHubPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/exercises/preparation/participants"
+          element={
+            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
+              <AdminUsersPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/exercises/preparation/equipes"
+          element={
+            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
+              <AdminTeamsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/exercises/preparation/injects"
+          element={
+            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
+              <InjectBankPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/exercises/preparation/kits"
+          element={
+            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
+              <WelcomeKitTemplatesPage />
+            </RoleGuard>
+          }
+        />
+
+        {/* Player selection (DEV preview) */}
+        <Route
+          path="/player"
+          element={
+            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
+              <ParticipantLandingPage />
+            </RoleGuard>
+          }
+        />
+
         {/* Admin uniquement */}
         <Route
           path="/admin/users"
@@ -516,6 +570,14 @@ function App() {
           element={
             <RoleGuard allowed={['admin']} redirectTo="/">
               <OptionsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/logs"
+          element={
+            <RoleGuard allowed={['admin']} redirectTo="/">
+              <LogsPage />
             </RoleGuard>
           }
         />

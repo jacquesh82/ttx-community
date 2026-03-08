@@ -6,9 +6,10 @@ interface ModalProps {
   title: string
   children: React.ReactNode
   maxWidthClassName?: string
+  headerActions?: React.ReactNode
 }
 
-export default function Modal({ isOpen, onClose, title, children, maxWidthClassName = 'max-w-md' }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, maxWidthClassName = 'max-w-md', headerActions }: ModalProps) {
   if (!isOpen) return null
 
   return (
@@ -18,12 +19,15 @@ export default function Modal({ isOpen, onClose, title, children, maxWidthClassN
         <div className={`relative bg-white rounded-lg shadow-xl w-full ${maxWidthClassName}`}>
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              {headerActions}
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
           <div className="p-4">
             {children}

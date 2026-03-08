@@ -189,54 +189,54 @@ export default function UsersPage() {
   const renderFormFields = (isEdit: boolean) => (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           {t('admin.users.username')}
         </label>
         <input
           type="text"
           value={formData.username}
           onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
           required
           minLength={3}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           {t('admin.users.email')}
         </label>
         <input
           type="email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
           required
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           {isEdit ? t('admin.users.passwordEdit') : t('admin.users.password')}
         </label>
         <input
           type="password"
           value={formData.password}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
           required={!isEdit}
           minLength={8}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           {t('admin.users.role')}
         </label>
         <select
           value={formData.role}
           onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
         >
           <option value="participant">{t('roles.participant')}</option>
           <option value="observateur">{t('roles.observateur')}</option>
@@ -246,13 +246,13 @@ export default function UsersPage() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           {t('admin.users.team')}
         </label>
         <select
           value={formData.teamId}
           onChange={(e) => setFormData({ ...formData, teamId: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
         >
           <option value="">{t('admin.users.noTeam')}</option>
           {teams.map((team) => (
@@ -264,7 +264,7 @@ export default function UsersPage() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           {t('admin.users.tags')}
         </label>
         <input
@@ -272,9 +272,9 @@ export default function UsersPage() {
           value={formData.tagsInput}
           onChange={(e) => setFormData({ ...formData, tagsInput: e.target.value })}
           placeholder={t('admin.users.tagsPlaceholder')}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-gray-400">
           {t('admin.users.tagsSeparator')}
         </p>
       </div>
@@ -282,45 +282,47 @@ export default function UsersPage() {
   )
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('admin.users.title')}</h1>
-          <p className="text-gray-600">{t('admin.users.subtitle')}</p>
+    <div className="options-theme space-y-6">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">{t('admin.users.title')}</h1>
+            <p className="text-sm text-gray-400 mt-1">{t('admin.users.subtitle')}</p>
+          </div>
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+          >
+            <Plus size={16} />
+            {t('admin.users.new')}
+          </button>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-        >
-          <Plus className="mr-2" size={20} />
-          {t('admin.users.new')}
-        </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.users.role')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.users.team')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.users.tags')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Username</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.role')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.team')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.tags')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('common.status')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-700">
               {users.map((user) => {
                 const team = user.team_id != null ? teamsById.get(user.team_id) : null
 
                 return (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.username}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{roleLabels[user.role]}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                  <tr key={user.id} className="hover:bg-gray-700/50">
+                    <td className="px-6 py-4 text-sm font-medium text-white">{user.username}</td>
+                    <td className="px-6 py-4 text-sm text-gray-400">{user.email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-400">{roleLabels[user.role]}</td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
                       {user.team_id == null ? (
                         <span className="text-gray-400">{t('common.noneF')}</span>
                       ) : team ? (
@@ -335,13 +337,13 @@ export default function UsersPage() {
                         <span>{t('admin.users.teamNum', { id: user.team_id })}</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-400">
                       {user.tags?.length ? (
                         <div className="flex flex-wrap gap-1">
                           {user.tags.map((tag) => (
                             <span
                               key={`${user.id}-${tag}`}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs"
+                              className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 text-xs"
                             >
                               {tag}
                             </span>
@@ -352,7 +354,7 @@ export default function UsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                         {user.is_active ? t('common.active') : t('common.inactive')}
                       </span>
                     </td>
@@ -378,7 +380,7 @@ export default function UsersPage() {
 
               {!isLoading && users.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">
                     {t('admin.users.noUsers')}
                   </td>
                 </tr>
@@ -395,7 +397,7 @@ export default function UsersPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+            <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">
               {error}
             </div>
           )}
@@ -406,14 +408,14 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={closeCreateModal}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {createMutation.isPending ? t('admin.users.creating') : t('admin.users.create')}
             </button>
@@ -428,7 +430,7 @@ export default function UsersPage() {
       >
         <form onSubmit={handleUpdate} className="space-y-4">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
+            <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">
               {error}
             </div>
           )}
@@ -439,14 +441,14 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={closeEditModal}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {updateMutation.isPending ? t('admin.users.updating') : t('common.save')}
             </button>

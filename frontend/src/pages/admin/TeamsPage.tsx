@@ -289,33 +289,33 @@ export default function TeamsPage() {
   }
 
   const renderTeamCard = (team: TeamRow) => (
-    <div key={team.id} className="bg-white rounded-lg shadow p-6">
+    <div key={team.id} className="bg-gray-800 border border-gray-700 rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: team.color || '#3b82f6' }} />
-          <h3 className="text-lg font-medium text-gray-900">{team.name}</h3>
+          <h3 className="text-lg font-medium text-white">{team.name}</h3>
         </div>
         <button onClick={() => openEditModal(team)} className="text-primary-600 hover:text-primary-700">
           <Edit size={16} />
         </button>
       </div>
-      <p className="text-gray-600 text-sm mb-4">{team.description || 'Aucune description'}</p>
+      <p className="text-gray-400 text-sm mb-4">{team.description || 'Aucune description'}</p>
       {(exerciseNamesByTeam.get(team.id) || []).length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           {(exerciseNamesByTeam.get(team.id) || []).slice(0, 3).map((exerciseName) => (
-            <span key={`${team.id}-${exerciseName}`} className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-700">
+            <span key={`${team.id}-${exerciseName}`} className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-gray-700 text-gray-300">
               {exerciseName}
             </span>
           ))}
           {(exerciseNamesByTeam.get(team.id) || []).length > 3 && (
-            <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-700">
+            <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-gray-700 text-gray-300">
               +{(exerciseNamesByTeam.get(team.id) || []).length - 3}
             </span>
           )}
         </div>
       )}
       <div className="flex items-center justify-between">
-        <div className="flex items-center text-gray-600 text-sm">
+        <div className="flex items-center text-gray-400 text-sm">
           <Users className="mr-1" size={16} />
           <span>{team.member_count || 0} membres</span>
         </div>
@@ -331,25 +331,27 @@ export default function TeamsPage() {
   )
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Équipes</h1>
-          <p className="text-gray-600">Gérez les équipes participantes</p>
+    <div className="options-theme space-y-6">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Équipes</h1>
+            <p className="text-sm text-gray-400 mt-1">Gérez les équipes participantes</p>
+          </div>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+          >
+            <Plus size={16} />
+            Nouvelle équipe
+          </button>
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-        >
-          <Plus className="mr-2" size={20} />
-          Nouvelle équipe
-        </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Recherche</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -357,16 +359,16 @@ export default function TeamsPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Rechercher une équipe (nom, description)..."
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filtrer par exercice</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Filtrer par exercice</label>
             <select
               value={exerciseFilter}
               onChange={(e) => setExerciseFilter(e.target.value as 'all' | 'none' | string)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
             >
               <option value="all">Tous les exercices</option>
               <option value="none">Sans exercice</option>
@@ -378,15 +380,15 @@ export default function TeamsPage() {
             </select>
           </div>
         </div>
-        <p className="text-sm text-gray-500 mt-3">{totalVisibleTeams} équipe(s) affichée(s)</p>
+        <p className="text-sm text-gray-400 mt-3">{totalVisibleTeams} équipe(s) affichée(s)</p>
       </div>
 
-      {(isLoading || isExercisesLoading) && <div className="text-center py-8 text-gray-500">Chargement...</div>}
+      {(isLoading || isExercisesLoading) && <div className="text-center py-8 text-gray-400">Chargement...</div>}
 
       {!isLoading && !isExercisesLoading && sections.every((section) => section.teams.length === 0) && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Users className="mx-auto text-gray-500 mb-4" size={48} />
-          <p className="text-gray-600">Aucune équipe trouvée pour ce filtre</p>
+        <div className="text-center py-12 bg-gray-800 border border-gray-700 rounded-xl">
+          <Users className="mx-auto text-gray-400 mb-4" size={48} />
+          <p className="text-gray-400">Aucune équipe trouvée pour ce filtre</p>
         </div>
       )}
 
@@ -397,15 +399,15 @@ export default function TeamsPage() {
           .map((section) => (
             <section key={section.key} className="mb-8">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">{section.title}</h2>
+                <h2 className="text-lg font-semibold text-white">{section.title}</h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500">{section.teams.length} équipe(s)</span>
+                  <span className="text-sm text-gray-400">{section.teams.length} équipe(s)</span>
                   {section.key === 'none' && (
                     <button
                       type="button"
                       onClick={() => handleDeleteTeamsWithoutExercise(section.teams)}
                       disabled={deleteOrphanTeamsMutation.isPending}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 disabled:opacity-50"
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-400 bg-red-900/20 border border-red-700/40 rounded-md hover:bg-red-900/30 disabled:opacity-50"
                     >
                       <Trash2 className="mr-1" size={14} />
                       {deleteOrphanTeamsMutation.isPending ? 'Suppression...' : 'Supprimer les équipes sans exercice'}
@@ -422,35 +424,35 @@ export default function TeamsPage() {
       {/* Create Team Modal */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Nouvelle équipe">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
+          {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">{error}</div>}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipe</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Nom de l'équipe</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Couleur</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Couleur</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
                   onClick={() => setFormData({ ...formData, color })}
-                  className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${formData.color === color ? 'border-gray-900 ring-2 ring-offset-1 ring-gray-400' : 'border-transparent'}`}
+                  className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${formData.color === color ? 'border-white ring-2 ring-offset-2 ring-offset-gray-900 ring-white' : 'border-transparent'}`}
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -460,14 +462,14 @@ export default function TeamsPage() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {createMutation.isPending ? 'Création...' : 'Créer'}
             </button>
@@ -485,35 +487,35 @@ export default function TeamsPage() {
         title="Modifier l'équipe"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
+          {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">{error}</div>}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipe</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Nom de l'équipe</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               rows={3}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Couleur</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Couleur</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
                   onClick={() => setFormData({ ...formData, color })}
-                  className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${formData.color === color ? 'border-gray-900 ring-2 ring-offset-1 ring-gray-400' : 'border-transparent'}`}
+                  className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${formData.color === color ? 'border-white ring-2 ring-offset-2 ring-offset-gray-900 ring-white' : 'border-transparent'}`}
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -526,14 +528,14 @@ export default function TeamsPage() {
                 setIsEditModalOpen(false)
                 setSelectedTeam(null)
               }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {updateMutation.isPending ? 'Modification...' : 'Modifier'}
             </button>
@@ -551,21 +553,21 @@ export default function TeamsPage() {
         title={`Membres - ${selectedTeam?.name || ''}`}
       >
         <div className="space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
+          {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">{error}</div>}
 
           {/* Current Members */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Membres actuels</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Membres actuels</h4>
             {members.length === 0 ? (
-              <p className="text-sm text-gray-500">Aucun membre</p>
+              <p className="text-sm text-gray-400">Aucun membre</p>
             ) : (
               <ul className="space-y-2">
                 {members.map((member: any) => (
-                  <li key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                  <li key={member.id} className="flex items-center justify-between p-2 bg-gray-900 rounded-md">
                     <div>
-                      <span className="text-sm font-medium text-gray-900">{member.username}</span>
+                      <span className="text-sm font-medium text-white">{member.username}</span>
                       {member.is_leader && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-primary-100 text-primary-800 rounded">Chef</span>
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-primary-900/30 text-primary-400 rounded">Chef</span>
                       )}
                     </div>
                     <button onClick={() => handleRemoveMember(member.id)} className="text-red-600 hover:text-red-700">
@@ -579,14 +581,14 @@ export default function TeamsPage() {
 
           {/* Add Member */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Ajouter un membre</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Ajouter un membre</h4>
             {availableUsers.length === 0 ? (
-              <p className="text-sm text-gray-500">Tous les utilisateurs sont déjà dans l'équipe</p>
+              <p className="text-sm text-gray-400">Tous les utilisateurs sont déjà dans l'équipe</p>
             ) : (
               <div className="space-y-2">
                 <select
                   id="user-select"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900"
+                  className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   defaultValue=""
                 >
                   <option value="" disabled>
@@ -605,7 +607,7 @@ export default function TeamsPage() {
                       const userId = parseInt(select.value)
                       if (userId) handleAddMember(userId, false)
                     }}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
+                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
                   >
                     Ajouter comme membre
                   </button>
@@ -615,7 +617,7 @@ export default function TeamsPage() {
                       const userId = parseInt(select.value)
                       if (userId) handleAddMember(userId, true)
                     }}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-700 rounded-md hover:bg-primary-800"
+                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-700 rounded-lg hover:bg-primary-800"
                   >
                     Ajouter comme chef
                   </button>

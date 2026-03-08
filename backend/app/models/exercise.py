@@ -2,7 +2,7 @@
 import enum
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -52,6 +52,7 @@ class Exercise(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    timeline_configured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

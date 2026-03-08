@@ -313,6 +313,18 @@ function parseEnabledPhasesFromOptions(raw: string | null | undefined): OptionsP
   }
 }
 
+/** Normalize API errors (Pydantic 422 detail is an array of objects, not a string). */
+const normalizeApiError = (err: any, fallback: string): string => {
+  const detail = err?.response?.data?.detail
+  if (!detail) return err?.message || fallback
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail.map((e: any) => (typeof e === 'string' ? e : e.msg || JSON.stringify(e))).join(' | ')
+  }
+  if (typeof detail === 'object') return detail.msg || JSON.stringify(detail)
+  return fallback
+}
+
 export default function ExerciseDetailPage() {
   const appDialog = useAppDialog()
   const { id } = useParams<{ id: string }>()
@@ -669,17 +681,6 @@ export default function ExerciseDetailPage() {
 
   const users = exerciseUsersData?.users || []
   const injects = injectsData?.injects || []
-  const timelineMarkers = useMemo(() => {
-    if (!injects.length) return []
-    return injects.filter((inject) => inject.content?.marker === 'timeline-config')
-  }, [injects])
-
-  const hasTimelineMarkerFor = (timelineType: TimelineType) =>
-    timelineMarkers.some((inject) => (inject.timeline_type ?? 'business') === timelineType)
-
-  const timelineTypes: TimelineType[] = ['business', 'technical']
-  const hasAllTimelineMarkers = timelineTypes.every((type) => hasTimelineMarkerFor(type))
-
   const handlePhaseModalConfirm = () => {
     const alignedDurations = alignPhaseDurationsToExercise()
     if (phaseModalSelection.length > 0) {
@@ -689,11 +690,9 @@ export default function ExerciseDetailPage() {
         existingPhases: phases ?? [],
       })
     }
-    timelineTypes.forEach((type) => {
-      if (!hasTimelineMarkerFor(type)) {
-        createTimelineMarkerMutation.mutate({ timelineType: type })
-      }
-    })
+    if (!exercise?.timeline_configured) {
+      markTimelineConfiguredMutation.mutate({ configured: true })
+    }
     setPhaseModalOpen(false)
   }
   const allTeams = teamsData?.teams || []
@@ -724,11 +723,11 @@ export default function ExerciseDetailPage() {
   }, [users, actorSearch, actorRoleFilter])
 
   useEffect(() => {
-    if (!canConfigure || phaseModalAutoOpened || injectsData === undefined) return
-    if (hasAllTimelineMarkers) return
+    if (!canConfigure || phaseModalAutoOpened || exercise === undefined) return
+    if (exercise?.timeline_configured) return
     setPhaseModalOpen(true)
     setPhaseModalAutoOpened(true)
-  }, [canConfigure, phaseModalAutoOpened, hasAllTimelineMarkers, injectsData])
+  }, [canConfigure, phaseModalAutoOpened, exercise])
 
   const { data: bankCatalog, isFetching: isFetchingBankCatalog } = useQuery({
     queryKey: ['inject-bank-catalog', isBankModalOpen, bankKind, bankCategory, bankSearch],
@@ -862,7 +861,7 @@ export default function ExerciseDetailPage() {
       setErrorMessage(null)
     },
     onError: (err: any) => {
-      setErrorMessage(err.response?.data?.detail || 'Action impossible pour cet exercice.')
+      setErrorMessage(normalizeApiError(err, 'Action impossible pour cet exercice.'))
     },
   })
 
@@ -887,7 +886,7 @@ export default function ExerciseDetailPage() {
     },
     onError: (err: any) => {
       setSocleSaveStatus('error')
-      setErrorMessage(err.response?.data?.detail || 'Impossible de sauvegarder le socle.')
+      setErrorMessage(normalizeApiError(err, 'Impossible de sauvegarder le socle.'))
     },
   })
 
@@ -924,7 +923,7 @@ export default function ExerciseDetailPage() {
     },
     onError: (err: any) => {
       setScenarioQuickSaveStatus('error')
-      setErrorMessage(err.response?.data?.detail || 'Impossible de sauvegarder le scenario.')
+      setErrorMessage(normalizeApiError(err, 'Impossible de sauvegarder le scenario.'))
     },
   })
 
@@ -940,7 +939,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exercise', exerciseId] })
       setFeedbackMessage('Objectifs enregistres.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || 'Impossible de sauvegarder les objectifs.'),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Impossible de sauvegarder les objectifs.')),
   })
 
   useEffect(() => {
@@ -1022,7 +1021,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exercise-phases', exerciseId] })
       setFeedbackMessage('Phase ajoutee.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || 'Impossible d ajouter la phase.'),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Impossible d ajouter la phase.')),
   })
 
   const assignUserMutation = useMutation({
@@ -1038,7 +1037,7 @@ export default function ExerciseDetailPage() {
       setSelectedRole('joueur')
       setFeedbackMessage('Participant ajoute.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || 'Impossible d ajouter ce participant.'),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Impossible d ajouter ce participant.')),
   })
 
   const removeUserMutation = useMutation({
@@ -1048,7 +1047,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['available-users', exerciseId] })
       setFeedbackMessage('Participant retire.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || 'Impossible de retirer ce participant.'),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Impossible de retirer ce participant.')),
   })
 
   const updateActorTeamMutation = useMutation({
@@ -1060,7 +1059,7 @@ export default function ExerciseDetailPage() {
       setSelectedActorTeamId('0')
       setFeedbackMessage('Equipe du participant mise a jour.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible d'affecter cette equipe."),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, "Impossible d'affecter cette equipe.")),
   })
 
   const updateActorRoleMutation = useMutation({
@@ -1070,7 +1069,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exercise-users', exerciseId] })
       setFeedbackMessage('Role du participant mis a jour.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible de modifier ce role."),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, "Impossible de modifier ce role.")),
   })
 
   const attachExerciseTeamMutation = useMutation({
@@ -1080,7 +1079,7 @@ export default function ExerciseDetailPage() {
       setSelectedExerciseTeamToAttach('')
       setFeedbackMessage("Equipe rattachee a l'exercice.")
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible de rattacher cette equipe."),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, "Impossible de rattacher cette equipe.")),
   })
 
   const detachExerciseTeamMutation = useMutation({
@@ -1090,7 +1089,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exercise-users', exerciseId] })
       setFeedbackMessage("Equipe detachee de l'exercice.")
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible de detacher cette equipe."),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, "Impossible de detacher cette equipe.")),
   })
 
   const createCellRoleTeamMutation = useMutation({
@@ -1112,7 +1111,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exercise-teams', exerciseId] })
       setFeedbackMessage(`Équipe "${variables.role.name}" créée et rattachée à l'exercice.`)
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible de créer cette équipe."),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, "Impossible de créer cette équipe.")),
   })
 
   const handleCreateAllCellRoleTeams = () => {
@@ -1130,24 +1129,13 @@ export default function ExerciseDetailPage() {
     })
   }
 
-  const createTimelineMarkerMutation = useMutation({
-    mutationFn: ({ timelineType }: { timelineType: TimelineType }) =>
-      injectsApi.create({
-        exercise_id: exerciseId,
-        title: 'Configuration timeline validée',
-        description: 'Marqueur indiquant que la configuration initiale des phases est appliquée.',
-        type: 'system',
-        content: { marker: 'timeline-config' },
-        time_offset: 0,
-        duration_min: 1,
-        phase_id: undefined,
-        timeline_type: timelineType,
-      }),
+  const markTimelineConfiguredMutation = useMutation({
+    mutationFn: ({ configured }: { configured: boolean }) =>
+      exercisesApi.update(exerciseId, { timeline_configured: configured }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['exercise-injects', exerciseId] })
-      setFeedbackMessage('Marqueur de timeline ajouté.')
+      queryClient.invalidateQueries({ queryKey: ['exercise', exerciseId] })
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || "Impossible d'ajouter le marqueur de timeline."),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Impossible de valider la configuration de timeline.')),
   })
 
   const applyPresetMutation = useMutation({
@@ -1179,7 +1167,7 @@ export default function ExerciseDetailPage() {
         ['exercise-phases', exerciseId],
       ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || 'Echec de l application du preset.'),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Echec de l application du preset.')),
   })
 
   // Simulator configuration mutation
@@ -1194,7 +1182,7 @@ export default function ExerciseDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exercise', exerciseId] })
       setFeedbackMessage('Configuration des simulateurs enregistree.')
     },
-    onError: (err: any) => setErrorMessage(err.response?.data?.detail || 'Impossible de sauvegarder la configuration des simulateurs.'),
+    onError: (err: any) => setErrorMessage(normalizeApiError(err, 'Impossible de sauvegarder la configuration des simulateurs.')),
   })
 
   const generateFakeSocialTrendsMutation = useMutation({
@@ -1312,7 +1300,7 @@ export default function ExerciseDetailPage() {
         }
         return
       }
-      setErrorMessage(err.response?.data?.detail || 'Echec de l import.')
+      setErrorMessage(normalizeApiError(err, 'Echec de l import.'))
     },
   })
 
@@ -1349,7 +1337,7 @@ export default function ExerciseDetailPage() {
       ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
     },
     onError: (err: any) => {
-      setErrorMessage(err.response?.data?.detail || 'Echec de l import depuis la banque.')
+      setErrorMessage(normalizeApiError(err, 'Echec de l import depuis la banque.'))
     },
   })
 
@@ -1386,7 +1374,7 @@ export default function ExerciseDetailPage() {
       setFeedbackMessage(`${createdCount} phase(s) reinitialisee(s) depuis les options.`)
     },
     onError: (err: any) => {
-      setErrorMessage(err.response?.data?.detail || 'Impossible de reinitialiser les phases depuis les options.')
+      setErrorMessage(normalizeApiError(err, 'Impossible de reinitialiser les phases depuis les options.'))
     },
   })
 
@@ -1430,7 +1418,7 @@ export default function ExerciseDetailPage() {
       setFeedbackMessage('Phases synchronisées avec la configuration.')
     },
     onError: (err: any) =>
-      setErrorMessage(err.response?.data?.detail || 'Impossible de synchroniser les phases avec la configuration.'),
+      setErrorMessage(normalizeApiError(err, 'Impossible de synchroniser les phases avec la configuration.')),
   })
 
   const enabledPluginMap = useMemo(() => {
@@ -1531,7 +1519,7 @@ export default function ExerciseDetailPage() {
       await exercisesApi.togglePlugin(exerciseId, channel.type, enabled)
       await queryClient.invalidateQueries({ queryKey: ['exercise', exerciseId] })
     } catch (err: any) {
-      setErrorMessage(err.response?.data?.detail || 'Impossible de mettre a jour ce canal.')
+      setErrorMessage(normalizeApiError(err, 'Impossible de mettre a jour ce canal.'))
     } finally {
       setActiveChannelId(null)
     }
@@ -1779,7 +1767,7 @@ export default function ExerciseDetailPage() {
             description="Participants, roles et acces"
             status={checklistSafe.sections.actors.status}
             summary={checklistSafe.sections.actors.summary}
-            action={canConfigure ? <div className="flex items-center gap-2"><button onClick={() => launchImportFor('actors')} className="inline-flex items-center px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded hover:bg-slate-200"><Upload size={14} className="mr-1" /> Import</button><button onClick={() => downloadImportTemplate('actors')} className="inline-flex items-center px-3 py-2 bg-white border border-slate-300 text-slate-800 rounded hover:bg-slate-50">Exemple JSON</button><button onClick={() => openBankImportModal('actors')} disabled={importFromBankMutation.isPending} className="inline-flex items-center px-3 py-2 bg-primary-700 text-white rounded hover:bg-primary-800 disabled:opacity-50">Banque/type</button><div className="relative group"><button className="inline-flex items-center px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"><FileDown size={14} className="mr-1" /> Kit bienvenue</button><div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10"><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'player'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-joueurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits joueurs téléchargés.'); } catch (err: any) { setErrorMessage(err.response?.data?.detail || 'Erreur génération kits joueurs.'); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Joueurs</button><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'facilitator'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-animateurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits animateurs téléchargés.'); } catch (err: any) { setErrorMessage(err.response?.data?.detail || 'Erreur génération kits animateurs.'); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Animateurs</button></div></div></div> : undefined}
+            action={canConfigure ? <div className="flex items-center gap-2"><button onClick={() => launchImportFor('actors')} className="inline-flex items-center px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded hover:bg-slate-200"><Upload size={14} className="mr-1" /> Import</button><button onClick={() => downloadImportTemplate('actors')} className="inline-flex items-center px-3 py-2 bg-white border border-slate-300 text-slate-800 rounded hover:bg-slate-50">Exemple JSON</button><button onClick={() => openBankImportModal('actors')} disabled={importFromBankMutation.isPending} className="inline-flex items-center px-3 py-2 bg-primary-700 text-white rounded hover:bg-primary-800 disabled:opacity-50">Banque/type</button><div className="relative group"><button className="inline-flex items-center px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"><FileDown size={14} className="mr-1" /> Kit bienvenue</button><div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10"><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'player'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-joueurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits joueurs téléchargés.'); } catch (err: any) { setErrorMessage(normalizeApiError(err, 'Erreur génération kits joueurs.')); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Joueurs</button><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'facilitator'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-animateurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits animateurs téléchargés.'); } catch (err: any) { setErrorMessage(normalizeApiError(err, 'Erreur génération kits animateurs.')); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Animateurs</button></div></div></div> : undefined}
           >
             <div className="flex border-b mb-4">
               <button
@@ -2315,6 +2303,40 @@ export default function ExerciseDetailPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-gray-800">Objectifs de l'exercice</h3>
                 </div>
+
+                {/* Timeline configuration status */}
+                {canConfigure && (
+                  <div className="mb-4 flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${exercise?.timeline_configured ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                      <span className="text-sm text-gray-700">Configuration timeline</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${exercise?.timeline_configured ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {exercise?.timeline_configured ? 'Validée' : 'Non validée'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {exercise?.timeline_configured ? (
+                        <button
+                          type="button"
+                          onClick={() => markTimelineConfiguredMutation.mutate({ configured: false })}
+                          disabled={markTimelineConfiguredMutation.isPending}
+                          className="text-xs px-2.5 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          Réinitialiser
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => markTimelineConfiguredMutation.mutate({ configured: true })}
+                          disabled={markTimelineConfiguredMutation.isPending}
+                          className="text-xs px-2.5 py-1.5 rounded border border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        >
+                          Marquer comme configurée
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Objectif métier à couvrir</label>
@@ -2671,7 +2693,7 @@ export default function ExerciseDetailPage() {
                   setFeedbackMessage(`Import catalogue: ${selectedBankItemIds.length} element(s) selectionne(s).`)
                   setIsBankModalOpen(false)
                 }).catch((err: any) => {
-                  setErrorMessage(err.response?.data?.detail || 'Echec de l import depuis le catalogue.')
+                  setErrorMessage(normalizeApiError(err, 'Echec de l import depuis le catalogue.'))
                 })
               }
               disabled={importFromBankMutation.isPending || selectedBankItemIds.length === 0}

@@ -576,42 +576,42 @@ function MailPreview({ payload, fallbackBody }: { payload: Record<string, any>; 
       : timestamp
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+    <div className="rounded-lg border border-gray-700 bg-gray-800">
+      <div className="border-b border-gray-700 bg-gray-900 px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
-          <Mail className="h-4 w-4 text-gray-500" />
-          <span className="font-medium text-gray-700">Email</span>
+          <Mail className="h-4 w-4 text-gray-400" />
+          <span className="font-medium text-gray-300">Email</span>
         </div>
       </div>
       <div className="space-y-1 p-3 text-sm">
         <div className="flex gap-2">
-          <span className="w-12 shrink-0 text-gray-500">De:</span>
-          <span className="text-gray-900">{formattedFrom || '-'}</span>
+          <span className="w-12 shrink-0 text-gray-400">De:</span>
+          <span className="text-white">{formattedFrom || '-'}</span>
         </div>
         <div className="flex gap-2">
-          <span className="w-12 shrink-0 text-gray-500">À:</span>
-          <span className="text-gray-900">{formattedTo || '-'}</span>
+          <span className="w-12 shrink-0 text-gray-400">À:</span>
+          <span className="text-white">{formattedTo || '-'}</span>
         </div>
         {formattedCc && (
           <div className="flex gap-2">
-            <span className="w-12 shrink-0 text-gray-500">Cc:</span>
-            <span className="text-gray-900">{formattedCc}</span>
+            <span className="w-12 shrink-0 text-gray-400">Cc:</span>
+            <span className="text-white">{formattedCc}</span>
           </div>
         )}
         <div className="flex gap-2">
-          <span className="w-12 shrink-0 text-gray-500">Sujet:</span>
-          <span className="font-medium text-gray-900">{subject || '-'}</span>
+          <span className="w-12 shrink-0 text-gray-400">Sujet:</span>
+          <span className="font-medium text-white">{subject || '-'}</span>
         </div>
         {formattedTimestamp && (
           <div className="flex gap-2">
-            <span className="w-12 shrink-0 text-gray-500">Date:</span>
-            <span className="text-gray-900">{formattedTimestamp}</span>
+            <span className="w-12 shrink-0 text-gray-400">Date:</span>
+            <span className="text-white">{formattedTimestamp}</span>
           </div>
         )}
       </div>
       {body && (
-        <div className="border-t border-gray-200 bg-gray-50 p-3">
-          <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">{body}</pre>
+        <div className="border-t border-gray-700 bg-gray-900 p-3">
+          <pre className="whitespace-pre-wrap font-sans text-sm text-gray-300">{body}</pre>
         </div>
       )}
     </div>
@@ -632,8 +632,8 @@ function MessagePreview({ payload }: { payload: Record<string, any> }) {
     : ''
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-center rounded border border-gray-200 bg-gray-50 p-4">
+    <div className="rounded-lg border border-gray-700 bg-gray-800 p-3">
+      <div className="flex items-center justify-center rounded border border-gray-700 bg-gray-900 p-4">
         <div className="relative h-[460px] w-[240px] rounded-[32px] border-[10px] border-gray-900 bg-gradient-to-b from-slate-800 to-slate-900 shadow-xl">
           <div className="absolute left-1/2 top-2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-gray-700" />
           <div className="absolute inset-[10px] rounded-[18px] bg-slate-100 p-3">
@@ -691,24 +691,24 @@ function SocialPostPreview({ payload, fallbackText }: { payload: Record<string, 
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+      <div className="mx-auto w-full max-w-xl rounded-2xl border border-gray-700 bg-gray-800">
         <div className="flex items-start gap-3 p-4">
           <div className="mt-0.5 h-11 w-11 shrink-0 rounded-full bg-slate-900 text-sm font-semibold text-white flex items-center justify-center">
             {String(authorName).trim().slice(0, 2).toUpperCase() || 'XO'}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-semibold text-slate-900">{authorName}</p>
-              <p className="truncate text-sm text-slate-500">{handle}</p>
+              <p className="truncate text-sm font-semibold text-white">{authorName}</p>
+              <p className="truncate text-sm text-gray-400">{handle}</p>
             </div>
             {message && (
-              <p className="mt-2 whitespace-pre-wrap text-[15px] leading-6 text-slate-900">{message}</p>
+              <p className="mt-2 whitespace-pre-wrap text-[15px] leading-6 text-white">{message}</p>
             )}
             {formattedTimestamp && (
-              <p className="mt-2 text-xs text-slate-500">{formattedTimestamp}</p>
+              <p className="mt-2 text-xs text-gray-400">{formattedTimestamp}</p>
             )}
-            <div className="mt-3 grid grid-cols-4 gap-2 border-t border-slate-100 pt-3 text-slate-600">
+            <div className="mt-3 grid grid-cols-4 gap-2 border-t border-gray-700 pt-3 text-gray-400">
               <div className="inline-flex items-center gap-1.5 text-sm">
                 <MessageSquare className="h-4 w-4" />
                 <span>{fmt(replies)}</span>
@@ -739,35 +739,35 @@ function DirectoryPreview({ payload }: { payload: Record<string, any> }) {
   const directoryType = content?.directory_type || payload?.directory_type || ''
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+    <div className="rounded-lg border border-gray-700 bg-gray-800">
+      <div className="border-b border-gray-700 bg-gray-900 px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
-          <Users className="h-4 w-4 text-gray-500" />
-          <span className="font-medium text-gray-700">{directoryType || 'Annuaire'}</span>
+          <Users className="h-4 w-4 text-gray-400" />
+          <span className="font-medium text-gray-300">{directoryType || 'Annuaire'}</span>
         </div>
       </div>
       {Array.isArray(entries) && entries.length > 0 ? (
         <div className="max-h-64 overflow-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-gray-50">
+            <thead className="sticky top-0 bg-gray-900">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Nom</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Contact</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Téléphone</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Priorité</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-400">Nom</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-400">Contact</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-400">Téléphone</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-400">Priorité</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-700">
               {entries.map((entry: any, idx: number) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 text-gray-900">{entry?.partner || entry?.name || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700">{entry?.contact || '-'}</td>
-                  <td className="px-3 py-2 text-gray-700">{entry?.phone || '-'}</td>
+                <tr key={idx} className="hover:bg-gray-700/50">
+                  <td className="px-3 py-2 text-white">{entry?.partner || entry?.name || '-'}</td>
+                  <td className="px-3 py-2 text-gray-300">{entry?.contact || '-'}</td>
+                  <td className="px-3 py-2 text-gray-300">{entry?.phone || '-'}</td>
                   <td className="px-3 py-2">
                     <span className={`rounded px-2 py-0.5 text-xs ${
-                      entry?.priority === 'haute' ? 'bg-red-100 text-red-700' :
-                      entry?.priority === 'moyenne' ? 'bg-amber-100 text-amber-700' :
-                      'bg-green-100 text-green-700'
+                      entry?.priority === 'haute' ? 'bg-red-900/30 text-red-400' :
+                      entry?.priority === 'moyenne' ? 'bg-yellow-900/30 text-yellow-400' :
+                      'bg-green-900/30 text-green-400'
                     }`}>
                       {entry?.priority || '-'}
                     </span>
@@ -778,7 +778,7 @@ function DirectoryPreview({ payload }: { payload: Record<string, any> }) {
           </table>
         </div>
       ) : (
-        <div className="p-4 text-sm text-gray-500">Aucune entrée</div>
+        <div className="p-4 text-sm text-gray-400">Aucune entrée</div>
       )}
     </div>
   )
@@ -792,24 +792,24 @@ function CanalAnssiPreview({ payload }: { payload: Record<string, any> }) {
   const contactPoint = content?.contact_point || payload?.contact_point || ''
 
   return (
-    <div className="rounded-lg border border-primary-200 bg-primary-50">
-      <div className="border-b border-primary-200 bg-primary-100 px-4 py-2">
+    <div className="rounded-lg border border-primary-900/30 bg-primary-900/20">
+      <div className="border-b border-primary-900/30 bg-primary-900/30 px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <Shield className="h-4 w-4 text-primary-600" />
-            <span className="font-medium text-primary-800">ANSSI</span>
+            <Shield className="h-4 w-4 text-primary-400" />
+            <span className="font-medium text-primary-400">ANSSI</span>
           </div>
           {refNumber && (
-            <span className="rounded bg-primary-200 px-2 py-0.5 text-xs text-primary-800">{refNumber}</span>
+            <span className="rounded bg-primary-900/30 px-2 py-0.5 text-xs text-primary-400">{refNumber}</span>
           )}
         </div>
       </div>
       <div className="space-y-2 p-3 text-sm">
         {commType && (
-          <div className="text-xs text-primary-600 uppercase">{commType}</div>
+          <div className="text-xs text-primary-400 uppercase">{commType}</div>
         )}
         {message && (
-          <pre className="whitespace-pre-wrap font-sans text-gray-700">{message}</pre>
+          <pre className="whitespace-pre-wrap font-sans text-gray-300">{message}</pre>
         )}
         {contactPoint && (
           <div className="mt-2 rounded bg-primary-100 px-2 py-1 text-xs text-primary-700">
@@ -829,24 +829,24 @@ function CanalGouvernementPreview({ payload }: { payload: Record<string, any> })
   const contactPoint = content?.contact_point || payload?.contact_point || ''
 
   return (
-    <div className="rounded-lg border border-purple-200 bg-purple-50">
-      <div className="border-b border-purple-200 bg-purple-100 px-4 py-2">
+    <div className="rounded-lg border border-purple-900/30 bg-purple-900/20">
+      <div className="border-b border-purple-900/30 bg-purple-900/30 px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <Shield className="h-4 w-4 text-purple-600" />
-            <span className="font-medium text-purple-800">Gouvernement</span>
+            <Shield className="h-4 w-4 text-purple-400" />
+            <span className="font-medium text-purple-400">Gouvernement</span>
           </div>
           {refNumber && (
-            <span className="rounded bg-purple-200 px-2 py-0.5 text-xs text-purple-800">{refNumber}</span>
+            <span className="rounded bg-purple-900/30 px-2 py-0.5 text-xs text-purple-400">{refNumber}</span>
           )}
         </div>
       </div>
       <div className="space-y-2 p-3 text-sm">
         {commType && (
-          <div className="text-xs text-purple-600 uppercase">{commType}</div>
+          <div className="text-xs text-purple-400 uppercase">{commType}</div>
         )}
         {message && (
-          <pre className="whitespace-pre-wrap font-sans text-gray-700">{message}</pre>
+          <pre className="whitespace-pre-wrap font-sans text-gray-300">{message}</pre>
         )}
         {contactPoint && (
           <div className="mt-2 rounded bg-purple-100 px-2 py-1 text-xs text-purple-700">
@@ -868,23 +868,23 @@ function CanalPressPreview({ payload }: { payload: Record<string, any> }) {
   const pubDate = content?.publication_datetime || payload?.publication_datetime || ''
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+    <div className="rounded-lg border border-gray-700 bg-gray-800">
+      <div className="border-b border-gray-700 bg-gray-900 px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
-          <Newspaper className="h-4 w-4 text-gray-500" />
-          <span className="font-medium text-gray-700">{mediaName || 'Presse'}</span>
-          {journalist && <span className="text-gray-500">• {journalist}</span>}
+          <Newspaper className="h-4 w-4 text-gray-400" />
+          <span className="font-medium text-gray-300">{mediaName || 'Presse'}</span>
+          {journalist && <span className="text-gray-400">• {journalist}</span>}
         </div>
       </div>
       <div className="space-y-2 p-3">
         {headline && (
-          <h4 className="text-lg font-semibold text-gray-900">{headline}</h4>
+          <h4 className="text-lg font-semibold text-white">{headline}</h4>
         )}
         {articleBody && (
-          <p className="whitespace-pre-wrap text-sm text-gray-700">{articleBody}</p>
+          <p className="whitespace-pre-wrap text-sm text-gray-300">{articleBody}</p>
         )}
-        <div className="flex gap-2 text-xs text-gray-500">
-          {tone && <span className="rounded bg-gray-100 px-2 py-0.5">{tone}</span>}
+        <div className="flex gap-2 text-xs text-gray-400">
+          {tone && <span className="rounded bg-gray-700 px-2 py-0.5">{tone}</span>}
           {pubDate && <span>{new Date(pubDate).toLocaleString('fr-FR')}</span>}
         </div>
       </div>
@@ -898,24 +898,24 @@ function ReferenceUrlPreview({ payload }: { payload: Record<string, any> }) {
   const description = content?.description || payload?.description || ''
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
       <div className="flex items-center gap-2 text-sm">
-        <Link2 className="h-4 w-4 text-gray-500" />
-        <span className="font-medium text-gray-700">URL de référence</span>
+        <Link2 className="h-4 w-4 text-gray-400" />
+        <span className="font-medium text-gray-300">URL de référence</span>
       </div>
       {url && (
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 flex items-center gap-1 text-primary-600 hover:underline"
+          className="mt-2 flex items-center gap-1 text-primary-400 hover:underline"
         >
           <ExternalLink className="h-4 w-4" />
           <span className="truncate">{url}</span>
         </a>
       )}
       {description && (
-        <p className="mt-2 text-sm text-gray-600">{description}</p>
+        <p className="mt-2 text-sm text-gray-400">{description}</p>
       )}
     </div>
   )
@@ -923,21 +923,21 @@ function ReferenceUrlPreview({ payload }: { payload: Record<string, any> }) {
 
 function IdeaPreview({ item }: { item: InjectBankItem }) {
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+    <div className="rounded-lg border border-amber-900/30 bg-amber-900/20 p-4">
       <div className="flex items-center gap-2 text-sm">
-        <Lightbulb className="h-4 w-4 text-amber-500" />
-        <span className="font-medium text-amber-800">Idée</span>
+        <Lightbulb className="h-4 w-4 text-amber-400" />
+        <span className="font-medium text-amber-400">Idée</span>
       </div>
       {item.summary && (
-        <p className="mt-2 text-sm text-gray-700">{item.summary}</p>
+        <p className="mt-2 text-sm text-gray-300">{item.summary}</p>
       )}
       {item.content && (
-        <p className="mt-2 text-sm text-gray-600">{item.content}</p>
+        <p className="mt-2 text-sm text-gray-400">{item.content}</p>
       )}
       {item.tags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
           {item.tags.map((t: string) => (
-            <span key={t} className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">{t}</span>
+            <span key={t} className="rounded bg-amber-900/30 px-2 py-0.5 text-xs text-amber-400">{t}</span>
           ))}
         </div>
       )}
@@ -947,15 +947,15 @@ function IdeaPreview({ item }: { item: InjectBankItem }) {
 
 function GenericPreview({ payload }: { payload: Record<string, any> }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+    <div className="rounded-lg border border-gray-700 bg-gray-800">
+      <div className="border-b border-gray-700 bg-gray-900 px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
-          <FileText className="h-4 w-4 text-gray-500" />
-          <span className="font-medium text-gray-700">Contenu</span>
+          <FileText className="h-4 w-4 text-gray-400" />
+          <span className="font-medium text-gray-300">Contenu</span>
         </div>
       </div>
       <div className="max-h-64 overflow-auto p-3">
-        <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700">
+        <pre className="whitespace-pre-wrap font-mono text-xs text-gray-300">
           {JSON.stringify(payload, null, 2)}
         </pre>
       </div>
@@ -1078,15 +1078,15 @@ function ChronogramD3Viewer({ item }: { item: InjectBankItem }) {
   return (
     <div className="space-y-3">
       {points.length === 0 ? (
-        <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="rounded border border-amber-900/30 bg-amber-900/20 p-3 text-sm text-amber-400">
           Aucun noeud exploitable n&apos;a ete detecte dans le payload de ce chronogramme.
         </div>
       ) : (
         <>
-          <div className="rounded border border-gray-200 bg-white p-3">
+          <div className="rounded border border-gray-700 bg-gray-800 p-3">
             <svg ref={svgRef} className="w-full" role="img" aria-label="Visualisation chronogramme verticale" />
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             {points.length} point(s) affiches pour {timelineNodeCount} noeud(s) timeline. Survoler un point pour voir les details.
           </p>
         </>
@@ -1224,7 +1224,7 @@ export default function InjectBankPage() {
   })
 
   const importMutation = useMutation({
-    mutationFn: ({ file, clearBefore }: { file: File; clearBefore: boolean }) => 
+    mutationFn: ({ file, clearBefore }: { file: File; clearBefore: boolean }) =>
       injectBankApi.importZip(file, clearBefore),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['inject-bank'] })
@@ -1232,9 +1232,9 @@ export default function InjectBankPage() {
       closeImportModal()
       // Show result with skipped count
       if (result.skipped > 0) {
-        setDragImportStatus({ 
-          type: 'success', 
-          message: `${result.imported} importe(s), ${result.skipped} ignore(s) (deja existants) sur ${result.total_in_zip}` 
+        setDragImportStatus({
+          type: 'success',
+          message: `${result.imported} importe(s), ${result.skipped} ignore(s) (deja existants) sur ${result.total_in_zip}`
         })
       }
     },
@@ -1564,9 +1564,9 @@ export default function InjectBankPage() {
   }
 
   const cardStatusColor: Record<InjectBankStatus, string> = {
-    draft: 'bg-amber-100 text-amber-800',
-    ready: 'bg-green-100 text-green-800',
-    archived: 'bg-gray-100 text-gray-700',
+    draft: 'bg-yellow-900/30 text-yellow-400',
+    ready: 'bg-green-900/30 text-green-400',
+    archived: 'bg-gray-700 text-gray-300',
   }
 
   // Drag & Drop handlers - use counter to prevent flickering
@@ -1601,9 +1601,9 @@ export default function InjectBankPage() {
     e.stopPropagation()
     setDragCounter(0)
     setIsDragOver(false)
-    
+
     if (isDragImporting) return
-    
+
     setDragImportStatus(null)
 
     const files = Array.from(e.dataTransfer.files)
@@ -1624,7 +1624,7 @@ export default function InjectBankPage() {
       const name = f.name.toLowerCase()
       return name.endsWith('.json')
     })
-    
+
     console.log('ZIP files:', zipFiles.length, 'JSON files:', jsonFiles.length)
 
     if (zipFiles.length === 0 && jsonFiles.length === 0) {
@@ -1633,7 +1633,7 @@ export default function InjectBankPage() {
     }
 
     setIsDragImporting(true)
-    
+
     try {
       let totalImported = 0
       let totalInFiles = 0
@@ -1657,7 +1657,7 @@ export default function InjectBankPage() {
           const text = await jsonFile.text()
           const itemsToImport = parseImportJson(text)
           totalInFiles += itemsToImport.length
-          
+
           for (let i = 0; i < itemsToImport.length; i++) {
             try {
               await injectBankApi.create(itemsToImport[i])
@@ -1675,7 +1675,7 @@ export default function InjectBankPage() {
       if (totalImported > 0) {
         queryClient.invalidateQueries({ queryKey: ['inject-bank'] })
         queryClient.invalidateQueries({ queryKey: ['inject-bank-stats'] })
-        
+
         let message = `${totalImported} inject(s) importe(s)`
         if (totalInFiles > totalImported) {
           message += ` sur ${totalInFiles}`
@@ -1732,8 +1732,8 @@ export default function InjectBankPage() {
   }, [isModalOpen, timelineInjectTypeOptions, form.inject_type, form.data_format])
 
   return (
-    <div 
-      className="space-y-6 relative min-h-screen"
+    <div
+      className="options-theme space-y-6 relative min-h-screen"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1741,25 +1741,25 @@ export default function InjectBankPage() {
     >
       {/* Drag & Drop Overlay - covers entire viewport */}
       {isDragOver && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-primary-500/20 backdrop-blur-sm transition-all"
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          <div className="rounded-xl border-2 border-dashed border-primary-500 bg-white/95 p-16 text-center shadow-2xl pointer-events-none">
+          <div className="rounded-xl border-2 border-dashed border-primary-500 bg-gray-900/95 p-16 text-center shadow-2xl pointer-events-none">
             <div className="mb-4 flex justify-center gap-4">
-              <FileArchive className="h-16 w-16 text-primary-600" />
-              <FileJson className="h-16 w-16 text-primary-600" />
+              <FileArchive className="h-16 w-16 text-primary-400" />
+              <FileJson className="h-16 w-16 text-primary-400" />
             </div>
-            <p className="text-xl font-bold text-gray-900">
+            <p className="text-xl font-bold text-white">
               {isDragImporting ? 'Import en cours...' : 'Deposez vos fichiers ZIP ou JSON'}
             </p>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-400">
               Import rapide d'injects dans la banque - plusieurs fichiers acceptes
             </p>
             {isDragImporting && (
               <div className="mt-4">
-                <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-primary-600 border-r-transparent"></div>
+                <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-primary-400 border-r-transparent"></div>
               </div>
             )}
           </div>
@@ -1769,80 +1769,81 @@ export default function InjectBankPage() {
       {/* Import Status Toast */}
       {dragImportStatus && (
         <div className={`fixed top-4 right-4 z-50 rounded-lg p-4 shadow-lg ${
-          dragImportStatus.type === 'success' 
-            ? 'bg-green-50 border border-green-200 text-green-800' 
-            : 'bg-red-50 border border-red-200 text-red-800'
+          dragImportStatus.type === 'success'
+            ? 'bg-green-900/30 border border-green-700/50 text-green-400'
+            : 'bg-red-900/30 border border-red-700/50 text-red-400'
         }`}>
           <p className="text-sm font-medium">{dragImportStatus.message}</p>
         </div>
       )}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Banque d'inject</h1>
-          <p className="text-sm text-gray-500">
-            Bibliotheque de briques LEGO pour composer les exercices de demain.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Groupe import / export */}
-          <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden divide-x divide-gray-300">
+      {/* Unified header block */}
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Banque d'injects</h1>
+            <p className="text-sm text-gray-400 mt-1">Bibliothèque de scénarios et d'événements</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Groupe import / export */}
+            <div className="flex items-center rounded-lg border border-gray-600 bg-gray-700 overflow-hidden divide-x divide-gray-600">
+              <button
+                onClick={handleExportZip}
+                disabled={exportMutation.isPending}
+                className="inline-flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-600 disabled:opacity-50"
+                title="Exporter la banque (ZIP)"
+              >
+                <Download size={15} className="mr-1.5" />
+                {exportMutation.isPending ? 'Export…' : 'Export'}
+              </button>
+              <button
+                onClick={() => openImportModal('zip')}
+                className="inline-flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-600"
+                title="Importer un ZIP"
+              >
+                <Upload size={15} className="mr-1.5" />
+                ZIP
+              </button>
+              <button
+                onClick={() => openImportModal('text')}
+                className="inline-flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-600"
+                title="Importer du texte / JSON"
+              >
+                <FileText size={15} className="mr-1.5" />
+                Texte
+              </button>
+            </div>
             <button
-              onClick={handleExportZip}
-              disabled={exportMutation.isPending}
-              className="inline-flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              title="Exporter la banque (ZIP)"
+              onClick={openCreateModal}
+              className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
             >
-              <Download size={15} className="mr-1.5" />
-              {exportMutation.isPending ? 'Export…' : 'Export'}
-            </button>
-            <button
-              onClick={() => openImportModal('zip')}
-              className="inline-flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              title="Importer un ZIP"
-            >
-              <Upload size={15} className="mr-1.5" />
-              ZIP
-            </button>
-            <button
-              onClick={() => openImportModal('text')}
-              className="inline-flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              title="Importer du texte / JSON"
-            >
-              <FileText size={15} className="mr-1.5" />
-              Texte
+              <Plus className="mr-2" size={16} />
+              Nouvelle brique
             </button>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
-          >
-            <Plus className="mr-2" size={16} />
-            Nouvelle brique
-          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase text-gray-500">Total</p>
-          <p className="text-2xl font-semibold text-gray-900">{stats?.total || 0}</p>
+        <div className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+          <p className="text-xs uppercase text-gray-400">Total</p>
+          <p className="text-2xl font-semibold text-white">{stats?.total || 0}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase text-gray-500">Pretes</p>
-          <p className="text-2xl font-semibold text-green-700">{stats?.by_status?.ready || 0}</p>
+        <div className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+          <p className="text-xs uppercase text-gray-400">Pretes</p>
+          <p className="text-2xl font-semibold text-green-400">{stats?.by_status?.ready || 0}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase text-gray-500">Brouillons</p>
-          <p className="text-2xl font-semibold text-amber-700">{stats?.by_status?.draft || 0}</p>
+        <div className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+          <p className="text-xs uppercase text-gray-400">Brouillons</p>
+          <p className="text-2xl font-semibold text-amber-400">{stats?.by_status?.draft || 0}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs uppercase text-gray-500">Types utilises</p>
+        <div className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+          <p className="text-xs uppercase text-gray-400">Types utilises</p>
           <p className="text-2xl font-semibold text-primary-700">{Object.keys(stats?.by_kind || {}).length}</p>
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-700 bg-gray-800 p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
@@ -1853,7 +1854,7 @@ export default function InjectBankPage() {
                 setSearch(e.target.value)
               }}
               placeholder="Rechercher titre, contenu, tags"
-              className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white py-2 pl-9 pr-3 text-sm placeholder-gray-400"
             />
           </div>
 
@@ -1863,7 +1864,7 @@ export default function InjectBankPage() {
               setPage(1)
               setKind((e.target.value || '') as InjectBankKind | '')
             }}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
           >
             <option value="">Tous les types</option>
             {kindOptions.map((opt) => (
@@ -1877,7 +1878,7 @@ export default function InjectBankPage() {
               setPage(1)
               setStatus((e.target.value || '') as InjectBankStatus | '')
             }}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
           >
             <option value="">Tous les statuts</option>
             {statusOptions.map((opt) => (
@@ -1892,16 +1893,16 @@ export default function InjectBankPage() {
               setTag(e.target.value)
             }}
             placeholder="Tag exact"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm placeholder-gray-400"
           />
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white">
+      <div className="rounded-xl border border-gray-700 bg-gray-800">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Chargement...</div>
+          <div className="p-8 text-center text-gray-400">Chargement...</div>
         ) : items.length === 0 ? (
-          <div className="p-10 text-center text-gray-500">
+          <div className="p-10 text-center text-gray-400">
             <LibraryBig className="mx-auto mb-2" size={34} />
             Aucune brique pour les filtres courants.
           </div>
@@ -1911,13 +1912,12 @@ export default function InjectBankPage() {
               <article
                 key={item.id}
                 onClick={() => openPreview(item)}
-                className="cursor-pointer rounded-lg border border-gray-200 p-4 transition-all hover:border-primary-300 hover:shadow-md"
+                className="cursor-pointer rounded-lg border border-gray-700 p-4 transition-all hover:border-primary-300 hover:shadow-md"
               >
                 <div className="mb-2 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-base font-semibold text-gray-900">{item.title}</h3>
-                    <p className="text-xs text-gray-500">
-                      {(item.category || kindLabelMap[item.kind] || item.kind)} · format {(item.data_format || 'text')}
+                    <h3 className="text-base font-semibold text-white">{item.title}</h3>
+                    <p className="text-xs text-gray-400">
                     </p>
                   </div>
                   <span className={`rounded px-2 py-1 text-xs font-medium ${cardStatusColor[item.status]}`}>
@@ -1925,12 +1925,12 @@ export default function InjectBankPage() {
                   </span>
                 </div>
 
-                {item.summary && <p className="mb-3 text-sm text-gray-700">{item.summary}</p>}
+                {item.summary && <p className="mb-3 text-sm text-gray-300">{item.summary}</p>}
 
                 {item.tags.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-1">
                     {item.tags.map((t: string) => (
-                      <span key={`${item.id}-${t}`} className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                      <span key={`${item.id}-${t}`} className="inline-flex items-center rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300">
                         <Tag className="mr-1" size={12} />
                         {t}
                       </span>
@@ -1938,13 +1938,13 @@ export default function InjectBankPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-gray-400">
                   <span>Mise a jour {new Date(item.updated_at).toLocaleDateString('fr-FR')}</span>
                   <div className="space-x-2" onClick={(e) => e.stopPropagation()}>
                     {hasUploadedAttachment(item) && (
                       <button
                         onClick={() => setMediaPreviewItem(item)}
-                        className="inline-flex items-center rounded border border-primary-200 px-2 py-1 text-primary-700 hover:bg-primary-50"
+                        className="inline-flex items-center rounded border border-primary-200 px-2 py-1 text-primary-700 hover:bg-primary-900/30"
                       >
                         <Eye className="mr-1" size={12} />
                         Voir
@@ -1952,14 +1952,14 @@ export default function InjectBankPage() {
                     )}
                     <button
                       onClick={() => openEditModal(item)}
-                      className="inline-flex items-center rounded border border-gray-200 px-2 py-1 text-gray-600 hover:bg-gray-50"
+                      className="inline-flex items-center rounded border border-gray-600 px-2 py-1 text-gray-400 hover:bg-gray-700/50"
                     >
                       <Pencil className="mr-1" size={12} />
                       Modifier
                     </button>
                     <button
                       onClick={() => handleDelete(item.id)}
-                      className="inline-flex items-center rounded border border-red-200 px-2 py-1 text-red-700 hover:bg-red-50"
+                      className="inline-flex items-center rounded border border-red-200 px-2 py-1 text-red-400 hover:bg-red-900/30"
                     >
                       <Trash2 className="mr-1" size={12} />
                       Supprimer
@@ -1971,21 +1971,21 @@ export default function InjectBankPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
-          <p className="text-sm text-gray-500">{total} elements</p>
+        <div className="flex items-center justify-between border-t border-gray-700 px-4 py-3">
+          <p className="text-sm text-gray-400">{total} elements</p>
           <div className="space-x-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
+              className="rounded border border-gray-600 px-3 py-1 text-sm text-gray-300 disabled:opacity-40"
             >
               Precedent
             </button>
-            <span className="text-sm text-gray-500">Page {page}/{totalPages}</span>
+            <span className="text-sm text-gray-400">Page {page}/{totalPages}</span>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-40"
+              className="rounded border border-gray-600 px-3 py-1 text-sm text-gray-300 disabled:opacity-40"
             >
               Suivant
             </button>
@@ -2000,24 +2000,24 @@ export default function InjectBankPage() {
         maxWidthClassName="max-w-6xl"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          {error && <div className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>}
+          {error && <div className="rounded bg-red-900/30 border border-red-700/50 p-2 text-sm text-red-400">{error}</div>}
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            <section className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Metadonnees</p>
+            <section className="space-y-4 rounded-xl border border-gray-700 bg-gray-900 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Metadonnees</p>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Titre</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">Titre</label>
                 <input
                   required
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Type d&apos;inject</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-300">Type d&apos;inject</label>
                   <select
                     value={form.inject_type}
                     onChange={(e) => {
@@ -2040,7 +2040,7 @@ export default function InjectBankPage() {
                         payload_json: nextPayload,
                       }))
                     }}
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                   >
                     {timelineInjectTypeOptions.map((entry) => (
                       <option key={entry.type} value={entry.type}>
@@ -2050,11 +2050,11 @@ export default function InjectBankPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Statut</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-300">Statut</label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as InjectBankStatus }))}
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                   >
                     {statusOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -2065,7 +2065,7 @@ export default function InjectBankPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Format</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-300">Format</label>
                   <select
                     value={form.data_format}
                     onChange={(e) => {
@@ -2076,7 +2076,7 @@ export default function InjectBankPage() {
                         kind: resolveInjectBankKindFromType(f.inject_type),
                       }))
                     }}
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm bg-white text-gray-900"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                   >
                     {allowedFormatOptions.map((format) => (
                       <option key={format} value={format}>
@@ -2086,54 +2086,54 @@ export default function InjectBankPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Tags (virgules)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-300">Tags (virgules)</label>
                   <input
                     value={form.tags_csv}
                     onChange={(e) => setForm((f) => ({ ...f, tags_csv: e.target.value }))}
                     placeholder="rancon, comex, urgence"
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm placeholder-gray-400"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">URL source</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">URL source</label>
                 <input
                   value={form.source_url}
                   onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                   placeholder="https://..."
                 />
               </div>
             </section>
 
-            <section className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Contenu</p>
+            <section className="space-y-4 rounded-xl border border-gray-700 bg-gray-800 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Contenu</p>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Résumé</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">Résumé</label>
                 <textarea
                   value={form.summary}
                   onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
                   rows={3}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Contenu brut</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">Contenu brut</label>
                 <textarea
                   value={form.content}
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                   rows={3}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
                 />
               </div>
 
               {ATTACHMENT_SUPPORTED_KINDS.has(form.kind) && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Piece jointe</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-300">Piece jointe</label>
                   <div
                     className={`relative rounded-lg border-2 border-dashed p-4 transition-all ${
-                      attachmentFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50'
+                      attachmentFile ? 'border-green-300 bg-green-900/20' : 'border-gray-600 hover:border-primary-400 hover:bg-primary-900/20'
                     }`}
                   >
                     {attachmentFile ? (
@@ -2163,12 +2163,12 @@ export default function InjectBankPage() {
                         )}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {form.data_format === 'image' && <ImageIcon className="h-5 w-5 text-green-600" />}
-                            {form.data_format === 'video' && <Video className="h-5 w-5 text-green-600" />}
-                            {form.data_format === 'audio' && <FileIcon className="h-5 w-5 text-green-600" />}
-                            {form.kind === 'doc' && form.data_format === 'text' && <FileIcon className="h-5 w-5 text-green-600" />}
-                            <span className="text-sm font-medium text-green-700">{attachmentFile.name}</span>
-                            <span className="text-xs text-gray-500">
+                            {form.data_format === 'image' && <ImageIcon className="h-5 w-5 text-green-400" />}
+                            {form.data_format === 'video' && <Video className="h-5 w-5 text-green-400" />}
+                            {form.data_format === 'audio' && <FileIcon className="h-5 w-5 text-green-400" />}
+                            {form.kind === 'doc' && form.data_format === 'text' && <FileIcon className="h-5 w-5 text-green-400" />}
+                            <span className="text-sm font-medium text-green-400">{attachmentFile.name}</span>
+                            <span className="text-xs text-gray-400">
                               ({(attachmentFile.size / 1024 / 1024).toFixed(2)} Mo)
                             </span>
                           </div>
@@ -2178,7 +2178,7 @@ export default function InjectBankPage() {
                               setAttachmentFile(null)
                               setAttachmentPreview(null)
                             }}
-                            className="rounded p-1 text-gray-400 hover:bg-red-100 hover:text-red-600"
+                            className="rounded p-1 text-gray-400 hover:bg-red-900/30 hover:text-red-400"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -2206,10 +2206,10 @@ export default function InjectBankPage() {
                           {form.data_format === 'audio' && <FileIcon className="h-10 w-10 text-gray-400" />}
                           {form.kind === 'doc' && form.data_format === 'text' && <FileIcon className="h-10 w-10 text-gray-400" />}
                           <div>
-                            <p className="text-sm font-medium text-gray-700">
+                            <p className="text-sm font-medium text-gray-300">
                               Glissez-deposez ou cliquez pour selectionner
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-400">
                               {form.data_format === 'image' && 'PNG, JPG, GIF, WebP...'}
                               {form.data_format === 'video' && 'MP4, WebM, MOV...'}
                               {form.data_format === 'audio' && 'MP3, WAV, OGG...'}
@@ -2222,7 +2222,7 @@ export default function InjectBankPage() {
                   </div>
 
                   {!attachmentFile && editingItem && getExistingAttachmentName(editingItem.payload || {}) && (
-                    <p className="mt-2 text-xs text-gray-500">
+                    <p className="mt-2 text-xs text-gray-400">
                       <span className="font-medium">Fichier actuel:</span> {getExistingAttachmentName(editingItem.payload || {})}
                     </p>
                   )}
@@ -2231,12 +2231,12 @@ export default function InjectBankPage() {
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700">Payload JSON</label>
+                  <label className="block text-sm font-medium text-gray-300">Payload JSON</label>
                   {!editingItem && (
                     <button
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, payload_json: JSON.stringify(buildPayloadSkeletonByType(f.inject_type), null, 2) }))}
-                      className="inline-flex items-center rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                      className="inline-flex items-center rounded-lg border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-300 hover:bg-gray-600"
                     >
                       Generer squelette
                     </button>
@@ -2246,20 +2246,20 @@ export default function InjectBankPage() {
                   value={form.payload_json}
                   onChange={(e) => setForm((f) => ({ ...f, payload_json: e.target.value }))}
                   rows={10}
-                  className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-xs"
+                  className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 font-mono text-xs"
                 />
               </div>
             </section>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={closeModal} className="rounded bg-gray-100 px-3 py-2 text-sm text-gray-700">
+            <button type="button" onClick={closeModal} className="text-gray-300 bg-gray-700 rounded-lg px-3 py-2 text-sm hover:bg-gray-600">
               Annuler
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="rounded bg-primary-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+              className="rounded-lg bg-primary-600 px-3 py-2 text-sm text-white disabled:opacity-50"
             >
               {createMutation.isPending || updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
             </button>
@@ -2275,26 +2275,26 @@ export default function InjectBankPage() {
         {chronogramPreviewItem && (
           <div className="space-y-3">
             {chronogramPreviewItem.summary && (
-              <p className="text-sm text-gray-700">{chronogramPreviewItem.summary}</p>
+              <p className="text-sm text-gray-300">{chronogramPreviewItem.summary}</p>
             )}
 
             {chronogramPreviewItem.content && (
               <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">Description</p>
-                <p className="rounded border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+                <p className="mb-1 text-sm font-medium text-gray-300">Description</p>
+                <p className="rounded-lg border border-gray-700 bg-gray-900 p-2 text-sm text-gray-300">
                   {chronogramPreviewItem.content}
                 </p>
               </div>
             )}
 
             <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">Visualisateur chronogramme</p>
+              <p className="mb-1 text-sm font-medium text-gray-300">Visualisateur chronogramme</p>
               <ChronogramD3Viewer item={chronogramPreviewItem} />
             </div>
 
             <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">Payload brut</p>
-              <pre className="max-h-[30vh] overflow-auto rounded border border-gray-200 bg-gray-50 p-3 font-mono text-xs text-gray-700">
+              <p className="mb-1 text-sm font-medium text-gray-300">Payload brut</p>
+              <pre className="max-h-[30vh] overflow-auto rounded-lg border border-gray-700 bg-gray-900 p-3 font-mono text-xs text-gray-300">
                 {JSON.stringify(chronogramPreviewItem.payload || {}, null, 2)}
               </pre>
             </div>
@@ -2302,7 +2302,7 @@ export default function InjectBankPage() {
             <div className="flex justify-end">
               <button
                 onClick={closeChronogramPreview}
-                className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
+                className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
               >
                 Fermer
               </button>
@@ -2319,27 +2319,27 @@ export default function InjectBankPage() {
         {mediaPreviewItem && (
           <div className="space-y-3">
             {mediaPreviewItem.summary && (
-              <p className="text-sm text-gray-700">{mediaPreviewItem.summary}</p>
+              <p className="text-sm text-gray-300">{mediaPreviewItem.summary}</p>
             )}
 
             {mediaPreviewItem.content && (
               <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">Description</p>
-                <p className="rounded border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+                <p className="mb-1 text-sm font-medium text-gray-300">Description</p>
+                <p className="rounded-lg border border-gray-700 bg-gray-900 p-2 text-sm text-gray-300">
                   {mediaPreviewItem.content}
                 </p>
               </div>
             )}
 
             <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">Apercu</p>
-              <div className="rounded border border-gray-200 bg-gray-50 p-2">
+              <p className="mb-1 text-sm font-medium text-gray-300">Apercu</p>
+              <div className="rounded-lg border border-gray-700 bg-gray-900 p-2">
                 {(() => {
                   const previewUrl = getPreviewUrlForItem(mediaPreviewItem)
 
                   if (!previewUrl) {
                     return (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-400">
                         Impossible d&apos;afficher l&apos;apercu (URL manquante).
                       </p>
                     )
@@ -2375,7 +2375,7 @@ export default function InjectBankPage() {
                     <iframe
                       title={`Apercu document ${mediaPreviewItem.title}`}
                       src={previewUrl}
-                      className="h-[65vh] w-full rounded border border-gray-200 bg-white"
+                      className="h-[65vh] w-full rounded border border-gray-700 bg-gray-800"
                     />
                   )
                 })()}
@@ -2388,14 +2388,14 @@ export default function InjectBankPage() {
                   href={mediaPreviewItem.source_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
                 >
                   Ouvrir source
                 </a>
               )}
               <button
                 onClick={closeMediaPreview}
-                className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
+                className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
               >
                 Fermer
               </button>
@@ -2414,29 +2414,29 @@ export default function InjectBankPage() {
         {previewItem && (
           <div className="space-y-3">
             {previewItem.summary && previewItem.kind !== 'sms' && (
-              <p className="text-sm text-gray-700">{previewItem.summary}</p>
+              <p className="text-sm text-gray-300">{previewItem.summary}</p>
             )}
 
             {previewItem.content && previewItem.kind !== 'sms' && (
               <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">Description</p>
-                <p className="rounded border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+                <p className="mb-1 text-sm font-medium text-gray-300">Description</p>
+                <p className="rounded-lg border border-gray-700 bg-gray-900 p-2 text-sm text-gray-300">
                   {previewItem.content}
                 </p>
               </div>
             )}
 
             <div>
-              <p className="mb-1 text-sm font-medium text-gray-700">Contenu</p>
+              <p className="mb-1 text-sm font-medium text-gray-300">Contenu</p>
               <InjectPreview item={previewItem} />
             </div>
 
             {previewItem.tags.length > 0 && (
               <div>
-                <p className="mb-1 text-sm font-medium text-gray-700">Tags</p>
+                <p className="mb-1 text-sm font-medium text-gray-300">Tags</p>
                 <div className="flex flex-wrap gap-1">
                   {previewItem.tags.map((t: string) => (
-                    <span key={t} className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                    <span key={t} className="inline-flex items-center rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300">
                       <Tag className="mr-1" size={12} />
                       {t}
                     </span>
@@ -2451,7 +2451,7 @@ export default function InjectBankPage() {
                   href={previewItem.source_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-600"
                 >
                   <ExternalLink className="mr-1" size={14} />
                   Ouvrir source
@@ -2462,14 +2462,14 @@ export default function InjectBankPage() {
                   closePreview()
                   openEditModal(previewItem)
                 }}
-                className="inline-flex items-center rounded-md border border-primary-600 px-4 py-2 text-sm text-primary-600 hover:bg-primary-50"
+                className="inline-flex items-center rounded-lg border border-primary-600 px-4 py-2 text-sm text-primary-600 hover:bg-primary-900/30"
               >
                 <Pencil className="mr-1" size={14} />
                 Modifier
               </button>
               <button
                 onClick={closePreview}
-                className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
+                className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
               >
                 Fermer
               </button>
@@ -2485,17 +2485,17 @@ export default function InjectBankPage() {
         title="Options d'import"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-gray-300">
             Voulez-vous vider la banque d'injects avant d'importer ?
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Cette action supprimera tous les elements existants avant d'importer le nouveau fichier ZIP.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={handleCancelClearConfirm}
-              className="rounded bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
+              className="text-gray-300 bg-gray-700 rounded-lg px-4 py-2 text-sm hover:bg-gray-600"
             >
               Annuler
             </button>
@@ -2503,7 +2503,7 @@ export default function InjectBankPage() {
               type="button"
               onClick={() => handleConfirmImport(false)}
               disabled={importMutation.isPending}
-              className="rounded border border-primary-600 px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+              className="rounded-lg border border-primary-600 px-4 py-2 text-sm text-primary-600 hover:bg-primary-900/30 disabled:opacity-50"
             >
               Importer sans vider
             </button>
@@ -2511,7 +2511,7 @@ export default function InjectBankPage() {
               type="button"
               onClick={() => handleConfirmImport(true)}
               disabled={importMutation.isPending}
-              className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
             >
               Vider puis importer
             </button>
@@ -2525,20 +2525,20 @@ export default function InjectBankPage() {
         title={importMode === 'zip' ? 'Import ZIP' : 'Import TEXT'}
       >
         <form onSubmit={handleImportSubmit} className="space-y-3">
-          {importError && <div className="rounded bg-red-50 p-2 text-sm text-red-700">{importError}</div>}
+          {importError && <div className="rounded bg-red-900/30 border border-red-700/50 p-2 text-sm text-red-400">{importError}</div>}
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setImportMode('zip')}
-              className={`rounded px-3 py-1.5 text-sm ${importMode === 'zip' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`rounded-lg px-3 py-1.5 text-sm ${importMode === 'zip' ? 'bg-primary-600 text-white' : 'bg-gray-700 text-gray-300'}`}
             >
               Mode ZIP
             </button>
             <button
               type="button"
               onClick={() => setImportMode('text')}
-              className={`rounded px-3 py-1.5 text-sm ${importMode === 'text' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`rounded-lg px-3 py-1.5 text-sm ${importMode === 'text' ? 'bg-primary-600 text-white' : 'bg-gray-700 text-gray-300'}`}
             >
               Mode TEXT
             </button>
@@ -2546,19 +2546,19 @@ export default function InjectBankPage() {
 
           {importMode === 'zip' ? (
             <>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-400">
                 Importez un fichier ZIP contenant un JSON exporte depuis la banque d'injects.
               </p>
               <input
                 type="file"
                 accept=".zip,application/zip"
                 onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 text-sm"
               />
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-400">
                 Collez un objet JSON, un tableau d'objets, ou un objet avec une cle <code>items</code>.
                 Champs requis: <code>id</code>, <code>type</code>, <code>title</code>, <code>status</code>, <code>created_at</code>.
               </p>
@@ -2567,19 +2567,19 @@ export default function InjectBankPage() {
                 onChange={(e) => setImportJsonText(e.target.value)}
                 rows={12}
                 placeholder='[{"id":"inj-001","type":"mail","title":"Alerte SOC","status":"validated","created_at":"2026-02-19T10:00:00Z"}]'
-                className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-xs"
+                className="w-full rounded-lg border border-gray-600 bg-gray-900 text-white px-3 py-2 font-mono text-xs placeholder-gray-400"
               />
             </>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={closeImportModal} className="rounded bg-gray-100 px-3 py-2 text-sm text-gray-700">
+            <button type="button" onClick={closeImportModal} className="text-gray-300 bg-gray-700 rounded-lg px-3 py-2 text-sm hover:bg-gray-600">
               Annuler
             </button>
             <button
               type="submit"
               disabled={importMutation.isPending || importTextMutation.isPending}
-              className="rounded bg-primary-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+              className="rounded-lg bg-primary-600 px-3 py-2 text-sm text-white disabled:opacity-50"
             >
               {importMutation.isPending || importTextMutation.isPending ? 'Import en cours...' : 'Importer'}
             </button>

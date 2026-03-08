@@ -380,6 +380,7 @@ def _build_exercise_response(
         created_at=exercise.created_at,
         updated_at=exercise.updated_at,
         plugins=plugins,
+        timeline_configured=exercise.timeline_configured,
     )
 
 
@@ -755,7 +756,9 @@ async def update_exercise(
         exercise.lead_organizer_user_id = exercise_data.lead_organizer_user_id
     if exercise_data.status is not None:
         exercise.status = exercise_data.status
-    
+    if exercise_data.timeline_configured is not None:
+        exercise.timeline_configured = exercise_data.timeline_configured
+
     await db.commit()
     await db.refresh(exercise)
     

@@ -51,7 +51,7 @@
           "enum": ["text", "audio", "video", "image"]
         },
         "summary": { "type": "string" },
-        "content": { "type": "string" },
+        "content": { "type": ["string", "object"] },
         "source_url": { "type": "string", "maxLength": 500 },
         "payload": { "type": "object" },
         "tags": {

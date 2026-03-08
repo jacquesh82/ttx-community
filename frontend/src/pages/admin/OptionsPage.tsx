@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useAutoSaveStore } from '../../stores/autoSaveStore'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, PluginConfiguration, AppConfiguration, PluginType, ApiKeyItem, ApiKeyCreated } from '../../services/api'
-import { Save, RotateCcw, Check, X, Loader2, Settings, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Users, ListOrdered, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus } from 'lucide-react'
+import { Check, Loader2, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus } from 'lucide-react'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
 import LangSelector from '../../components/LangSelector'
 import { DEFAULT_PHASES_LIST, PHASE_PRESET_LABELS, PHASE_PRESETS, PhasePresetKey } from '../../features/phasePresets'
+import SimulatorsTab from '../../components/options/SimulatorsTab'
 
 const COLORS = [
   { value: 'green', label: 'Vert', class: 'bg-green-500' },
@@ -58,7 +61,7 @@ const DEFAULT_CRISIS_CELL_ROLES = [
   { role: 'business_representative', name: 'Responsable métier', responsibility: 'Continuité d\'activité' },
 ]
 
-type ExercisesSubTab = 'general' | 'organisation'
+type ExercisesSubTab = 'general' | 'organisation' | 'inject_types' | 'sources' | 'timelines'
 
 type OrganizationAutofillField =
   | 'organization_description'
@@ -168,10 +171,10 @@ const normalizeExerciseTypeValue = (value: string): string =>
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 
-type TabType = 'general' | 'exercises' | 'plugins' | 'security' | 'email' | 'timelines'
+type TabType = 'exercises' | 'plugins' | 'security' | 'email' | 'timelines'
 type PhasePreset = PhasePresetKey
 type TimelinePhaseTypeFormat = { type: string; formats: string[]; simulator: string | null }
-type TimelineSettingsTab = 'phase' | 'inject_types_formats' | 'sources'
+// TimelineSettingsTab removed — phases shown directly, inject_types and sources moved to exercises tab
 type TimelineSourceCategory = 'Press' | 'TV' | 'Gouvernement'
 type TimelineSourceItem = {
   id: string
@@ -298,11 +301,11 @@ const TIMELINE_SOURCES_CATALOG: TimelineSourceItem[] = [
 ]
 
 export default function OptionsPage() {
+  const { t } = useTranslation()
   const appDialog = useAppDialog()
   const queryClient = useQueryClient()
   const tenant = useAuthStore((state) => state.user?.tenant ?? null)
-  const [activeTab, setActiveTab] = useState<TabType>('general')
-  const [timelineSettingsTab, setTimelineSettingsTab] = useState<TimelineSettingsTab>('phase')
+  const [activeTab, setActiveTab] = useState<TabType>('exercises')
   const [exercisesSubTab, setExercisesSubTab] = useState<ExercisesSubTab>('general')
   const [newExerciseTypeLabel, setNewExerciseTypeLabel] = useState('')
   const [newExerciseTypeValue, setNewExerciseTypeValue] = useState('')
@@ -439,6 +442,10 @@ export default function OptionsPage() {
   const cancelEditingPlugin = () => {
     setEditingPlugin(null)
     setEditedPluginData({})
+  }
+
+  const quickTogglePlugin = (pluginType: PluginType, enabled: boolean) => {
+    updatePluginMutation.mutate({ pluginType, data: { default_enabled: enabled } })
   }
 
   const savePlugin = async (pluginType: PluginType) => {
@@ -731,6 +738,29 @@ export default function OptionsPage() {
     return () => window.clearTimeout(timeout)
   }, [appConfigChanged, editedAppConfig])
 
+  // Broadcast autosave status to global store (shown in Layout)
+  const setGlobalAutoSaveStatus = useAutoSaveStore((s) => s.setStatus)
+  useEffect(() => {
+    if (updateAppConfigMutation.isPending) {
+      setGlobalAutoSaveStatus('saving')
+      return
+    }
+    if (appConfigAutosaveError) {
+      setGlobalAutoSaveStatus('error', appConfigAutosaveError)
+      return
+    }
+    if (lastAppConfigSavedAt) {
+      setGlobalAutoSaveStatus('saved')
+      const timer = window.setTimeout(() => setGlobalAutoSaveStatus('idle'), 3000)
+      return () => window.clearTimeout(timer)
+    }
+    setGlobalAutoSaveStatus('idle')
+  }, [updateAppConfigMutation.isPending, appConfigAutosaveError, lastAppConfigSavedAt, setGlobalAutoSaveStatus])
+
+  useEffect(() => {
+    return () => setGlobalAutoSaveStatus('idle')
+  }, [setGlobalAutoSaveStatus])
+
   const applyOrganizationAutofillValues = (values: Partial<Record<OrganizationAutofillField, string>>) => {
     Object.entries(values).forEach(([field, value]) => {
       updateAppConfigField(field as OrganizationAutofillField, value)
@@ -759,6 +789,17 @@ export default function OptionsPage() {
       event.target.value = ''
     }
   }
+
+  // Hooks must be called unconditionally (before any early return)
+  const tabsExercice = useMemo(() => [
+    { id: 'exercises' as TabType, label: t('admin.options.tabs.exercises'), icon: Clock },
+    { id: 'plugins' as TabType, label: t('admin.options.tabs.plugins'), icon: Puzzle },
+  ], [t])
+
+  const tabsSysteme = useMemo(() => [
+    { id: 'security' as TabType, label: t('admin.options.tabs.security'), icon: Shield },
+    { id: 'email' as TabType, label: t('admin.options.tabs.email'), icon: Mail },
+  ], [t])
 
   if (isLoading) {
     return (
@@ -1001,22 +1042,21 @@ export default function OptionsPage() {
     )
   }
 
-  const tabs = [
-    { id: 'general' as TabType, label: 'Général', icon: Settings },
-    { id: 'exercises' as TabType, label: 'Exercices', icon: Clock },
-    { id: 'plugins' as TabType, label: 'Plugins', icon: Puzzle },
-    { id: 'security' as TabType, label: 'Sécurité', icon: Shield },
-    { id: 'email' as TabType, label: 'Email', icon: Mail },
-    { id: 'timelines' as TabType, label: 'Timelines', icon: ListOrdered },
-  ]
-
-  const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0]
   const tenantLabel = tenant?.name?.trim() || 'Tenant non résolu'
   const tenantSlug = tenant?.slug?.trim() || null
+
+  // Pre-computed timeline/phases values (used across exercises + timelines tabs)
+  const phasesConfig = getPhasesConfig()
+  const enabledCount = phasesConfig.filter((p) => p.enabled).length
+  const activePreset = resolveActivePreset(phasesConfig)
+  const timelineRows = getTimelinePhaseTypeFormats()
+  const selectedSourceIds = getSelectedTimelineSourceIds()
+  const timelineSourcesByCountry = getTimelineSourcesByCountry()
 
   return (
     <div className="options-theme space-y-6">
       <input
+        hidden
         ref={importFileInputRef}
         type="file"
         accept="application/json"
@@ -1024,6 +1064,7 @@ export default function OptionsPage() {
         onChange={handleImportOptionsFile}
       />
       <input
+        hidden
         ref={organizationAutofillFileInputRef}
         type="file"
         accept=".txt,text/plain"
@@ -1032,25 +1073,27 @@ export default function OptionsPage() {
       />
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-white">Options</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-white">Options</h1>
+              <div className="inline-flex items-center gap-1.5 rounded-md border border-primary-500/30 bg-primary-500/10 px-2 py-0.5">
+                <Building2 className="w-3.5 h-3.5 text-primary-300" />
+                <span className="text-xs text-primary-200 font-medium">{tenantLabel}</span>
+                {tenantSlug && (
+                  <code className="text-xs text-primary-300 bg-primary-950/40 px-1 py-0.5 rounded">
+                    {tenantSlug}
+                  </code>
+                )}
+              </div>
+            </div>
             <p className="text-sm text-gray-400 mt-1">
               Configuration du tenant courant (branding, intégrations, sécurité et assistants).
             </p>
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary-500/30 bg-primary-500/10 px-3 py-1.5">
-              <Building2 className="w-4 h-4 text-primary-300" />
-              <span className="text-sm text-primary-200 font-medium">{tenantLabel}</span>
-              {tenantSlug && (
-                <code className="text-xs text-primary-300 bg-primary-950/40 px-1.5 py-0.5 rounded">
-                  {tenantSlug}
-                </code>
-              )}
-            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <div
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              className={`inline-flex items-center rounded-lg border px-2 py-1.5 text-sm ${
                 updateAppConfigMutation.isPending
                   ? 'border-primary-500/40 bg-primary-500/10 text-primary-400'
                   : appConfigAutosaveError
@@ -1059,15 +1102,8 @@ export default function OptionsPage() {
                       ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                       : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
               }`}
-              title={appConfigAutosaveError || undefined}
-            >
-              {updateAppConfigMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Clock className="w-4 h-4" />
-              )}
-              <span>
-                {updateAppConfigMutation.isPending
+              title={
+                updateAppConfigMutation.isPending
                   ? 'Sauvegarde...'
                   : appConfigAutosaveError
                     ? 'Erreur auto-save'
@@ -1075,13 +1111,20 @@ export default function OptionsPage() {
                       ? 'En attente auto-save'
                       : lastAppConfigSavedAt
                         ? 'Auto-save actif'
-                        : 'Auto-save prêt'}
-              </span>
+                        : 'Auto-save prêt'
+              }
+            >
+              {updateAppConfigMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Clock className="w-4 h-4" />
+              )}
             </div>
             <button
               onClick={handleExportOptions}
               disabled={isExportingOptions || isImportingOptions}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg hover:bg-gray-600 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg hover:bg-gray-600 disabled:opacity-50 text-sm"
+              title="Exporter"
             >
               {isExportingOptions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Exporter
@@ -1089,7 +1132,8 @@ export default function OptionsPage() {
             <button
               onClick={() => importFileInputRef.current?.click()}
               disabled={isImportingOptions || isExportingOptions}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg hover:bg-gray-600 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg hover:bg-gray-600 disabled:opacity-50 text-sm"
+              title="Importer"
             >
               {isImportingOptions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Importer
@@ -1099,37 +1143,149 @@ export default function OptionsPage() {
       </div>
 
       {/* Navigation horizontale — mobile / tablette */}
-      <div className="xl:hidden bg-gray-800 border border-gray-700 rounded-xl p-2 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            const active = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
-                  active
-                    ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                    : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                {tab.label}
-              </button>
-            )
-          })}
+      <div className="xl:hidden space-y-1.5">
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-2 overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
+            {tabsExercice.map((tab) => {
+              const Icon = tab.icon
+              const active = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); if (tab.id === 'exercises') setExercisesSubTab('general') }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
+                    active
+                      ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
+                      : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {tab.label}
+                </button>
+              )
+            })}
+            <span className="w-px h-5 self-center bg-gray-600 mx-1" />
+            {tabsSysteme.map((tab) => {
+              const Icon = tab.icon
+              const active = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
+                    active
+                      ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
+                      : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
+        {activeTab === 'exercises' && (
+          <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-1.5 overflow-x-auto">
+            <div className="flex gap-1 min-w-max">
+              {([
+                { id: 'general' as ExercisesSubTab, label: 'Général' },
+                { id: 'organisation' as ExercisesSubTab, label: 'Organisation' },
+                { id: 'inject_types' as ExercisesSubTab, label: t('admin.options.tabs.inject_types') },
+                { id: 'sources' as ExercisesSubTab, label: t('admin.options.tabs.sources') },
+              ]).map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setExercisesSubTab(id)}
+                  className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap transition-colors ${
+                    exercisesSubTab === id
+                      ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
+                      : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-6 items-start">
         <aside className="hidden xl:block xl:sticky xl:top-6 space-y-4">
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-3">
-            <p className="px-2 pb-2 text-xs font-semibold tracking-wider uppercase text-gray-500">
-              Navigation
-            </p>
-            <nav className="space-y-1">
-              {tabs.map((tab) => {
+            <nav className="space-y-0.5">
+              <p className="px-1 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                {t('admin.options.sections.exercice')}
+              </p>
+
+              {/* Préparation + sous-items */}
+              <button
+                onClick={() => { setActiveTab('exercises'); setExercisesSubTab('general') }}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  activeTab === 'exercises'
+                    ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
+                    : 'text-gray-300 hover:bg-gray-700/60 border border-transparent'
+                }`}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <Clock className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{t('admin.options.tabs.exercises')}</span>
+                </span>
+                {activeTab === 'exercises' && <span className="w-1.5 h-1.5 rounded-full bg-primary-400" />}
+              </button>
+              <div className="ml-4 pl-2.5 border-l border-gray-700 space-y-0.5 pb-1">
+                {([
+                  { id: 'general' as ExercisesSubTab, label: 'Général' },
+                  { id: 'organisation' as ExercisesSubTab, label: 'Organisation' },
+                  { id: 'inject_types' as ExercisesSubTab, label: t('admin.options.tabs.inject_types') },
+                  { id: 'sources' as ExercisesSubTab, label: t('admin.options.tabs.sources') },
+                  { id: 'timelines' as ExercisesSubTab, label: t('admin.options.tabs.timelines') },
+                ]).map(({ id, label }) => {
+                  const activeSub = activeTab === 'exercises' && exercisesSubTab === id
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { setActiveTab('exercises'); setExercisesSubTab(id) }}
+                      className={`w-full flex items-center px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        activeSub
+                          ? 'text-primary-300 bg-primary-600/10'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/40'
+                      }`}
+                    >
+                      <span className="truncate">{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Simulateurs + Timelines */}
+              {tabsExercice.filter(tab => tab.id !== 'exercises').map((tab) => {
+                const Icon = tab.icon
+                const active = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      active
+                        ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
+                        : 'text-gray-300 hover:bg-gray-700/60 border border-transparent'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                    </span>
+                    {active && <span className="w-1.5 h-1.5 rounded-full bg-primary-400" />}
+                  </button>
+                )
+              })}
+
+              <p className="px-1 pt-4 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                {t('admin.options.sections.systeme')}
+              </p>
+              {tabsSysteme.map((tab) => {
                 const Icon = tab.icon
                 const active = activeTab === tab.id
                 return (
@@ -1151,19 +1307,6 @@ export default function OptionsPage() {
                 )
               })}
             </nav>
-          </div>
-
-          <div className="bg-gray-800/70 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs uppercase tracking-wider text-gray-500">Onglet actif</p>
-            <p className="text-sm font-medium text-white mt-1">{activeTabMeta.label}</p>
-            <p className="text-xs text-gray-300 mt-2">
-              Sauvegarde automatique activée (déclenchée après vos modifications).
-            </p>
-            {appConfigAutosaveError && (
-              <p className="text-xs text-red-300 mt-2" title={appConfigAutosaveError}>
-                Dernière erreur d&apos;enregistrement: {appConfigAutosaveError}
-              </p>
-            )}
           </div>
 
           <div
@@ -1208,110 +1351,19 @@ export default function OptionsPage() {
         <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4 md:p-6">
       {/* Tab Content */}
       <div className="space-y-6">
-        {/* General Tab */}
-        {activeTab === 'general' && (
-          <div className="space-y-6">
-            {/* Organization Section */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <Building2 className="w-5 h-5 text-gray-400" />
-                <h2 className="text-lg font-medium text-white">Organisation</h2>
-              </div>
-              <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                Les valeurs affichées et enregistrées ici sont désormais tenant-scopées pour <strong>{tenantLabel}</strong>.
-                {tenantSlug ? ` (slug: ${tenantSlug})` : ''}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nom de l'organisation
-                  </label>
-                  <input
-                    type="text"
-                    value={getAppConfigValue('organization_name')}
-                    onChange={(e) => updateAppConfigField('organization_name', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    URL du logo
-                  </label>
-                  <input
-                    type="url"
-                    value={getAppConfigValue('organization_logo_url') || ''}
-                    onChange={(e) => updateAppConfigField('organization_logo_url', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="https://example.com/logo.png"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">URL directe vers un fichier image (PNG, SVG, JPG). Ne pas utiliser l'URL d'une page web.</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Description de l'organisation
-                  </label>
-                  <textarea
-                    value={getAppConfigValue('organization_description') || ''}
-                    onChange={(e) => updateAppConfigField('organization_description', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Décrivez brièvement le métier, le contexte et les enjeux de l'organisation..."
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    URL de référence de l'organisation
-                  </label>
-                  <input
-                    type="url"
-                    value={getAppConfigValue('organization_reference_url') || ''}
-                    onChange={(e) => updateAppConfigField('organization_reference_url', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="https://organisation.exemple"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Mots-clés organisation (séparés par des virgules)
-                  </label>
-                  <input
-                    type="text"
-                    value={getAppConfigValue('organization_keywords') || ''}
-                    onChange={(e) => updateAppConfigField('organization_keywords', e.target.value || null)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="secteur, technologies, domaines, filiales, SI, IOC..."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Exercises Tab */}
         {activeTab === 'exercises' && (
           <div className="space-y-6">
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-6">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-gray-400" />
-                <h2 className="text-lg font-medium text-white">Options des exercices</h2>
-              </div>
-              <p className="text-sm text-gray-400">
-                Ces options configurent les paramètres par défaut pour les exercices.
-              </p>
-
-              <div className="flex border-b border-gray-600">
-                <button
-                  onClick={() => setExercisesSubTab('general')}
-                  className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${exercisesSubTab === 'general' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
-                >
-                  Général
-                </button>
-                <button
-                  onClick={() => setExercisesSubTab('organisation')}
-                  className={`px-4 py-2 -mb-px text-sm font-medium border-b-2 ${exercisesSubTab === 'organisation' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
-                >
-                  Organisation
-                </button>
+                <h2 className="text-lg font-medium text-white">
+                  {exercisesSubTab === 'general' && 'Général'}
+                  {exercisesSubTab === 'organisation' && 'Organisation'}
+                  {exercisesSubTab === 'inject_types' && t('admin.options.tabs.inject_types')}
+                  {exercisesSubTab === 'sources' && t('admin.options.tabs.sources')}
+                  {exercisesSubTab === 'timelines' && t('admin.options.tabs.timelines')}
+                </h2>
               </div>
 
               {exercisesSubTab === 'general' && (
@@ -1577,168 +1629,239 @@ export default function OptionsPage() {
                   </div>
                 </div>
               )}
+
+              {exercisesSubTab === 'inject_types' && (
+                <div>
+                  <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Les types d&apos;inject sont définis par le schéma JSON: <code className="text-indigo-300">mail, sms, call, socialnet, tv, doc, directory, story</code>.
+                    Ajustez les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
+                  </p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      {timelineRows.length} type(s) d&apos;inject configuré(s)
+                    </p>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {timelineRows.length === 0 && (
+                      <div className="text-sm text-gray-500 bg-gray-900 border border-gray-700 rounded px-3 py-2">
+                        Aucun type configuré.
+                      </div>
+                    )}
+                    {timelineRows.map((row, index) => (
+                      <div key={index} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white flex items-center justify-between">
+                            <span>{TIMELINE_INJECT_TYPE_LABELS[row.type] || row.type}</span>
+                            <span className="text-xs text-gray-500 font-mono">{row.type}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                          <div className="flex flex-wrap gap-2">
+                            {TIMELINE_ALLOWED_FORMATS.map((format) => (
+                              <label key={`${index}-${format}`} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-indigo-700/40 cursor-pointer hover:bg-gray-750">
+                                <input
+                                  type="checkbox"
+                                  checked={row.formats.includes(format)}
+                                  onChange={(e) => toggleTimelineInjectFormat(index, format, e.target.checked)}
+                                  className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="text-xs text-indigo-200">{format}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="w-full lg:w-64">
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                              Simulateur affecté
+                            </label>
+                            <select
+                              value={row.simulator || ''}
+                              onChange={(e) => updateTimelineInjectSimulator(index, e.target.value || null)}
+                              className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                              <option value="">Aucun</option>
+                              {TIMELINE_SIMULATOR_OPTIONS.map((simulator) => (
+                                <option key={simulator.value} value={simulator.value}>
+                                  {simulator.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {exercisesSubTab === 'sources' && (
+                <div>
+                  <h3 className="text-base font-semibold text-white">Sources</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Activez les sources utilisables par tenant, regroupées par pays et triées par Press, TV puis Gouvernement.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {selectedSourceIds.length} source(s) active(s) sur {TIMELINE_SOURCES_CATALOG.length + getCustomTimelineSources().length}
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    {timelineSourcesByCountry.map((countryBlock) => (
+                      <div key={countryBlock.country} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
+                        <div className="text-sm font-semibold text-white">{countryBlock.country}</div>
+                        {countryBlock.categories.map((categoryBlock) => (
+                          <div key={`${countryBlock.country}-${categoryBlock.category}`}>
+                            <div className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">
+                              {categoryBlock.category}
+                            </div>
+                            {categoryBlock.sources.length === 0 ? (
+                              <div className="text-xs text-gray-600">Aucune source</div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                                {categoryBlock.sources.map((source) => (
+                                  <div
+                                    key={source.id}
+                                    className="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-800 rounded border border-gray-700 hover:bg-gray-750"
+                                  >
+                                    <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedSourceIds.includes(source.id)}
+                                        onChange={(e) => toggleTimelineSource(source.id, e.target.checked)}
+                                        className="rounded border-gray-600 bg-gray-900 text-primary-600 focus:ring-primary-500"
+                                      />
+                                      <span className="text-sm text-gray-200 truncate">{source.name}</span>
+                                    </label>
+                                    {source.id.startsWith('custom-') && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeCustomTimelineSource(source.id)}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded border border-red-400 bg-red-600 text-white hover:bg-red-500 text-xs font-medium"
+                                        title="Supprimer la source custom"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="mt-2 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={timelineSourceDrafts[`${countryBlock.country}|${categoryBlock.category}`] || ''}
+                                onChange={(e) =>
+                                  setTimelineSourceDrafts((prev) => ({
+                                    ...prev,
+                                    [`${countryBlock.country}|${categoryBlock.category}`]: e.target.value,
+                                  }))
+                                }
+                                placeholder={`Ajouter une source ${categoryBlock.category.toLowerCase()} custom`}
+                                className="flex-1 px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => addCustomTimelineSource(countryBlock.country, categoryBlock.category)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-primary-500/40 bg-primary-500/10 text-primary-300 hover:bg-primary-500/20 text-sm"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Ajouter
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {exercisesSubTab === 'timelines' && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-400">
+                      Liste des phases proposées lors de la création d&apos;un nouvel exercice.
+                      Les modifications n&apos;affectent pas les exercices existants.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {([
+                        { id: 'minimal', label: 'Minimal' },
+                        { id: 'classique', label: 'Classique' },
+                        { id: 'precis', label: 'Précis' },
+                        { id: 'full', label: 'Full' },
+                      ] as { id: PhasePreset; label: string }[]).map(({ id, label }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => applyPhasePreset(id)}
+                          className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                            activePreset === id
+                              ? 'bg-primary-600 border-primary-500 text-white'
+                              : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                      <span className="text-xs text-gray-500 ml-2 self-center">
+                        Préset actif : {activePreset === 'custom' ? 'Personnalisé' : activePreset}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {phasesConfig.map((phase, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-700 bg-gray-900/60 hover:bg-gray-900 transition-colors"
+                      >
+                        <span className="w-5 text-right text-xs text-gray-500 flex-shrink-0 tabular-nums">
+                          {index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={phase.enabled}
+                          onClick={() => togglePhase(index)}
+                          className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                            phase.enabled ? 'bg-primary-600' : 'bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                              phase.enabled ? 'translate-x-4' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                        <span className={`text-sm flex-1 ${phase.enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'}`}>
+                          {phase.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    {enabledCount} phase{enabledCount !== 1 ? 's' : ''} activée{enabledCount !== 1 ? 's' : ''} sur {DEFAULT_PHASES_LIST.length}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Plugins Tab */}
-        {activeTab === 'plugins' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <p className="text-gray-400">
-                Configurez les plugins disponibles pour les exercices
-              </p>
-              <button
-                onClick={handleResetPlugins}
-                disabled={resetPluginsMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg hover:bg-gray-600 disabled:opacity-50"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Réinitialiser
-              </button>
-            </div>
-
-            {/* Plugins table */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-900">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Plugin</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Nom</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Icône</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Couleur</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Par défaut</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Ordre</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {plugins?.map((plugin) => (
-                    <tr key={plugin.plugin_type} className="hover:bg-gray-750">
-                      <td className="px-4 py-3">
-                        <code className="text-xs bg-gray-900 px-2 py-1 rounded text-gray-300">
-                          {plugin.plugin_type}
-                        </code>
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingPlugin === plugin.plugin_type ? (
-                          <input
-                            type="text"
-                            value={editedPluginData.name || ''}
-                            onChange={(e) => setEditedPluginData({ ...editedPluginData, name: e.target.value })}
-                            className="w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
-                          />
-                        ) : (
-                          <span className="text-white">{plugin.name}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingPlugin === plugin.plugin_type ? (
-                          <select
-                            value={editedPluginData.icon || ''}
-                            onChange={(e) => setEditedPluginData({ ...editedPluginData, icon: e.target.value })}
-                            className="px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
-                          >
-                            {ICONS.map((icon) => (
-                              <option key={icon} value={icon}>{icon}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="text-gray-300 text-sm">{plugin.icon}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingPlugin === plugin.plugin_type ? (
-                          <select
-                            value={editedPluginData.color || ''}
-                            onChange={(e) => setEditedPluginData({ ...editedPluginData, color: e.target.value })}
-                            className="px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
-                          >
-                            {COLORS.map((color) => (
-                              <option key={color.value} value={color.value}>{color.label}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded ${COLORS.find(c => c.value === plugin.color)?.class || 'bg-gray-500'}`} />
-                            <span className="text-gray-300 text-sm">{plugin.color}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {editingPlugin === plugin.plugin_type ? (
-                          <input
-                            type="checkbox"
-                            checked={editedPluginData.default_enabled || false}
-                            onChange={(e) => setEditedPluginData({ ...editedPluginData, default_enabled: e.target.checked })}
-                            className="rounded border-gray-600 bg-gray-900 text-primary-600"
-                          />
-                        ) : (
-                          plugin.default_enabled && (
-                            <Check className="w-4 h-4 text-green-500 mx-auto" />
-                          )
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {editingPlugin === plugin.plugin_type ? (
-                          <input
-                            type="number"
-                            value={editedPluginData.sort_order || 0}
-                            onChange={(e) => setEditedPluginData({ ...editedPluginData, sort_order: parseInt(e.target.value) || 0 })}
-                            className="w-16 px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm text-center"
-                          />
-                        ) : (
-                          <span className="text-gray-300 text-sm">{plugin.sort_order}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          {editingPlugin === plugin.plugin_type ? (
-                            <>
-                              <button
-                                onClick={() => savePlugin(plugin.plugin_type)}
-                                disabled={savingPlugins.has(plugin.plugin_type)}
-                                className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50"
-                              >
-                                {savingPlugins.has(plugin.plugin_type) ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Save className="w-4 h-4" />
-                                )}
-                              </button>
-                              <button
-                                onClick={cancelEditingPlugin}
-                                className="p-1 text-gray-300 hover:text-white"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => startEditingPlugin(plugin)}
-                              className="px-3 py-1 text-sm bg-gray-700 text-gray-100 border border-gray-600 rounded hover:bg-gray-600"
-                            >
-                              Modifier
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Info */}
-            <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-              <h3 className="text-sm font-medium text-gray-300 mb-2">Information</h3>
-              <ul className="text-sm text-gray-400 space-y-1">
-                <li>• Les modifications apportées ici affectent les nouveaux exercices créés.</li>
-                <li>• Les exercices existants conservent leur configuration de plugins actuelle.</li>
-                <li>• Le champ "Par défaut" indique si le plugin est activé par défaut lors de la création d'un exercice.</li>
-              </ul>
-            </div>
-          </div>
+        {/* Simulateurs Tab */}
+        {activeTab === 'plugins' && plugins && (
+          <SimulatorsTab
+            plugins={plugins}
+            editingPlugin={editingPlugin}
+            editPluginValues={editedPluginData}
+            onEdit={startEditingPlugin}
+            onSave={savePlugin}
+            onCancel={cancelEditingPlugin}
+            onFieldChange={(field, value) => setEditedPluginData({ ...editedPluginData, [field]: value })}
+            onToggleEnabled={quickTogglePlugin}
+            onReset={handleResetPlugins}
+            isSaving={editingPlugin != null && savingPlugins.has(editingPlugin as PluginType)}
+            isResetting={resetPluginsMutation.isPending}
+          />
         )}
 
         {/* Security Tab */}
@@ -1997,276 +2120,6 @@ export default function OptionsPage() {
           </div>
         )}
 
-        {/* Timelines Tab */}
-        {activeTab === 'timelines' && (() => {
-          const phasesConfig = getPhasesConfig()
-          const enabledCount = phasesConfig.filter((p) => p.enabled).length
-          const activePreset = resolveActivePreset(phasesConfig)
-          const timelineRows = getTimelinePhaseTypeFormats()
-          const selectedSourceIds = getSelectedTimelineSourceIds()
-          const timelineSourcesByCountry = getTimelineSourcesByCountry()
-          return (
-            <div className="space-y-6">
-              <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 space-y-6">
-                <div className="flex items-center gap-3">
-                  <ListOrdered className="w-5 h-5 text-gray-400" />
-                  <h2 className="text-lg font-semibold text-white">Timelines</h2>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTimelineSettingsTab('phase')}
-                    className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                      timelineSettingsTab === 'phase'
-                        ? 'bg-primary-600 border-primary-500 text-white'
-                        : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
-                    }`}
-                  >
-                    Phase
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimelineSettingsTab('inject_types_formats')}
-                    className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                      timelineSettingsTab === 'inject_types_formats'
-                        ? 'bg-primary-600 border-primary-500 text-white'
-                        : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
-                    }`}
-                  >
-                    Type d&apos;inject et format
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimelineSettingsTab('sources')}
-                    className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                      timelineSettingsTab === 'sources'
-                        ? 'bg-primary-600 border-primary-500 text-white'
-                        : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-gray-600'
-                    }`}
-                  >
-                    Sources
-                  </button>
-                </div>
-
-                {timelineSettingsTab === 'phase' && (
-                  <>
-                    <div>
-                      <h3 className="text-base font-semibold text-white">Phases par défaut</h3>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Liste des phases proposées lors de la création d&apos;un nouvel exercice.
-                        Les modifications n&apos;affectent pas les exercices existants.
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {([
-                          { id: 'minimal', label: 'Minimal' },
-                          { id: 'classique', label: 'Classique' },
-                          { id: 'precis', label: 'Précis' },
-                          { id: 'full', label: 'Full' },
-                        ] as { id: PhasePreset; label: string }[]).map(({ id, label }) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => applyPhasePreset(id)}
-                            className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                              activePreset === id
-                                ? 'bg-primary-600 border-primary-500 text-white'
-                                : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                        <span className="text-xs text-gray-500 ml-2">
-                          Préset actif : {activePreset === 'custom' ? 'Personnalisé' : activePreset}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {phasesConfig.map((phase, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-700 bg-gray-900/60 hover:bg-gray-900 transition-colors"
-                        >
-                          <span className="w-5 text-right text-xs text-gray-500 flex-shrink-0 tabular-nums">
-                            {index + 1}
-                          </span>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={phase.enabled}
-                            onClick={() => togglePhase(index)}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                              phase.enabled ? 'bg-primary-600' : 'bg-gray-600'
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                                phase.enabled ? 'translate-x-4' : 'translate-x-0.5'
-                              }`}
-                            />
-                          </button>
-                          <span className={`text-sm flex-1 ${phase.enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'}`}>
-                            {phase.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <p className="text-xs text-gray-500">
-                      {enabledCount} phase{enabledCount !== 1 ? 's' : ''} activée{enabledCount !== 1 ? 's' : ''} sur {DEFAULT_PHASES_LIST.length}
-                    </p>
-                  </>
-                )}
-
-                {timelineSettingsTab === 'inject_types_formats' && (
-                  <div>
-                    <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Les types d&apos;inject sont définis par le schéma JSON: <code className="text-indigo-300">mail, sms, call, socialnet, tv, doc, directory, story</code>.
-                      Ajustez les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
-                    </p>
-                    <div className="mt-4 flex items-center justify-between">
-                      <p className="text-xs text-gray-500">
-                        {timelineRows.length} type(s) d&apos;inject configuré(s)
-                      </p>
-                    </div>
-                    <div className="mt-3 space-y-3">
-                      {timelineRows.length === 0 && (
-                        <div className="text-sm text-gray-500 bg-gray-900 border border-gray-700 rounded px-3 py-2">
-                          Aucun type configuré. Ajoutez un type d&apos;inject.
-                        </div>
-                      )}
-                      {timelineRows.map((row, index) => (
-                        <div key={index} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white flex items-center justify-between">
-                              <span>{TIMELINE_INJECT_TYPE_LABELS[row.type] || row.type}</span>
-                              <span className="text-xs text-gray-500 font-mono">{row.type}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                            <div className="flex flex-wrap gap-2">
-                              {TIMELINE_ALLOWED_FORMATS.map((format) => (
-                                <label key={`${index}-${format}`} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-indigo-700/40 cursor-pointer hover:bg-gray-750">
-                                  <input
-                                    type="checkbox"
-                                    checked={row.formats.includes(format)}
-                                    onChange={(e) => toggleTimelineInjectFormat(index, format, e.target.checked)}
-                                    className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-xs text-indigo-200">{format}</span>
-                                </label>
-                              ))}
-                            </div>
-                            <div className="w-full lg:w-64">
-                              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
-                                Simulateur affecté
-                              </label>
-                              <select
-                                value={row.simulator || ''}
-                                onChange={(e) => updateTimelineInjectSimulator(index, e.target.value || null)}
-                                className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                              >
-                                <option value="">Aucun</option>
-                                {TIMELINE_SIMULATOR_OPTIONS.map((simulator) => (
-                                  <option key={simulator.value} value={simulator.value}>
-                                    {simulator.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {timelineSettingsTab === 'sources' && (
-                  <div>
-                    <h3 className="text-base font-semibold text-white">Sources</h3>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Activez les sources utilisables par tenant, regroupées par pays et triées par Press, TV puis Gouvernement.
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {selectedSourceIds.length} source(s) active(s) sur {TIMELINE_SOURCES_CATALOG.length + getCustomTimelineSources().length}
-                    </p>
-                    <div className="mt-4 space-y-4">
-                      {timelineSourcesByCountry.map((countryBlock) => (
-                        <div key={countryBlock.country} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
-                          <div className="text-sm font-semibold text-white">{countryBlock.country}</div>
-                          {countryBlock.categories.map((categoryBlock) => (
-                            <div key={`${countryBlock.country}-${categoryBlock.category}`}>
-                              <div className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">
-                                {categoryBlock.category}
-                              </div>
-                              {categoryBlock.sources.length === 0 ? (
-                                <div className="text-xs text-gray-600">Aucune source</div>
-                              ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                                  {categoryBlock.sources.map((source) => (
-                                    <div
-                                      key={source.id}
-                                      className="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-800 rounded border border-gray-700 hover:bg-gray-750"
-                                    >
-                                      <label className="flex items-center gap-2 cursor-pointer min-w-0">
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedSourceIds.includes(source.id)}
-                                          onChange={(e) => toggleTimelineSource(source.id, e.target.checked)}
-                                          className="rounded border-gray-600 bg-gray-900 text-primary-600 focus:ring-primary-500"
-                                        />
-                                        <span className="text-sm text-gray-200 truncate">{source.name}</span>
-                                      </label>
-                                      {source.id.startsWith('custom-') && (
-                                        <button
-                                          type="button"
-                                          onClick={() => removeCustomTimelineSource(source.id)}
-                                          className="inline-flex items-center gap-1 px-2 py-1 rounded border border-red-400 bg-red-600 text-white hover:bg-red-500 text-xs font-medium"
-                                          title="Supprimer la source custom"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="mt-2 flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={timelineSourceDrafts[`${countryBlock.country}|${categoryBlock.category}`] || ''}
-                                  onChange={(e) =>
-                                    setTimelineSourceDrafts((prev) => ({
-                                      ...prev,
-                                      [`${countryBlock.country}|${categoryBlock.category}`]: e.target.value,
-                                    }))
-                                  }
-                                  placeholder={`Ajouter une source ${categoryBlock.category.toLowerCase()} custom`}
-                                  className="flex-1 px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => addCustomTimelineSource(countryBlock.country, categoryBlock.category)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-primary-500/40 bg-primary-500/10 text-primary-300 hover:bg-primary-500/20 text-sm"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                  Ajouter
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })()}
       </div>
         </div>
       </div>

@@ -6,23 +6,27 @@ import { authApi, adminApi } from '../services/api'
 import {
   LayoutDashboard,
   Dumbbell,
-  Users,
-  Shield,
   LogOut,
   Menu,
   X,
   FileText,
   Eye,
-  LibraryBig,
-  FileDown,
   Settings,
   UserCircle,
   Building2,
   ExternalLink,
+  Gamepad2,
+  ScrollText,
+  LibraryBig,
+  FileDown,
+  Users,
+  Shield,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import { OFFICIAL_TTX_LOGO_URL } from '../config/branding'
+import { useAutoSaveStore } from '../stores/autoSaveStore'
+import AutoSaveIndicator from './AutoSaveIndicator'
 
 interface LayoutProps {
   children: ReactNode
@@ -44,6 +48,7 @@ export default function Layout({ children }: LayoutProps) {
           timeStyle: 'short',
         })
       : buildDateIso || '-'
+  const { status: autoSaveStatus, errorMessage: autoSaveError } = useAutoSaveStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('TTX Platform')
   const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(OFFICIAL_TTX_LOGO_URL)
@@ -117,7 +122,26 @@ export default function Layout({ children }: LayoutProps) {
               }}
             />
           ) : (
-            <h1 className="text-xl font-bold truncate">{organizationName}</h1>
+            <svg
+              viewBox="0 0 72 28"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-8 w-auto"
+              aria-label="TTX"
+            >
+              <rect width="72" height="28" rx="6" fill="rgb(99,102,241)" opacity="0.9" />
+              <text
+                x="36"
+                y="19.5"
+                textAnchor="middle"
+                fontSize="13"
+                fontWeight="800"
+                fontFamily="ui-monospace, 'Cascadia Code', monospace"
+                fill="white"
+                letterSpacing="4"
+              >
+                TTX
+              </text>
+            </svg>
           )}
         </div>
 
@@ -138,12 +162,12 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
             )}
 
-            {(isAnimateur || isObservateur) && (
+            {isObservateur && (
               <Link
                 to="/exercises"
                 className={clsx(
                   'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                  location.pathname.startsWith('/exercises') ? 'sidebar-link-active' : ''
+                  location.pathname.startsWith('/exercises') && !location.pathname.startsWith('/exercises/preparation') ? 'sidebar-link-active' : ''
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
@@ -153,6 +177,115 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
 
+          {/* Exercices section */}
+          {isAnimateur && (
+            <div className="mt-8">
+              <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
+                {t('nav.exercisesSection')}
+              </h3>
+              <div className="mt-3 space-y-1">
+
+                {/* Préparation — label non cliquable */}
+                <p className="px-4 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--sidebar-footer-muted)' }}>
+                  {t('nav.preparation')}
+                </p>
+
+                {/* Sous-liens Préparation */}
+                <div className="space-y-0.5 pl-3">
+                  <Link
+                    to="/exercises/preparation/organisation"
+                    className={clsx(
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      location.pathname === '/exercises/preparation/organisation' ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Building2 className="mr-2.5" size={16} />
+                    {t('nav.organisation')}
+                  </Link>
+                  <Link
+                    to="/exercises"
+                    className={clsx(
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      location.pathname.startsWith('/exercises') && !location.pathname.startsWith('/exercises/preparation') ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Dumbbell className="mr-2.5" size={16} />
+                    {t('nav.exercises')}
+                  </Link>
+                  <Link
+                    to="/exercises/preparation/participants"
+                    className={clsx(
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      location.pathname === '/exercises/preparation/participants' ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Users className="mr-2.5" size={16} />
+                    {t('nav.users')}
+                  </Link>
+                  <Link
+                    to="/exercises/preparation/equipes"
+                    className={clsx(
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      location.pathname === '/exercises/preparation/equipes' ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Shield className="mr-2.5" size={16} />
+                    {t('nav.teams')}
+                  </Link>
+                  <Link
+                    to="/exercises/preparation/injects"
+                    className={clsx(
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      location.pathname === '/exercises/preparation/injects' ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <LibraryBig className="mr-2.5" size={16} />
+                    {t('nav.injectBank')}
+                  </Link>
+                  <Link
+                    to="/exercises/preparation/kits"
+                    className={clsx(
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      location.pathname === '/exercises/preparation/kits' ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <FileDown className="mr-2.5" size={16} />
+                    {t('nav.welcomeKits')}
+                  </Link>
+                </div>
+
+                {/* Joueur */}
+                {import.meta.env.DEV ? (
+                  <Link
+                    to="/player"
+                    className={clsx(
+                      'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
+                      location.pathname.startsWith('/player') ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Gamepad2 className="mr-3" size={20} />
+                    {t('nav.player')}
+                  </Link>
+                ) : (
+                  <div className="sidebar-link flex items-center px-4 py-2 rounded-md opacity-50 cursor-not-allowed select-none">
+                    <Gamepad2 className="mr-3" size={20} />
+                    <span className="flex-1">{t('nav.player')}</span>
+                    <span className="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded font-medium">
+                      {t('nav.comingSoon')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Administration section */}
           {isAdmin && (
             <div className="mt-8">
@@ -161,39 +294,15 @@ export default function Layout({ children }: LayoutProps) {
               </h3>
               <div className="mt-3 space-y-1">
                 <Link
-                  to="/admin/users"
+                  to="/admin/options"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/users') ? 'sidebar-link-active' : ''
+                    location.pathname.startsWith('/admin/options') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <Users className="mr-3" size={20} />
-                  {t('nav.users')}
-                </Link>
-
-                <Link
-                  to="/admin/teams"
-                  className={clsx(
-                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/teams') ? 'sidebar-link-active' : ''
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Shield className="mr-3" size={20} />
-                  {t('nav.teams')}
-                </Link>
-
-                <Link
-                  to="/admin/inject-bank"
-                  className={clsx(
-                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/inject-bank') ? 'sidebar-link-active' : ''
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <LibraryBig className="mr-3" size={20} />
-                  {t('nav.injectBank')}
+                  <Settings className="mr-3" size={20} />
+                  {t('nav.options')}
                 </Link>
 
                 <Link
@@ -209,27 +318,15 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
 
                 <Link
-                  to="/admin/welcome-kits"
+                  to="/admin/logs"
                   className={clsx(
                     'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/welcome-kits') ? 'sidebar-link-active' : ''
+                    location.pathname.startsWith('/admin/logs') ? 'sidebar-link-active' : ''
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <FileDown className="mr-3" size={20} />
-                  {t('nav.welcomeKits')}
-                </Link>
-
-                <Link
-                  to="/admin/options"
-                  className={clsx(
-                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/options') ? 'sidebar-link-active' : ''
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Settings className="mr-3" size={20} />
-                  {t('nav.options')}
+                  <ScrollText className="mr-3" size={20} />
+                  {t('nav.logs')}
                 </Link>
               </div>
             </div>
@@ -364,6 +461,13 @@ export default function Layout({ children }: LayoutProps) {
       <main className="lg:ml-64">
         <div className="p-6">{children}</div>
       </main>
+
+      {/* Global autosave indicator */}
+      {autoSaveStatus !== 'idle' && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-gray-800/95 border border-gray-700 rounded-lg px-3 py-2 shadow-xl backdrop-blur-sm">
+          <AutoSaveIndicator status={autoSaveStatus} errorMessage={autoSaveError} />
+        </div>
+      )}
     </div>
   )
 }

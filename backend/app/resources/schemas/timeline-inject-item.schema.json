@@ -23,7 +23,8 @@
         "tv",
         "doc",
         "directory",
-        "story"
+        "story",
+        "system"
       ]
     },
     "kind": {

@@ -25,7 +25,6 @@ import { useInjectBankKinds, useInjectTypes } from '../../hooks/useInjectBank'
 import {
   Plus,
   Copy,
-  Send,
   Trash2,
   XCircle,
   Mail,
@@ -2165,6 +2164,21 @@ export default function TimelineGantt({
         onClose={() => setShowEditModal(false)}
         title={selectedInject ? 'Modifier l\'inject' : 'Nouvel inject'}
         maxWidthClassName="max-w-4xl"
+        headerActions={
+          selectedInject && selectedInject.status !== 'sent' ? (
+            <button
+              onClick={async () => {
+                if (await appDialog.confirm('Supprimer cet inject ?')) {
+                  deleteMutation.mutate(selectedInject.id)
+                }
+              }}
+              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+              title="Supprimer l'inject"
+            >
+              <Trash2 size={16} />
+            </button>
+          ) : undefined
+        }
       >
         <div className="space-y-4">
           <div>
@@ -2407,56 +2421,20 @@ export default function TimelineGantt({
             </div>
           </div>
           
-          <div className="flex justify-between gap-2 pt-2 border-t">
-            <div className="flex gap-2">
-              {selectedInject && (
-                <>
-                  <button
-                    onClick={handleShowMedia}
-                    className="px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
-                  >
-                    <Film className="inline mr-1" size={14} />
-                    Médias
-                  </button>
-                  {selectedInject.status !== 'sent' && (
-                    <>
-                      <button
-                        onClick={() => sendMutation.mutate(selectedInject.id)}
-                        className="px-3 py-2 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200"
-                      >
-                        <Send className="inline mr-1" size={14} />
-                        Envoyer
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (await appDialog.confirm('Supprimer cet inject ?')) {
-                            deleteMutation.mutate(selectedInject.id)
-                          }
-                        }}
-                        className="px-3 py-2 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 text-sm bg-gray-100 rounded hover:bg-gray-200"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!editForm.title.trim()}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
-              >
-                {updateMutation.isPending || createMutation.isPending ? 'Sauvegarde...' : 'Sauvegarder'}
-              </button>
-            </div>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 text-sm bg-gray-100 rounded hover:bg-gray-200"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!editForm.title.trim()}
+              className="px-4 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50"
+            >
+              {updateMutation.isPending || createMutation.isPending ? 'Sauvegarde...' : 'Sauvegarder'}
+            </button>
           </div>
         </div>
       </Modal>

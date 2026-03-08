@@ -432,6 +432,10 @@ body {
   background-color: rgba(226, 232, 240, 0.9) !important;
 }
 
+:root[data-theme='light'] .options-theme .hover\:bg-gray-700\/40:hover {
+  background-color: rgba(203, 213, 225, 0.55) !important;
+}
+
 :root[data-theme='light'] .options-theme .hover\:bg-gray-700:hover {
   background-color: #cbd5e1 !important;
 }

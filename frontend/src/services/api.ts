@@ -172,6 +172,7 @@ export interface Exercise {
   updated_at: string
   plugins: ExercisePlugin[]
   simulator_config: string | null
+  timeline_configured: boolean
 }
 
 export interface TeamSummary {
@@ -309,6 +310,7 @@ export const exercisesApi = {
     technical_objective?: string
     lead_organizer_user_id?: number
     simulator_config?: string | null
+    timeline_configured?: boolean
   }): Promise<Exercise> => {
     const response = await api.put(`/exercises/${id}`, data)
     return response.data

@@ -25,7 +25,13 @@
     "apiDocs": "Docs API",
     "myRole": "Mon rôle",
     "logout": "Déconnexion",
-    "profile": "Mon profil"
+    "profile": "Mon profil",
+    "exercisesSection": "Exercices",
+    "preparation": "Préparation",
+    "organisation": "Organisation",
+    "player": "Joueur",
+    "logs": "Logs",
+    "comingSoon": "Bientôt disponible"
   },
   "common": {
     "loading": "Chargement...",
@@ -123,7 +129,20 @@
       "title": "Kits de bienvenue"
     },
     "options": {
-      "title": "Options"
+      "title": "Options",
+      "sections": {
+        "exercice": "Exercice",
+        "systeme": "Système"
+      },
+      "tabs": {
+        "exercises": "Préparation",
+        "plugins": "Simulateurs",
+        "timelines": "Timelines",
+        "security": "Sécurité",
+        "email": "Email",
+        "inject_types": "Types d'inject",
+        "sources": "Sources"
+      }
     }
   },
   "exercises": {

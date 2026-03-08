@@ -25,7 +25,13 @@
     "apiDocs": "API Docs",
     "myRole": "My Role",
     "logout": "Logout",
-    "profile": "My Profile"
+    "profile": "My Profile",
+    "exercisesSection": "Exercises",
+    "preparation": "Preparation",
+    "organisation": "Organisation",
+    "player": "Player",
+    "logs": "Logs",
+    "comingSoon": "Coming soon"
   },
   "common": {
     "loading": "Loading...",
@@ -123,7 +129,20 @@
       "title": "Welcome Kits"
     },
     "options": {
-      "title": "Options"
+      "title": "Options",
+      "sections": {
+        "exercice": "Exercise",
+        "systeme": "System"
+      },
+      "tabs": {
+        "exercises": "Preparation",
+        "plugins": "Simulators",
+        "timelines": "Timelines",
+        "security": "Security",
+        "email": "Email",
+        "inject_types": "Inject types",
+        "sources": "Sources"
+      }
     }
   },
   "exercises": {

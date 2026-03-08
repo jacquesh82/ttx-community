@@ -66,6 +66,7 @@ class ExerciseUpdate(BaseModel):
     business_objective: Optional[str] = None
     technical_objective: Optional[str] = None
     lead_organizer_user_id: Optional[int] = None
+    timeline_configured: Optional[bool] = None
 
 
 class ExerciseResponse(ExerciseBase):
@@ -79,6 +80,7 @@ class ExerciseResponse(ExerciseBase):
     created_at: datetime
     updated_at: datetime
     plugins: list[ExercisePluginResponse] = []
+    timeline_configured: bool = False
 
     model_config = {"from_attributes": True}
 

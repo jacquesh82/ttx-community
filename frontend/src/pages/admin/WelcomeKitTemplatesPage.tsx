@@ -161,7 +161,7 @@ export default function WelcomeKitTemplatesPage() {
   const handlePreview = (markdown: string) => {
     // Convert markdown to HTML with proper styling
     let html = markdown
-    
+
     // Tables - must be processed before other replacements
     html = html.replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g, (match, header, body) => {
       const headers = header.split('|').filter((h: string) => h.trim()).map((h: string) => `<th class="border border-gray-300 px-3 py-2 bg-gray-100 text-left text-sm font-medium">${h.trim()}</th>`).join('')
@@ -171,35 +171,35 @@ export default function WelcomeKitTemplatesPage() {
       }).join('')
       return `<table class="w-full border-collapse border border-gray-300 my-4"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`
     })
-    
+
     // Headers
     html = html.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-6 mb-3 text-gray-900">$1</h3>')
     html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold mt-6 mb-3 text-gray-900 border-b pb-2">$1</h2>')
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-0 mb-4 text-gray-900">$1</h1>')
-    
+
     // Bold and italic
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
-    
+
     // Code
     html = html.replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-primary-700">$1</code>')
-    
+
     // Horizontal rule
     html = html.replace(/^---$/gm, '<hr class="my-6 border-gray-300" />')
-    
+
     // Unordered lists
     html = html.replace(/^- (.+)$/gm, '<li class="ml-6 list-disc text-gray-700">$1</li>')
-    
+
     // Ordered lists
     html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-6 list-decimal text-gray-700">$1</li>')
-    
+
     // Line breaks (but not inside tables)
     html = html.replace(/\n/g, '<br/>')
-    
+
     // Clean up extra breaks around block elements
     html = html.replace(/<br\/>\s*<(h[1-6]|hr|table|ul|ol|li)/g, '<$1')
     html = html.replace(/<\/(h[1-6]|hr|table|ul|ol|li)>\s*<br\/>/g, '</$1>')
-    
+
     setPreviewContent(html)
     setIsPreviewModalOpen(true)
   }
@@ -209,29 +209,28 @@ export default function WelcomeKitTemplatesPage() {
     : templates
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Templates de kits de bienvenue</h1>
-          <p className="text-gray-600">Personnalisez les kits PDF générés pour les participants</p>
+    <div className="options-theme space-y-6">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Templates de kits de bienvenue</h1>
+            <p className="text-sm text-gray-400 mt-1">Personnalisez les kits PDF générés pour les participants</p>
+          </div>
+          <button
+            onClick={() => { resetForm(); setIsCreateModalOpen(true) }}
+            className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+          >
+            <Plus size={16} />
+            Nouveau template
+          </button>
         </div>
-        <button
-          onClick={() => {
-            resetForm()
-            setIsCreateModalOpen(true)
-          }}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-        >
-          <Plus className="mr-2" size={20} />
-          Nouveau template
-        </button>
       </div>
 
       <div className="mb-4">
         <select
           value={selectedKind}
           onChange={(e) => setSelectedKind(e.target.value as WelcomeKitKind | '')}
-          className="px-3 py-2 border border-gray-300 rounded-md"
+          className="px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white"
         >
           <option value="">Tous les types</option>
           <option value="player">Joueur</option>
@@ -239,42 +238,42 @@ export default function WelcomeKitTemplatesPage() {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-700">
+          <thead className="bg-gray-900">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mise à jour</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nom</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Statut</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Mise à jour</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-700">
             {filteredTemplates.map((template: any) => (
-              <tr key={template.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{template.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">
+              <tr key={template.id} className="hover:bg-gray-700/40">
+                <td className="px-6 py-4 text-sm font-medium text-white">{template.name}</td>
+                <td className="px-6 py-4 text-sm text-gray-400">
                   <span className={`px-2 py-1 rounded text-xs ${
-                    template.kind === 'player' ? 'bg-primary-100 text-primary-800' : 'bg-purple-100 text-purple-800'
+                    template.kind === 'player' ? 'bg-primary-900/30 text-primary-400' : 'bg-purple-900/30 text-purple-400'
                   }`}>
                     {KIND_LABELS[template.kind as WelcomeKitKind] || template.kind}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {template.is_default ? (
-                    <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">Par défaut</span>
+                    <span className="px-2 py-1 rounded text-xs bg-green-900/30 text-green-400">Par défaut</span>
                   ) : (
-                    <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-600">Personnalisé</span>
+                    <span className="px-2 py-1 rounded text-xs bg-gray-700 text-gray-300">Personnalisé</span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
+                <td className="px-6 py-4 text-sm text-gray-400">
                   {new Date(template.updated_at).toLocaleDateString('fr-FR')}
                 </td>
                 <td className="px-6 py-4 text-sm space-x-2">
                   <button
                     onClick={() => handlePreview(template.template_markdown)}
-                    className="text-gray-600 hover:text-gray-800"
+                    className="text-gray-400 hover:text-gray-200"
                     title="Aperçu"
                   >
                     <Eye size={16} />
@@ -302,11 +301,11 @@ export default function WelcomeKitTemplatesPage() {
         </table>
 
         {isLoading && (
-          <div className="p-8 text-center text-gray-500">Chargement...</div>
+          <div className="p-8 text-center text-gray-400">Chargement...</div>
         )}
 
         {!isLoading && filteredTemplates.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-400">
             <FileText className="mx-auto mb-2" size={32} />
             Aucun template trouvé
           </div>
@@ -314,13 +313,13 @@ export default function WelcomeKitTemplatesPage() {
       </div>
 
       {/* Variables disponibles */}
-      <div className="mt-8 bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Variables disponibles</h2>
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Variables disponibles</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {Object.entries(availableVariables).map(([key, description]) => (
             <div key={key} className="flex items-center gap-2 text-sm">
-              <code className="bg-gray-100 px-2 py-1 rounded text-primary-700">{`{{${key}}}`}</code>
-              <span className="text-gray-600">{description as string}</span>
+              <code className="bg-gray-900 px-2 py-1 rounded text-primary-400">{`{{${key}}}`}</code>
+              <span className="text-gray-400">{description as string}</span>
             </div>
           ))}
         </div>
@@ -333,25 +332,25 @@ export default function WelcomeKitTemplatesPage() {
         title="Nouveau template"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
-          
+          {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-lg">{error}</div>}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom du template</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Nom du template</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-lg"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
             <select
               value={formData.kind}
               onChange={(e) => setFormData({ ...formData, kind: e.target.value as WelcomeKitKind })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-lg"
             >
               <option value="player">Joueur</option>
               <option value="facilitator">Animateur</option>
@@ -359,12 +358,12 @@ export default function WelcomeKitTemplatesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contenu Markdown</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Contenu Markdown</label>
             <textarea
               value={formData.template_markdown}
               onChange={(e) => setFormData({ ...formData, template_markdown: e.target.value })}
               rows={15}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-xs"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-lg font-mono text-xs"
               placeholder="# Titre du kit..."
               required
             />
@@ -377,7 +376,7 @@ export default function WelcomeKitTemplatesPage() {
               checked={formData.is_default}
               onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
             />
-            <label htmlFor="is_default" className="text-sm text-gray-700">
+            <label htmlFor="is_default" className="text-sm text-gray-300">
               Définir comme template par défaut pour ce type
             </label>
           </div>
@@ -386,21 +385,21 @@ export default function WelcomeKitTemplatesPage() {
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
               Annuler
             </button>
             <button
               type="button"
               onClick={() => handlePreview(formData.template_markdown)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600"
             >
               Aperçu
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {createMutation.isPending ? 'Création...' : 'Créer'}
             </button>
@@ -415,40 +414,40 @@ export default function WelcomeKitTemplatesPage() {
         title="Modifier le template"
       >
         <form onSubmit={handleUpdate} className="space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
-          
+          {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-lg">{error}</div>}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom du template</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Nom du template</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-lg"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
             <select
               value={formData.kind}
               onChange={(e) => setFormData({ ...formData, kind: e.target.value as WelcomeKitKind })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+              className="w-full px-3 py-2 bg-gray-800 opacity-70 text-white border border-gray-600 rounded-lg"
               disabled
             >
               <option value="player">Joueur</option>
               <option value="facilitator">Animateur</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500">Le type ne peut pas être modifié</p>
+            <p className="mt-1 text-xs text-gray-400">Le type ne peut pas être modifié</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contenu Markdown</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Contenu Markdown</label>
             <textarea
               value={formData.template_markdown}
               onChange={(e) => setFormData({ ...formData, template_markdown: e.target.value })}
               rows={15}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-xs"
+              className="w-full px-3 py-2 bg-gray-900 text-white border border-gray-600 rounded-lg font-mono text-xs"
               required
             />
           </div>
@@ -460,7 +459,7 @@ export default function WelcomeKitTemplatesPage() {
               checked={formData.is_default}
               onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
             />
-            <label htmlFor="edit_is_default" className="text-sm text-gray-700">
+            <label htmlFor="edit_is_default" className="text-sm text-gray-300">
               Définir comme template par défaut pour ce type
             </label>
           </div>
@@ -469,21 +468,21 @@ export default function WelcomeKitTemplatesPage() {
             <button
               type="button"
               onClick={() => setIsEditModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
               Annuler
             </button>
             <button
               type="button"
               onClick={() => handlePreview(formData.template_markdown)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600"
             >
               Aperçu
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {updateMutation.isPending ? 'Mise à jour...' : 'Enregistrer'}
             </button>
@@ -497,7 +496,7 @@ export default function WelcomeKitTemplatesPage() {
         onClose={() => setIsPreviewModalOpen(false)}
         title="Aperçu du template"
       >
-        <div className="overflow-auto max-h-[70vh] bg-white rounded-lg border border-gray-200 p-8">
+        <div className="overflow-auto max-h-[70vh] bg-white rounded-lg border border-gray-300 p-8">
           <div
             className="max-w-none text-gray-900"
             style={{
@@ -511,7 +510,7 @@ export default function WelcomeKitTemplatesPage() {
         <div className="flex justify-end pt-4">
           <button
             onClick={() => setIsPreviewModalOpen(false)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
           >
             Fermer
           </button>
