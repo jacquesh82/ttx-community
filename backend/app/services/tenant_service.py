@@ -42,6 +42,17 @@ async def get_or_create_tenant_configuration(
         organization_description=(app_config.organization_description if app_config else None),
         organization_reference_url=(app_config.organization_reference_url if app_config else None),
         organization_keywords=(app_config.organization_keywords if app_config else None),
+        organization_tech_stack=(app_config.organization_tech_stack if app_config else None),
+        windows_domain=(app_config.windows_domain if app_config else None),
+        public_domain=(app_config.public_domain if app_config else None),
+        mail_domain=(app_config.mail_domain if app_config else None),
+        internal_ip_ranges=(app_config.internal_ip_ranges if app_config else None),
+        dmz_ip_ranges=(app_config.dmz_ip_ranges if app_config else None),
+        domain_controllers=(app_config.domain_controllers if app_config else None),
+        server_naming_examples=(app_config.server_naming_examples if app_config else None),
+        technological_dependencies=(app_config.technological_dependencies if app_config else None),
+        cloud_providers=(app_config.cloud_providers if app_config else None),
+        critical_applications=(app_config.critical_applications if app_config else None),
     )
     db.add(config)
     await db.flush()

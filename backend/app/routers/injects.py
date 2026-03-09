@@ -35,11 +35,11 @@ router = APIRouter()
 
 INJECT_TYPE_TO_BANK_KIND: dict[str, str] = {
     "mail": "mail",
-    "twitter": "social_post",
-    "tv": "video",
-    "decision": "scenario",
-    "score": "chronogram",
-    "system": "directory",
+    "twitter": "socialnet",
+    "tv": "tv",
+    "decision": "doc",   # story is bank-only, not allowed on timeline
+    "score": "doc",      # story is bank-only, not allowed on timeline
+    "system": "system",
 }
 
 
@@ -215,12 +215,12 @@ def _inject_to_timeline_schema_payload(inject: Inject) -> dict:
     inject_type = inject.type.value if hasattr(inject.type, "value") else str(inject.type)
     inject_status = inject.status.value if hasattr(inject.status, "value") else str(inject.status)
     timeline_type = inject.timeline_type.value if hasattr(inject.timeline_type, "value") else str(inject.timeline_type)
+    canonical_type = INJECT_TYPE_TO_BANK_KIND.get(inject_type, "system")
     payload = {
         "exercise_id": inject.exercise_id,
         "custom_id": inject.custom_id,
         "title": inject.title,
-        "type": inject_type,
-        "kind": INJECT_TYPE_TO_BANK_KIND.get(inject_type, "other"),
+        "type": canonical_type,
         "status": inject_status,
         "timeline_type": timeline_type,
         "time_offset": inject.time_offset,
@@ -243,13 +243,13 @@ def _inject_to_timeline_schema_payload(inject: Inject) -> dict:
 
 def _inject_create_to_timeline_schema_payload(inject_data: "InjectCreate") -> dict:
     inject_type = inject_data.type.value if hasattr(inject_data.type, "value") else str(inject_data.type)
+    canonical_type = INJECT_TYPE_TO_BANK_KIND.get(inject_type, "system")
     status_value = InjectStatus.DRAFT.value
     payload = {
         "exercise_id": inject_data.exercise_id,
         "custom_id": inject_data.custom_id,
         "title": inject_data.title,
-        "type": inject_type,
-        "kind": INJECT_TYPE_TO_BANK_KIND.get(inject_type, "other"),
+        "type": canonical_type,
         "status": status_value,
         "timeline_type": (inject_data.timeline_type or TimelineType.BUSINESS).value,
         "time_offset": inject_data.time_offset,

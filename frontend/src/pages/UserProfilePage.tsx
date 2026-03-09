@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { UserCircle, Camera } from 'lucide-react'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import AutoSaveIndicator from '../components/AutoSaveIndicator'
 
 export default function UserProfilePage() {
+  const { t } = useTranslation()
   const { user, setUser } = useAuthStore()
 
   const [displayName, setDisplayName] = useState(user?.display_name || '')
@@ -32,9 +34,9 @@ export default function UserProfilePage() {
     onError: (err: any) => {
       const detail = err?.response?.data?.detail
       if (detail === 'username_already_taken') {
-        setErrorMsg('Ce nom d\'utilisateur est déjà pris.')
+        setErrorMsg(t('profile.username_taken'))
       } else {
-        setErrorMsg(detail || 'Une erreur est survenue.')
+        setErrorMsg(detail || t('profile.error_occurred'))
       }
       setSaveStatus('error')
       setTimeout(() => setSaveStatus('idle'), 4000)
@@ -75,15 +77,15 @@ export default function UserProfilePage() {
   return (
     <div className="max-w-2xl mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mon profil</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('profile.title')}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Les modifications sont enregistrées automatiquement.
+          {t('profile.autosave_info')}
         </p>
       </div>
 
       {/* Avatar + identité */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Identité</h2>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">{t('profile.identity')}</h2>
 
         <div className="flex items-start gap-6">
           {/* Avatar preview */}
@@ -109,7 +111,7 @@ export default function UserProfilePage() {
             {/* Nom affiché */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nom affiché
+                {t('profile.display_name')}
               </label>
               <input
                 type="text"
@@ -120,14 +122,14 @@ export default function UserProfilePage() {
                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Visible dans la sidebar et les messages. Laissez vide pour utiliser le nom d'utilisateur.
+                {t('profile.display_name_hint')}
               </p>
             </div>
 
-            {/* Nom d'utilisateur */}
+            {/* Identifiant */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nom d'utilisateur
+                {t('profile.username')}
               </label>
               <input
                 type="text"
@@ -138,7 +140,7 @@ export default function UserProfilePage() {
                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Utilisé pour la connexion.
+                {t('profile.username_hint')}
               </p>
             </div>
           </div>
@@ -147,7 +149,7 @@ export default function UserProfilePage() {
         {/* URL d'avatar */}
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            URL de l'avatar
+            {t('profile.avatar_url')}
           </label>
           <input
             type="url"
@@ -158,21 +160,21 @@ export default function UserProfilePage() {
             className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Lien public vers une image (JPG, PNG, WebP…).
+            {t('profile.avatar_url_hint')}
           </p>
         </div>
       </div>
 
       {/* Informations du compte (lecture seule) */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Informations du compte</h2>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">{t('profile.account_info')}</h2>
         <div className="space-y-3 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-gray-500 dark:text-gray-400">Email</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('common.email')}</span>
             <span className="text-gray-900 dark:text-white font-medium">{user?.email}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-500 dark:text-gray-400">Rôle</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('common.role')}</span>
             {badge && (
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
                 {badge.label}
@@ -181,7 +183,7 @@ export default function UserProfilePage() {
           </div>
           {user?.tenant && (
             <div className="flex items-center justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Organisation</span>
+              <span className="text-gray-500 dark:text-gray-400">{t('profile.organisation')}</span>
               <span className="text-gray-900 dark:text-white font-medium">{user.tenant.name}</span>
             </div>
           )}

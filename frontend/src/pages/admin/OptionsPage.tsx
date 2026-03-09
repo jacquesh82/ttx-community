@@ -205,7 +205,7 @@ const TIMELINE_DEFAULT_SIMULATOR_BY_TYPE: Record<string, string> = {
   doc: 'mail',
 }
 
-/** Canonical type keys match inject-bank-item.schema.json enum values. */
+/** Canonical type keys — timeline-inject-item.schema.json enum values (story and directory are bank-only). */
 const TIMELINE_INJECT_TYPE_LABELS: Record<string, string> = {
   mail: 'Email',
   sms: 'SMS',
@@ -213,8 +213,7 @@ const TIMELINE_INJECT_TYPE_LABELS: Record<string, string> = {
   socialnet: 'Réseau social',
   tv: 'TV',
   doc: 'Document',
-  directory: 'Annuaire de crise',
-  story: 'Scénario',
+  system: 'Système',
 }
 
 const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
@@ -224,8 +223,6 @@ const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
   { type: 'socialnet', formats: ['TXT', 'VIDEO', 'IMAGE'], simulator: 'social' },
   { type: 'tv', formats: ['VIDEO'], simulator: 'tv' },
   { type: 'doc', formats: ['TXT', 'IMAGE'], simulator: 'mail' },
-  { type: 'directory', formats: ['TXT'], simulator: null },
-  { type: 'story', formats: ['TXT'], simulator: null },
 ]
 
 const TIMELINE_ALLOWED_INJECT_TYPE_NAMES = new Set(
@@ -1144,7 +1141,7 @@ export default function OptionsPage() {
 
       {/* Navigation horizontale — mobile / tablette */}
       <div className="xl:hidden space-y-1.5">
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-2 overflow-x-auto">
+        <div className="rounded-xl p-2 overflow-x-auto" style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)' }}>
           <div className="flex gap-1 min-w-max">
             {tabsExercice.map((tab) => {
               const Icon = tab.icon
@@ -1156,15 +1153,16 @@ export default function OptionsPage() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
                     active
                       ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                      : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
+                      : 'border border-transparent hover:bg-primary-600/10'
                   }`}
+                  style={active ? undefined : { color: 'var(--sidebar-muted)' }}
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   {tab.label}
                 </button>
               )
             })}
-            <span className="w-px h-5 self-center bg-gray-600 mx-1" />
+            <span className="w-px h-5 self-center mx-1" style={{ background: 'var(--surface-card-border)' }} />
             {tabsSysteme.map((tab) => {
               const Icon = tab.icon
               const active = activeTab === tab.id
@@ -1175,8 +1173,9 @@ export default function OptionsPage() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
                     active
                       ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                      : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
+                      : 'border border-transparent hover:bg-primary-600/10'
                   }`}
+                  style={active ? undefined : { color: 'var(--sidebar-muted)' }}
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   {tab.label}
@@ -1186,7 +1185,7 @@ export default function OptionsPage() {
           </div>
         </div>
         {activeTab === 'exercises' && (
-          <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-1.5 overflow-x-auto">
+          <div className="rounded-xl p-1.5 overflow-x-auto" style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)', opacity: 0.9 }}>
             <div className="flex gap-1 min-w-max">
               {([
                 { id: 'general' as ExercisesSubTab, label: 'Général' },
@@ -1200,8 +1199,9 @@ export default function OptionsPage() {
                   className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap transition-colors ${
                     exercisesSubTab === id
                       ? 'bg-primary-600/20 text-primary-300 border border-primary-500/30'
-                      : 'text-gray-400 hover:bg-gray-700/60 border border-transparent'
+                      : 'border border-transparent hover:bg-primary-600/10'
                   }`}
+                  style={exercisesSubTab === id ? undefined : { color: 'var(--sidebar-muted)' }}
                 >
                   {label}
                 </button>
@@ -1634,7 +1634,8 @@ export default function OptionsPage() {
                 <div>
                   <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
                   <p className="text-sm text-gray-400 mt-1">
-                    Les types d&apos;inject sont définis par le schéma JSON: <code className="text-indigo-300">mail, sms, call, socialnet, tv, doc, directory, story</code>.
+                    Les types d&apos;inject sont définis par le schéma JSON: <code className="text-indigo-300">mail, sms, call, socialnet, tv, doc, system</code>.
+                    Les types <code className="text-gray-400">story</code> et <code className="text-gray-400">directory</code> sont réservés à la banque d&apos;injects.
                     Ajustez les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
                   </p>
                   <div className="mt-4 flex items-center justify-between">

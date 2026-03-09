@@ -2,11 +2,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://ttx.local/schemas/timeline-inject-item.schema.json",
   "title": "Timeline Inject Item",
-  "allOf": [
-    {
-      "$ref": "https://ttx.local/schemas/inject-bank-item.schema.json#/$defs/shared_fields"
-    }
-  ],
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -14,31 +9,9 @@
     "custom_id": { "type": "string", "maxLength": 100 },
     "title": { "type": "string", "minLength": 1, "maxLength": 255 },
     "type": {
+      "$comment": "Canonical inject kind on the timeline. story and directory are bank-only kinds and cannot be used on a timeline.",
       "type": "string",
-      "enum": [
-        "mail",
-        "sms",
-        "call",
-        "socialnet",
-        "tv",
-        "doc",
-        "directory",
-        "story",
-        "system"
-      ]
-    },
-    "kind": {
-      "type": "string",
-      "enum": [
-        "mail",
-        "sms",
-        "call",
-        "socialnet",
-        "tv",
-        "doc",
-        "directory",
-        "story"
-      ]
+      "enum": ["mail", "sms", "call", "socialnet", "tv", "doc", "system"]
     },
     "status": {
       "type": "string",

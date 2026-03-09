@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { auditApi, AuditLog } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import {
@@ -24,6 +25,7 @@ interface AuditStats {
 }
 
 export default function AuditPage() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [stats, setStats] = useState<AuditStats | null>(null)
@@ -117,8 +119,8 @@ export default function AuditPage() {
     return (
       <div className="text-center py-12">
         <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
-        <h2 className="mt-2 text-xl font-semibold text-white">Accès refusé</h2>
-        <p className="mt-2 text-gray-400">Vous n'avez pas les permissions pour accéder à cette page.</p>
+        <h2 className="mt-2 text-xl font-semibold text-white">{t('common.access_denied')}</h2>
+        <p className="mt-2 text-gray-400">{t('common.no_permissions')}</p>
       </div>
     )
   }
@@ -129,15 +131,15 @@ export default function AuditPage() {
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Audit & Conformité</h1>
-            <p className="text-sm text-gray-400 mt-1">Journal d'audit et suivi des actions utilisateurs</p>
+            <h1 className="text-2xl font-bold text-white">{t('admin.audit.title')}</h1>
+            <p className="text-sm text-gray-400 mt-1">{t('admin.audit.subtitle')}</p>
           </div>
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
           >
             <Download className="h-4 w-4" />
-            Exporter CSV
+            {t('admin.audit.export_csv')}
           </button>
         </div>
       </div>
@@ -149,7 +151,7 @@ export default function AuditPage() {
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-primary-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-400">Total événements</p>
+                <p className="text-sm font-medium text-gray-400">{t('admin.audit.total_events')}</p>
                 <p className="text-2xl font-bold text-white">{stats.total_logs}</p>
               </div>
             </div>
@@ -158,7 +160,7 @@ export default function AuditPage() {
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-green-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-400">Aujourd'hui</p>
+                <p className="text-sm font-medium text-gray-400">{t('common.today')}</p>
                 <p className="text-2xl font-bold text-white">{stats.logs_today}</p>
               </div>
             </div>
@@ -167,7 +169,7 @@ export default function AuditPage() {
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-yellow-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-400">Cette semaine</p>
+                <p className="text-sm font-medium text-gray-400">{t('common.this_week')}</p>
                 <p className="text-2xl font-bold text-white">{stats.logs_this_week}</p>
               </div>
             </div>
@@ -176,7 +178,7 @@ export default function AuditPage() {
             <div className="flex items-center">
               <Users className="h-8 w-8 text-purple-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-400">Utilisateurs actifs</p>
+                <p className="text-sm font-medium text-gray-400">{t('admin.audit.active_participants')}</p>
                 <p className="text-2xl font-bold text-white">{stats.unique_users}</p>
               </div>
             </div>
@@ -194,7 +196,7 @@ export default function AuditPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Rechercher..."
+                placeholder={t('common.search_placeholder')}
                 className="w-full pl-10 pr-4 py-2 border bg-gray-900 text-white border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500"
               />
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -204,21 +206,21 @@ export default function AuditPage() {
             type="text"
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
-            placeholder="Action (ex: login, create)"
+            placeholder={t('admin.audit.action_placeholder')}
             className="w-48 px-3 py-2 border bg-gray-900 text-white border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500"
           />
           <input
             type="text"
             value={entityTypeFilter}
             onChange={(e) => setEntityTypeFilter(e.target.value)}
-            placeholder="Type entité (ex: user, exercise)"
+            placeholder={t('admin.audit.entity_type_placeholder')}
             className="w-48 px-3 py-2 border bg-gray-900 text-white border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500"
           />
           <button
             onClick={handleSearch}
             className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
           >
-            Filtrer
+            {t('common.filter')}
           </button>
         </div>
       </div>
@@ -226,27 +228,27 @@ export default function AuditPage() {
       {/* Logs Table */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400">Chargement...</div>
+          <div className="p-8 text-center text-gray-400">{t('common.loading')}</div>
         ) : logs.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">Aucun log trouvé</div>
+          <div className="p-8 text-center text-gray-400">{t('admin.audit.no_logs')}</div>
         ) : (
           <table className="min-w-full divide-y divide-gray-700">
             <thead className="bg-gray-900">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Date
+                  {t('common.date')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Utilisateur
+                  {t('common.participant')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Action
+                  {t('common.action')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Entité
+                  {t('admin.audit.entity')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  IP
+                  {t('admin.audit.ip')}
                 </th>
               </tr>
             </thead>
@@ -258,7 +260,7 @@ export default function AuditPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-white">
-                      {log.user_username || 'Système'}
+                      {log.user_username || t('admin.audit.system')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -292,22 +294,24 @@ export default function AuditPage() {
                 disabled={page === 1}
                 className="relative inline-flex items-center px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600"
               >
-                Précédent
+                {t('common.previous')}
               </button>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600"
               >
-                Suivant
+                {t('common.next')}
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-300">
-                  Affichage de <span className="font-medium">{(page - 1) * pageSize + 1}</span> à{' '}
-                  <span className="font-medium">{Math.min(page * pageSize, total)}</span> sur{' '}
-                  <span className="font-medium">{total}</span> résultats
+                  {t('admin.audit.pagination', {
+                    from: (page - 1) * pageSize + 1,
+                    to: Math.min(page * pageSize, total),
+                    total,
+                  })}
                 </p>
               </div>
               <div>
@@ -354,7 +358,7 @@ export default function AuditPage() {
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-white mb-4">Actions les plus fréquentes</h3>
+            <h3 className="text-lg font-medium text-white mb-4">{t('admin.audit.top_actions')}</h3>
             <div className="space-y-3">
               {stats.top_actions.map((item, index) => (
                 <div key={index} className="flex items-center justify-between">
@@ -365,7 +369,7 @@ export default function AuditPage() {
             </div>
           </div>
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-white mb-4">Utilisateurs les plus actifs</h3>
+            <h3 className="text-lg font-medium text-white mb-4">{t('admin.audit.top_active_participants')}</h3>
             <div className="space-y-3">
               {stats.top_users.map((item, index) => (
                 <div key={index} className="flex items-center justify-between">

@@ -1553,6 +1553,19 @@ export interface AppConfiguration {
   organization_description: string | null
   organization_reference_url: string | null
   organization_keywords: string | null
+  organization_tech_stack: string | null
+  organization_sector: string | null
+  bia_processes: string | null
+  windows_domain: string | null
+  public_domain: string | null
+  mail_domain: string | null
+  internal_ip_ranges: string | null
+  dmz_ip_ranges: string | null
+  domain_controllers: string | null
+  server_naming_examples: string | null
+  technological_dependencies: string | null
+  cloud_providers: string | null
+  critical_applications: string | null
   default_exercise_duration_hours: number
   default_time_multiplier: number
   default_exercise_type: string

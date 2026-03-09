@@ -1564,9 +1564,16 @@ export default function InjectBankPage() {
   }
 
   const cardStatusColor: Record<InjectBankStatus, string> = {
-    draft: 'bg-yellow-900/30 text-yellow-400',
-    ready: 'bg-green-900/30 text-green-400',
+    draft: 'bg-yellow-700/50 text-yellow-100',
+    ready: 'bg-green-700/50 text-green-100',
     archived: 'bg-gray-700 text-gray-300',
+  }
+
+  const formatBadge: Record<string, { label: string; cls: string }> = {
+    text:  { label: 'Texte',  cls: 'bg-blue-800/50 text-blue-100' },
+    image: { label: 'Image',  cls: 'bg-purple-800/50 text-purple-100' },
+    audio: { label: 'Audio',  cls: 'bg-orange-800/50 text-orange-100' },
+    video: { label: 'Vidéo',  cls: 'bg-pink-800/50 text-pink-100' },
   }
 
   // Drag & Drop handlers - use counter to prevent flickering
@@ -1920,9 +1927,16 @@ export default function InjectBankPage() {
                     <p className="text-xs text-gray-400">
                     </p>
                   </div>
-                  <span className={`rounded px-2 py-1 text-xs font-medium ${cardStatusColor[item.status]}`}>
-                    {statusLabelMap[item.status] || item.status}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {formatBadge[item.data_format] && (
+                      <span className={`rounded px-2 py-1 text-xs font-medium ${formatBadge[item.data_format].cls}`}>
+                        {formatBadge[item.data_format].label}
+                      </span>
+                    )}
+                    <span className={`rounded px-2 py-1 text-xs font-medium ${cardStatusColor[item.status]}`}>
+                      {statusLabelMap[item.status] || item.status}
+                    </span>
+                  </div>
                 </div>
 
                 {item.summary && <p className="mb-3 text-sm text-gray-300">{item.summary}</p>}

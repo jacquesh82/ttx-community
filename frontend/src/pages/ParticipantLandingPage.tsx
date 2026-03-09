@@ -10,7 +10,7 @@ import { authApi } from '../services/api'
  * Affiche les exercices en cours auxquels l'utilisateur peut accéder
  * et permet de rejoindre directement un exercice actif.
  */
-export default function ParticipantLandingPage() {
+export default function ParticipantLandingPage({ embedded = false }: { embedded?: boolean }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
 
@@ -82,44 +82,19 @@ export default function ParticipantLandingPage() {
 
   const activeCount = exercises.filter((e: any) => e.status === 'running').length
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">TTX Platform</h1>
-            <p className="text-sm text-gray-500">Espace participant</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-800">{user?.username}</p>
-              <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
-              title="Déconnexion"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
-        {/* Welcome banner */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Bonjour, {user?.username} 👋
-          </h2>
-          <p className="text-gray-600 mt-1">
-            {activeCount > 0
-              ? `${activeCount} exercice${activeCount > 1 ? 's' : ''} en cours – rejoignez votre équipe !`
-              : 'Aucun exercice actif pour le moment. En attente du démarrage...'}
-          </p>
-        </div>
+  const content = (
+    <>
+      {/* Welcome banner */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Bonjour, {user?.username} 👋
+        </h2>
+        <p className="text-gray-600 mt-1">
+          {activeCount > 0
+            ? `${activeCount} exercice${activeCount > 1 ? 's' : ''} en cours – rejoignez votre équipe !`
+            : 'Aucun exercice actif pour le moment. En attente du démarrage...'}
+        </p>
+      </div>
 
         {/* Active exercise highlight */}
         {activeCount > 0 && (
@@ -229,10 +204,43 @@ export default function ParticipantLandingPage() {
           )}
         </div>
 
-        {/* Info footer */}
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Cette page se rafraîchit automatiquement toutes les 30 secondes.
-        </p>
+      {/* Info footer */}
+      <p className="text-center text-xs text-gray-400 mt-6">
+        Cette page se rafraîchit automatiquement toutes les 30 secondes.
+      </p>
+    </>
+  )
+
+  if (embedded) {
+    return <div className="space-y-6 max-w-3xl mx-auto">{content}</div>
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">TTX Platform</h1>
+            <p className="text-sm text-gray-500">Espace participant</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-800">{user?.username}</p>
+              <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+              title="Déconnexion"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
+      </header>
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
+        {content}
       </main>
     </div>
   )

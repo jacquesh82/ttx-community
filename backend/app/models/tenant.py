@@ -100,6 +100,21 @@ class TenantConfiguration(Base):
     organization_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     organization_reference_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     organization_keywords: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_tech_stack: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bia_processes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Technical context — used by AI inject generation for realism
+    windows_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    public_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mail_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    internal_ip_ranges: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dmz_ip_ranges: Mapped[str | None] = mapped_column(Text, nullable=True)
+    domain_controllers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    server_naming_examples: Mapped[str | None] = mapped_column(Text, nullable=True)
+    technological_dependencies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cloud_providers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    critical_applications: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Transitional overlay for legacy app_config fields not yet normalized in tenant_configurations.
     legacy_app_config_overrides: Mapped[dict | None] = mapped_column(JSON, nullable=True)

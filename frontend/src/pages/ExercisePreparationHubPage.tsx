@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { adminApi, AppConfiguration } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useAutoSaveStore } from '../stores/autoSaveStore'
@@ -8,6 +9,7 @@ import AutoSaveIndicator, { AutoSaveStatus } from '../components/AutoSaveIndicat
 import OrganisationSection from '../components/options/OrganisationSection'
 
 export default function ExercisePreparationHubPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const tenant = useAuthStore((state) => state.user?.tenant ?? null)
   const [editedAppConfig, setEditedAppConfig] = useState<Partial<AppConfiguration>>({})
@@ -41,7 +43,7 @@ export default function ExercisePreparationHubPage() {
       })
     },
     onError: (error: any) => {
-      const msg = error?.message || 'Erreur de sauvegarde'
+      const msg = error?.message || t('exercises.save_error')
       setSaveError(msg)
     },
   })
@@ -71,7 +73,7 @@ export default function ExercisePreparationHubPage() {
         },
         onError: (error: any) => {
           lastFailedSignatureRef.current = signature
-          setSaveError(error?.message || 'Erreur de sauvegarde')
+          setSaveError(error?.message || t('exercises.save_error'))
         },
       })
     }, 700)
@@ -121,7 +123,7 @@ export default function ExercisePreparationHubPage() {
         ? 'saved'
         : 'idle'
 
-  const tenantLabel = tenant?.name?.trim() || 'Tenant non résolu'
+  const tenantLabel = tenant?.name?.trim() || t('exercises.tenant_not_resolved')
   const tenantSlug = tenant?.slug?.trim() || null
 
   return (
@@ -131,14 +133,15 @@ export default function ExercisePreparationHubPage() {
           <div className="flex items-center gap-3">
             <Building2 className="w-5 h-5 text-gray-400" />
             <div>
-              <h1 className="text-2xl font-bold text-white">Organisation</h1>
-              <p className="text-sm text-gray-400 mt-0.5">Identité et configuration du tenant</p>
+              <h1 className="text-2xl font-bold text-white">{t('exercises.hub_title')}</h1>
+              <p className="text-sm text-gray-400 mt-0.5">{t('exercises.hub_subtitle')}</p>
             </div>
           </div>
-          <AutoSaveIndicator status={localSaveStatus} errorMessage={saveError} savedLabel="Sauvegardé" />
+          <AutoSaveIndicator status={localSaveStatus} errorMessage={saveError} savedLabel={t('common.saved')} />
         </div>
       </div>
       <OrganisationSection
+        key={appConfig ? 'loaded' : 'loading'}
         getAppConfigValue={getAppConfigValue}
         updateAppConfigField={updateAppConfigField}
         tenantLabel={tenantLabel}

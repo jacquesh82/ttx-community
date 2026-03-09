@@ -24,6 +24,21 @@ class AppConfiguration(Base):
     organization_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     organization_reference_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     organization_keywords: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_tech_stack: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bia_processes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Technical context — used by AI inject generation for realism
+    windows_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    public_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mail_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    internal_ip_ranges: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dmz_ip_ranges: Mapped[str | None] = mapped_column(Text, nullable=True)
+    domain_controllers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    server_naming_examples: Mapped[str | None] = mapped_column(Text, nullable=True)
+    technological_dependencies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cloud_providers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    critical_applications: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Default exercise settings
     default_exercise_duration_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
@@ -82,6 +97,19 @@ DEFAULT_APP_CONFIG = {
     "organization_description": None,
     "organization_reference_url": None,
     "organization_keywords": None,
+    "organization_tech_stack": None,
+    "organization_sector": None,
+    "bia_processes": None,
+    "windows_domain": None,
+    "public_domain": None,
+    "mail_domain": None,
+    "internal_ip_ranges": None,
+    "dmz_ip_ranges": None,
+    "domain_controllers": None,
+    "server_naming_examples": None,
+    "technological_dependencies": None,
+    "cloud_providers": None,
+    "critical_applications": None,
     "default_exercise_duration_hours": 4,
     "default_time_multiplier": 1,
     "default_exercise_type": "cyber",

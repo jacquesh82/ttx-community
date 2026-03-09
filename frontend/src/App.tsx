@@ -1,5 +1,6 @@
 import { useEffect, useState, ReactNode } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import ModuleUnavailablePage from './pages/ModuleUnavailablePage'
 import { useAuthStore } from './stores/authStore'
 import { applyThemeToDocument, useThemeStore } from './stores/themeStore'
 import { authApi } from './services/api'
@@ -506,15 +507,8 @@ function App() {
           }
         />
 
-        {/* Player selection (DEV preview) */}
-        <Route
-          path="/player"
-          element={
-            <RoleGuard allowed={['admin', 'animateur']} redirectTo="/">
-              <ParticipantLandingPage />
-            </RoleGuard>
-          }
-        />
+        {/* Player — module non disponible */}
+        <Route path="/player" element={<ModuleUnavailablePage />} />
 
         {/* Admin uniquement */}
         <Route

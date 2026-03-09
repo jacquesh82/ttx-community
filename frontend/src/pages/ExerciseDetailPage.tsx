@@ -1881,7 +1881,7 @@ export default function ExerciseDetailPage() {
             {canConfigure && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
                 <select value={selectedUserId || ''} onChange={(e) => setSelectedUserId(e.target.value ? parseInt(e.target.value, 10) : null)} className="px-3 py-2 border border-gray-300 rounded-md md:col-span-2">
-                  <option value="">Choisir un utilisateur</option>
+                  <option value="">Choisir un participant</option>
                   {availableUsers.filter((available: any) => !available.already_assigned).map((available: any) => (<option key={available.id} value={available.id}>{available.username} ({available.email})</option>))}
                 </select>
                 <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value as ExerciseRole)} className="px-3 py-2 border border-gray-300 rounded-md">

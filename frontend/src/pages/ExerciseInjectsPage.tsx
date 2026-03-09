@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   injectsApi,
   exercisesApi,
@@ -52,33 +54,33 @@ import { useAppDialog } from '../contexts/AppDialogContext'
 
 // ─── Config par type ──────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<InjectStatus, { label: string; color: string; dot: string }> = {
-  draft:     { label: 'Brouillon',  color: 'bg-gray-100 text-gray-700',     dot: 'bg-gray-400' },
-  scheduled: { label: 'Planifié',   color: 'bg-primary-100 text-primary-700',     dot: 'bg-primary-500' },
-  sent:      { label: 'Envoyé',     color: 'bg-green-100 text-green-700',   dot: 'bg-green-500' },
-  cancelled: { label: 'Annulé',     color: 'bg-red-100 text-red-700',       dot: 'bg-red-400' },
+const STATUS_CONFIG: Record<InjectStatus, { color: string; dot: string }> = {
+  draft:     { color: 'bg-gray-100 text-gray-700',         dot: 'bg-gray-400' },
+  scheduled: { color: 'bg-primary-100 text-primary-700',   dot: 'bg-primary-500' },
+  sent:      { color: 'bg-green-100 text-green-700',       dot: 'bg-green-500' },
+  cancelled: { color: 'bg-red-100 text-red-700',           dot: 'bg-red-400' },
 }
 
-const CATEGORY_CONFIG: Record<InjectCategory, { label: string; color: string }> = {
-  information: { label: 'Information', color: 'bg-primary-50 text-primary-700' },
-  incident:    { label: 'Incident',    color: 'bg-red-50 text-red-700' },
-  decision:    { label: 'Décision',    color: 'bg-orange-50 text-orange-700' },
-  media:       { label: 'Média',       color: 'bg-purple-50 text-purple-700' },
-  technical:   { label: 'Technique',   color: 'bg-gray-50 text-gray-700' },
-  legal:       { label: 'Juridique',   color: 'bg-indigo-50 text-indigo-700' },
-  canal_press: { label: 'Canal presse', color: 'bg-cyan-50 text-cyan-700' },
-  canal_anssi: { label: 'Canal ANSSI', color: 'bg-emerald-50 text-emerald-700' },
-  canal_gouvernement: { label: 'Canal gouvernement', color: 'bg-amber-50 text-amber-700' },
+const CATEGORY_CONFIG: Record<InjectCategory, { color: string }> = {
+  information:       { color: 'bg-primary-50 text-primary-700' },
+  incident:          { color: 'bg-red-50 text-red-700' },
+  decision:          { color: 'bg-orange-50 text-orange-700' },
+  media:             { color: 'bg-purple-50 text-purple-700' },
+  technical:         { color: 'bg-gray-50 text-gray-700' },
+  legal:             { color: 'bg-indigo-50 text-indigo-700' },
+  canal_press:       { color: 'bg-cyan-50 text-cyan-700' },
+  canal_anssi:       { color: 'bg-emerald-50 text-emerald-700' },
+  canal_gouvernement: { color: 'bg-amber-50 text-amber-700' },
 }
 
-const CHANNEL_CONFIG: Record<InjectChannel, { label: string; icon: React.ElementType }> = {
-  mail:           { label: 'Mail',            icon: Mail },
-  phone:          { label: 'Téléphone',       icon: Phone },
-  press:          { label: 'Presse',          icon: Newspaper },
-  siem:           { label: 'SIEM',            icon: Monitor },
-  tv:             { label: 'TV',              icon: Tv },
-  social_network: { label: 'Réseau social',   icon: Twitter },
-  official_mail:  { label: 'Courrier officiel', icon: FileText },
+const CHANNEL_CONFIG: Record<InjectChannel, { icon: React.ElementType }> = {
+  mail:           { icon: Mail },
+  phone:          { icon: Phone },
+  press:          { icon: Newspaper },
+  siem:           { icon: Monitor },
+  tv:             { icon: Tv },
+  social_network: { icon: Twitter },
+  official_mail:  { icon: FileText },
 }
 
 const AUDIENCE_CONFIG: Record<TargetAudience, string> = {
@@ -90,11 +92,48 @@ const AUDIENCE_CONFIG: Record<TargetAudience, string> = {
   all: 'Tous',
 }
 
-const AUDIENCE_KIND_LABELS: Record<string, string> = {
-  role: 'Rôle',
-  team: 'Équipe',
-  user: 'Utilisateur',
-  tag: 'Tag',
+function getStatusLabels(t: TFunction): Record<InjectStatus, string> {
+  return {
+    draft:     t('exercises.injects.status_draft'),
+    scheduled: t('exercises.injects.status_scheduled'),
+    sent:      t('exercises.injects.status_sent'),
+    cancelled: t('exercises.injects.status_cancelled'),
+  }
+}
+
+function getCategoryLabels(t: TFunction): Record<InjectCategory, string> {
+  return {
+    information:        t('exercises.injects.category_information'),
+    incident:           t('exercises.injects.category_incident'),
+    decision:           t('exercises.injects.category_decision'),
+    media:              t('exercises.injects.category_media'),
+    technical:          t('exercises.injects.category_technical'),
+    legal:              t('exercises.injects.category_legal'),
+    canal_press:        t('exercises.injects.category_press'),
+    canal_anssi:        t('exercises.injects.category_anssi'),
+    canal_gouvernement: t('exercises.injects.category_government'),
+  }
+}
+
+function getChannelLabels(t: TFunction): Record<InjectChannel, string> {
+  return {
+    mail:           t('exercises.injects.channel_mail'),
+    phone:          t('exercises.injects.channel_phone'),
+    press:          t('exercises.injects.channel_press'),
+    siem:           t('exercises.injects.channel_siem'),
+    tv:             t('exercises.injects.channel_tv'),
+    social_network: t('exercises.injects.channel_social'),
+    official_mail:  t('exercises.injects.channel_official'),
+  }
+}
+
+function getAudienceKindLabels(t: TFunction): Record<string, string> {
+  return {
+    role: t('exercises.injects.audience_kind_role'),
+    team: t('exercises.injects.audience_kind_team'),
+    user: t('exercises.injects.audience_kind_user'),
+    tag:  t('exercises.injects.audience_kind_tag'),
+  }
 }
 
 const COMPETENCE_CONFIG: Record<TestedCompetence, string> = {
@@ -248,6 +287,9 @@ export function InjectFormModal({
   maxWidthClassName = 'max-w-4xl',
   mergeCreateTabs = false,
 }: InjectFormModalProps) {
+  const { t } = useTranslation()
+  const categoryLabels = useMemo(() => getCategoryLabels(t), [t])
+  const channelLabels = useMemo(() => getChannelLabels(t), [t])
   const isCompact = mergeCreateTabs
   const normalizedInitial = useMemo<InjectFormData>(() => {
     const fallbackKind = INJECT_TYPE_TO_BANK_KIND[initial.type] || 'mail'
@@ -340,8 +382,8 @@ export function InjectFormModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
-              {Object.entries(CATEGORY_CONFIG).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
+              {Object.entries(CATEGORY_CONFIG).map(([k]) => (
+                <option key={k} value={k}>{categoryLabels[k as InjectCategory]}</option>
               ))}
             </select>
           </div>
@@ -353,8 +395,8 @@ export function InjectFormModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">-</option>
-              {Object.entries(CHANNEL_CONFIG).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
+              {Object.entries(CHANNEL_CONFIG).map(([k]) => (
+                <option key={k} value={k}>{channelLabels[k as InjectChannel]}</option>
               ))}
             </select>
           </div>
@@ -618,6 +660,11 @@ export function InjectFormModal({
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export default function ExerciseInjectsPage() {
+  const { t } = useTranslation()
+  const statusLabels = useMemo(() => getStatusLabels(t), [t])
+  const categoryLabels = useMemo(() => getCategoryLabels(t), [t])
+  const channelLabels = useMemo(() => getChannelLabels(t), [t])
+  const audienceKindLabels = useMemo(() => getAudienceKindLabels(t), [t])
   const appDialog = useAppDialog()
   const { exerciseId } = useParams<{ exerciseId: string }>()
   const navigate = useNavigate()
@@ -951,8 +998,8 @@ export default function ExerciseInjectsPage() {
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Tous statuts</option>
-            {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
+            {Object.entries(STATUS_CONFIG).map(([k]) => (
+              <option key={k} value={k}>{statusLabels[k as InjectStatus]}</option>
             ))}
           </select>
 
@@ -962,8 +1009,8 @@ export default function ExerciseInjectsPage() {
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Toutes catégories</option>
-            {Object.entries(CATEGORY_CONFIG).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
+            {Object.entries(CATEGORY_CONFIG).map(([k]) => (
+              <option key={k} value={k}>{categoryLabels[k as InjectCategory]}</option>
             ))}
           </select>
 
@@ -1013,7 +1060,7 @@ export default function ExerciseInjectsPage() {
             return (
               <div key={status} className="flex items-center gap-1.5 text-sm text-gray-600">
                 <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                {cfg.label} : <strong>{count}</strong>
+                {statusLabels[status as InjectStatus]} : <strong>{count}</strong>
               </div>
             )
           })}
@@ -1089,7 +1136,7 @@ export default function ExerciseInjectsPage() {
                       <td className="px-3 py-3 whitespace-nowrap">
                         {inject.inject_category && (
                           <span className={`text-xs px-2 py-0.5 rounded ${CATEGORY_CONFIG[inject.inject_category].color}`}>
-                            {CATEGORY_CONFIG[inject.inject_category].label}
+                            {categoryLabels[inject.inject_category]}
                           </span>
                         )}
                       </td>
@@ -1098,7 +1145,7 @@ export default function ExerciseInjectsPage() {
                         <p className="text-xs text-gray-500">Format: {DATA_FORMAT_LABELS[inject.data_format || 'text']}</p>
                         {inject.audiences?.[0] && (
                           <p className="text-xs text-gray-500">
-                            Dest.: {(AUDIENCE_KIND_LABELS[inject.audiences[0].kind] ?? inject.audiences[0].kind)} {String(inject.audiences[0].value)}
+                            Dest.: {(audienceKindLabels[inject.audiences[0].kind] ?? inject.audiences[0].kind)} {String(inject.audiences[0].value)}
                           </p>
                         )}
                         {inject.description && (
@@ -1108,7 +1155,7 @@ export default function ExerciseInjectsPage() {
                       <td className="px-3 py-3 whitespace-nowrap">
                         {inject.channel && (
                           <span className="text-xs text-gray-600">
-                            {CHANNEL_CONFIG[inject.channel].label}
+                            {channelLabels[inject.channel]}
                           </span>
                         )}
                       </td>
@@ -1136,7 +1183,7 @@ export default function ExerciseInjectsPage() {
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusCfg.color}`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
-                          {statusCfg.label}
+                          {statusLabels[inject.status]}
                         </span>
                       </td>
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -1306,7 +1353,7 @@ export default function ExerciseInjectsPage() {
               <div>
                 <p className="text-sm text-gray-500">Statut</p>
                 <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CONFIG[viewInject.status].color}`}>
-                  {STATUS_CONFIG[viewInject.status].label}
+                  {statusLabels[viewInject.status]}
                 </span>
               </div>
               <div>
@@ -1332,14 +1379,14 @@ export default function ExerciseInjectsPage() {
                 <div>
                   <p className="text-sm text-gray-500">Catégorie</p>
                   <span className={`text-xs px-2 py-0.5 rounded ${CATEGORY_CONFIG[viewInject.inject_category].color}`}>
-                    {CATEGORY_CONFIG[viewInject.inject_category].label}
+                    {categoryLabels[viewInject.inject_category]}
                   </span>
                 </div>
               )}
               {viewInject.channel && (
                 <div>
                   <p className="text-sm text-gray-500">Canal</p>
-                  <p className="text-sm">{CHANNEL_CONFIG[viewInject.channel].label}</p>
+                  <p className="text-sm">{channelLabels[viewInject.channel]}</p>
                 </div>
               )}
               {viewInject.target_audience && (
@@ -1357,7 +1404,7 @@ export default function ExerciseInjectsPage() {
                         key={`${aud.kind}-${aud.value}-${idx}`}
                         className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700"
                       >
-                        {(AUDIENCE_KIND_LABELS[aud.kind] ?? aud.kind)} : {aud.value}
+                        {(audienceKindLabels[aud.kind] ?? aud.kind)} : {aud.value}
                       </span>
                     ))}
                   </div>

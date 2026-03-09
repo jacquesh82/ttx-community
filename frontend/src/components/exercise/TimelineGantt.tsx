@@ -43,7 +43,7 @@ import {
   Edit3,
   FileText,
   MessageSquare,
-  Lightbulb,
+  Phone,
   Maximize2,
   MoveHorizontal,
   Upload,
@@ -54,64 +54,42 @@ import { PHASE_COLOR_PALETTE } from '../../features/phasePresets'
 import { formatSchemaError, validateWithSchema } from '../../utils/jsonSchemaValidation'
 
 const BANK_KIND_CONFIG_BASE: Record<InjectBankKind, { bg: string; color: string; icon: React.ElementType }> = {
-  idea: { bg: '#f59e0b', color: '#b45309', icon: Lightbulb },          // amber
-  video: { bg: '#06b6d4', color: '#0e7490', icon: Film },               // cyan
-  audio: { bg: '#a855f7', color: '#7e22ce', icon: MessageSquare },      // purple
-  scenario: { bg: '#f97316', color: '#c2410c', icon: AlertCircle },     // orange
-  chronogram: { bg: '#eab308', color: '#a16207', icon: CalendarClock }, // yellow
-  image: { bg: '#3b82f6', color: '#1d4ed8', icon: FileText },           // blue
-  mail: { bg: '#6366f1', color: '#4338ca', icon: Mail },                // indigo
-  message: { bg: '#10b981', color: '#047857', icon: MessageSquare },    // emerald
-  directory: { bg: '#94a3b8', color: '#475569', icon: Database },       // slate
-  reference_url: { bg: '#f43f5e', color: '#be123c', icon: Settings },   // rose
-  social_post: { bg: '#ec4899', color: '#be185d', icon: Twitter },      // pink
-  document: { bg: '#6b7280', color: '#374151', icon: FileText },        // gray
-  canal_press: { bg: '#ef4444', color: '#b91c1c', icon: AlertCircle },  // red
-  canal_anssi: { bg: '#2563eb', color: '#1d4ed8', icon: Mail },         // primary-deep
-  canal_gouvernement: { bg: '#84cc16', color: '#4d7c0f', icon: Mail },  // lime
-  other: { bg: '#6b7280', color: '#374151', icon: Settings },
+  mail:      { bg: '#6366f1', color: '#4338ca', icon: Mail },          // indigo
+  sms:       { bg: '#10b981', color: '#047857', icon: MessageSquare }, // emerald
+  call:      { bg: '#a855f7', color: '#7e22ce', icon: Phone },         // purple
+  socialnet: { bg: '#ec4899', color: '#be185d', icon: Twitter },       // pink
+  tv:        { bg: '#06b6d4', color: '#0e7490', icon: Film },          // cyan
+  doc:       { bg: '#6b7280', color: '#374151', icon: FileText },      // gray
+  directory: { bg: '#94a3b8', color: '#475569', icon: Database },      // slate
+  story:     { bg: '#f97316', color: '#c2410c', icon: AlertCircle },   // orange
 }
 
 const BANK_KIND_FALLBACK = { bg: '#6b7280', color: '#374151', icon: Settings }
 
 const BANK_KIND_TO_INJECT_TYPE: Record<InjectBankKind, InjectType> = {
-  idea: 'decision',
-  video: 'tv',
-  audio: 'tv',
-  scenario: 'decision',
-  chronogram: 'score',
-  image: 'tv',
-  mail: 'mail',
-  message: 'twitter',
+  mail:      'mail',
+  sms:       'mail',
+  call:      'mail',
+  socialnet: 'twitter',
+  tv:        'tv',
+  doc:       'system',
   directory: 'system',
-  reference_url: 'system',
-  social_post: 'twitter',
-  document: 'system',
-  canal_press: 'tv',
-  canal_anssi: 'mail',
-  canal_gouvernement: 'mail',
-  other: 'system', // gardé pour compatibilité mais non proposé dans le prompt/catalogue
+  story:     'decision',
 }
 
 const INJECT_TYPE_TO_BANK_KIND: Record<InjectType, InjectBankKind> = {
-  mail: 'mail',
-  twitter: 'socialnet',
-  tv: 'tv',
-  decision: 'story',
-  score: 'story',
-  system: 'directory',
+  mail:     'mail',
+  twitter:  'socialnet',
+  tv:       'tv',
+  decision: 'doc',   // story is bank-only, not allowed on timeline
+  score:    'doc',   // story is bank-only, not allowed on timeline
+  system:   'directory',
 }
 
-const BANK_KIND_ORDER_FALLBACK: InjectBankKind[] = [
-  'mail',
-  'sms',
-  'call',
-  'socialnet',
-  'tv',
-  'doc',
-  'directory',
-  'story',
-]
+/** Kinds that exist in the bank but cannot be placed on a timeline. */
+const TIMELINE_FORBIDDEN_KINDS = new Set<InjectBankKind>(['story', 'directory'])
+
+const BANK_KIND_ORDER_FALLBACK: InjectBankKind[] = ['mail', 'sms', 'call', 'socialnet', 'tv', 'doc']
 
 const isInjectType = (value: unknown): value is InjectType => {
   return typeof value === 'string' && ['mail', 'twitter', 'tv', 'decision', 'score', 'system'].includes(value)
@@ -171,7 +149,7 @@ const resolveInjectBankKind = (inject: Inject): InjectBankKind => {
   if (typeof rawKind === 'string' && rawKind in BANK_KIND_CONFIG_BASE) {
     return rawKind as InjectBankKind
   }
-  return INJECT_TYPE_TO_BANK_KIND[inject.type] ?? 'other'
+  return INJECT_TYPE_TO_BANK_KIND[inject.type] ?? 'doc'
 }
 
 const formatOffsetLabel = (offsetMin: number | null | undefined): string => {
@@ -299,11 +277,13 @@ export default function TimelineGantt({
 
   const bankTypeOptions = useMemo(() => {
     const kinds = bankKinds && bankKinds.length > 0 ? bankKinds : BANK_KIND_ORDER_FALLBACK
-    return kinds.map((kind) => ({
-      kind,
-      injectType: BANK_KIND_TO_INJECT_TYPE[kind] || 'system',
-      label: INJECT_BANK_KIND_LABELS[kind] || kind,
-    }))
+    return kinds
+      .filter((kind) => !TIMELINE_FORBIDDEN_KINDS.has(kind))
+      .map((kind) => ({
+        kind,
+        injectType: BANK_KIND_TO_INJECT_TYPE[kind] || 'system',
+        label: INJECT_BANK_KIND_LABELS[kind] || kind,
+      }))
   }, [bankKinds])
 
   // Dynamic TYPE_CONFIG based on API
@@ -493,11 +473,12 @@ export default function TimelineGantt({
     : '- Aucune equipe rattachee'
 
   const recipientPromptRulesSection = [
-    'Destinataire de l inject:',
-    '- Si l inject vise tout le monde: mettre "audiences": [] (ou omettre le champ).',
-    '- Si l inject vise une equipe: utiliser {"kind":"team","value":"<id_equipe>"} avec un ID ci-dessous.',
-    '- Si l inject vise une personne: utiliser {"kind":"user","value":"<id_user_exercice>"} si pertinent.',
-    '- Si l inject vise un role: utiliser {"kind":"role","value":"joueur|animateur|observateur"}.',
+    'Destinataire de l inject (champ "audiences", schema: {kind: role|team|user|tag, value: string|int}):',
+    '- Tout le monde : "audiences": [].',
+    '- Par equipe   : {"kind":"team","value":"<id_equipe>"} — IDs ci-dessous.',
+    '- Par personne : {"kind":"user","value":"<id_user_exercice>"}.',
+    '- Par role     : {"kind":"role","value":"participant|animateur|observateur"}.',
+    '- Par tag      : {"kind":"tag","value":"<nom_du_tag>"}.',
     '- Un seul destinataire principal attendu (premier element du tableau).',
   ].join('\n')
   
@@ -558,10 +539,10 @@ export default function TimelineGantt({
       'Phases:',
       phasesSection,
       '',
-      'Répartition des statuts:',
+      'Répartition des statuts (draft|scheduled|sent|cancelled):',
       statusSection,
       '',
-      'Répartition des catégories (banque d injects):',
+      'Répartition par canal (mail|sms|call|socialnet|tv|doc|system):',
       kindsSection,
       '',
       'Timeline détaillée des injects:',
@@ -619,7 +600,7 @@ export default function TimelineGantt({
   // Legend based on filtered injects
   const legendKinds = useMemo(() => {
     if (filteredInjects.length === 0) {
-      return ['mail', 'socialnet', 'story', 'tv', 'doc'] as InjectBankKind[]
+      return ['mail', 'socialnet', 'tv', 'doc', 'sms', 'call'] as InjectBankKind[]
     }
     const usedKinds = new Set<InjectBankKind>()
     filteredInjects.forEach((inject: Inject) => {
@@ -1507,7 +1488,7 @@ export default function TimelineGantt({
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!selectedInject) return
-      const bankKind = editForm.bank_kind || INJECT_TYPE_TO_BANK_KIND[editForm.type] || 'other'
+      const bankKind = editForm.bank_kind || INJECT_TYPE_TO_BANK_KIND[editForm.type] || 'doc'
       await injectsApi.update(selectedInject.id, {
         title: editForm.title,
         description: editForm.description || undefined,
@@ -1548,7 +1529,7 @@ export default function TimelineGantt({
   
   const createMutation = useMutation({
     mutationFn: async () => {
-      const bankKind = editForm.bank_kind || INJECT_TYPE_TO_BANK_KIND[editForm.type] || 'other'
+      const bankKind = editForm.bank_kind || INJECT_TYPE_TO_BANK_KIND[editForm.type] || 'doc'
       const injectType = BANK_KIND_TO_INJECT_TYPE[bankKind] || editForm.type
       const inject = await injectsApi.create({
         exercise_id: exerciseId,
@@ -1787,7 +1768,7 @@ export default function TimelineGantt({
             exercise_id: exerciseId,
             title: inj.title,
             type: inj.type,
-            kind: INJECT_TYPE_TO_BANK_KIND[inj.type] || 'other',
+            kind: INJECT_TYPE_TO_BANK_KIND[inj.type] || 'doc',
             status: 'draft' as const,
             time_offset: inj.time_offset,
             duration_min: inj.duration_min || 15,
@@ -2465,11 +2446,13 @@ export default function TimelineGantt({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">Tous les types</option>
-                {(bankKinds || BANK_KIND_ORDER_FALLBACK).map((kind) => (
-                  <option key={kind} value={kind}>
-                    {BANK_KIND_CONFIG[kind]?.label || kind}
-                  </option>
-                ))}
+                {(bankKinds || BANK_KIND_ORDER_FALLBACK)
+                  .filter((kind) => !TIMELINE_FORBIDDEN_KINDS.has(kind))
+                  .map((kind) => (
+                    <option key={kind} value={kind}>
+                      {BANK_KIND_CONFIG[kind]?.label || kind}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>

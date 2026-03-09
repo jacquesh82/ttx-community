@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { crisisContactsApi } from '../services/api'
 import { ArrowLeft, Search, Plus, Upload, Download, Phone, Mail, Edit2, Trash2, X, AlertCircle } from 'lucide-react'
 import Modal from '../components/Modal'
@@ -562,6 +563,7 @@ function ImportModal({
   exerciseId: number
   onSuccess: () => void
 }) {
+  const { t } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<{
     success: number
@@ -651,7 +653,7 @@ function ImportModal({
                 disabled={!file || mutation.isPending}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
               >
-                {mutation.isPending ? 'Import...' : 'Importer'}
+                {mutation.isPending ? t('crisis.importing') : t('crisis.import')}
               </button>
             </div>
           </>
@@ -659,10 +661,15 @@ function ImportModal({
           <>
             <div className={`p-4 rounded-md ${result.errors.length > 0 ? 'bg-yellow-50' : 'bg-green-50'}`}>
               <p className={`font-medium ${result.errors.length > 0 ? 'text-yellow-800' : 'text-green-800'}`}>
-                Import terminé : {result.success} / {result.total} contacts importés
+                {t('crisis.import_complete', { imported: result.success, total: result.total })}
               </p>
               <p className="mt-1 text-sm text-gray-700">
-                Utilisateurs : +{result.users_created || 0} créés, +{result.users_assigned || 0} affectés, {result.users_updated || 0} mis à jour, {result.users_skipped || 0} ignorés
+                {t('crisis.import_stats', {
+                  created: result.users_created || 0,
+                  assigned: result.users_assigned || 0,
+                  updated: result.users_updated || 0,
+                  skipped: result.users_skipped || 0,
+                })}
               </p>
             </div>
 
@@ -670,11 +677,11 @@ function ImportModal({
               <div className="bg-red-50 p-3 rounded-md">
                 <div className="flex items-center text-red-800 font-medium mb-2">
                   <AlertCircle size={16} className="mr-2" />
-                  {result.errors.length} erreur(s)
+                  {t('crisis.import_errors_count', { count: result.errors.length })}
                 </div>
                 <ul className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
                   {result.errors.map((err, i) => (
-                    <li key={i}>Ligne {err.row}: {err.error}</li>
+                    <li key={i}>{t('crisis.import_error_line', { line: err.row, error: err.error })}</li>
                   ))}
                 </ul>
               </div>

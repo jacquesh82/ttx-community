@@ -81,6 +81,19 @@ class AppConfigurationResponse(BaseModel):
     organization_description: str | None
     organization_reference_url: str | None
     organization_keywords: str | None
+    organization_tech_stack: str | None
+    organization_sector: str | None = None
+    bia_processes: str | None = None
+    windows_domain: str | None = None
+    public_domain: str | None = None
+    mail_domain: str | None = None
+    internal_ip_ranges: str | None = None
+    dmz_ip_ranges: str | None = None
+    domain_controllers: str | None = None
+    server_naming_examples: str | None = None
+    technological_dependencies: str | None = None
+    cloud_providers: str | None = None
+    critical_applications: str | None = None
     default_exercise_duration_hours: int
     default_time_multiplier: int
     default_exercise_type: str
@@ -120,6 +133,19 @@ class AppConfigurationUpdate(BaseModel):
     organization_description: str | None = None
     organization_reference_url: str | None = None
     organization_keywords: str | None = None
+    organization_tech_stack: str | None = None
+    organization_sector: str | None = None
+    bia_processes: str | None = None
+    windows_domain: str | None = None
+    public_domain: str | None = None
+    mail_domain: str | None = None
+    internal_ip_ranges: str | None = None
+    dmz_ip_ranges: str | None = None
+    domain_controllers: str | None = None
+    server_naming_examples: str | None = None
+    technological_dependencies: str | None = None
+    cloud_providers: str | None = None
+    critical_applications: str | None = None
     default_exercise_duration_hours: int | None = None
     default_time_multiplier: int | None = None
     default_exercise_type: str | None = None
@@ -198,6 +224,19 @@ TENANT_NATIVE_CONFIG_FIELDS = {
     "organization_description",
     "organization_reference_url",
     "organization_keywords",
+    "organization_tech_stack",
+    "organization_sector",
+    "bia_processes",
+    "windows_domain",
+    "public_domain",
+    "mail_domain",
+    "internal_ip_ranges",
+    "dmz_ip_ranges",
+    "domain_controllers",
+    "server_naming_examples",
+    "technological_dependencies",
+    "cloud_providers",
+    "critical_applications",
 }
 
 APP_CONFIG_RESPONSE_FIELDS = set(AppConfigurationResponse.model_fields.keys())

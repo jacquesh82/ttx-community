@@ -304,8 +304,8 @@ export default function UsersPage() {
           <table className="min-w-full divide-y divide-gray-700">
             <thead className="bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Username</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.username')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('common.email')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.role')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.team')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">{t('admin.users.tags')}</th>
@@ -354,7 +354,7 @@ export default function UsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${user.is_active ? 'bg-green-500 text-green-950' : 'bg-red-900/30 text-red-400'}`}>
                         {user.is_active ? t('common.active') : t('common.inactive')}
                       </span>
                     </td>

@@ -114,7 +114,7 @@ class TwitterAccountResponse(TwitterAccountBase):
     follower_count: int
     following_count: int
     created_at: datetime
-    
+
     model_config = {"from_attributes": True}
 
 
@@ -154,7 +154,7 @@ class TwitterPostResponse(TwitterPostBase):
     posted_at: Optional[datetime]
     created_at: datetime
     account: Optional[TwitterAccountResponse] = None
-    
+
     model_config = {"from_attributes": True}
 
 
@@ -387,6 +387,7 @@ async def create_post(
     
     post = TwitterPost(
         account_id=post_data.account_id,
+        exercise_id=account.exercise_id,
         content=post_data.content,
         post_type=post_data.post_type,
         reply_to_id=post_data.reply_to_id,
@@ -402,7 +403,7 @@ async def create_post(
             post_media = TwitterPostMedia(
                 post_id=post.id,
                 media_id=media_id,
-                position=idx,
+                display_order=idx,
             )
             db.add(post_media)
     
@@ -466,15 +467,6 @@ async def publish_post(
         raise HTTPException(status_code=400, detail="Post already published")
     
     post.posted_at = datetime.now(timezone.utc)
-    
-    # Update account tweet count
-    account_result = await db.execute(
-        select(TwitterAccount).where(TwitterAccount.id == post.account_id)
-    )
-    account = account_result.scalar_one_or_none()
-    if account:
-        account.tweet_count = (account.tweet_count or 0) + 1
-    
     await db.commit()
     
     return {"message": "Post published", "posted_at": post.posted_at}
@@ -557,11 +549,11 @@ async def import_accounts_csv(
                 errors.append({"row": row_num, "error": "Display name is required"})
                 continue
             
-            account_type_str = row.get('account_type', 'citizen').lower().strip()
+            account_type_str = row.get('account_type', 'anonymous').lower().strip()
             try:
                 account_type = TwitterAccountType(account_type_str)
             except ValueError:
-                account_type = TwitterAccountType.CITIZEN
+                account_type = TwitterAccountType.ANONYMOUS
             
             verified = row.get('verified', 'false').lower().strip() == 'true'
             bio = row.get('bio', '').strip() or None
@@ -678,6 +670,7 @@ async def import_posts_csv(
             
             post = TwitterPost(
                 account_id=accounts[handle].id,
+                exercise_id=exercise_id,
                 content=content_text,
                 post_type=post_type,
                 scheduled_at=scheduled_at,

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { exercisesApi, teamsApi, usersApi } from '../../services/api'
 import { Plus, Users, Edit, UserPlus, Trash2, Search } from 'lucide-react'
 import Modal from '../../components/Modal'
@@ -42,6 +43,7 @@ type TeamSection = {
 }
 
 export default function TeamsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -101,7 +103,7 @@ export default function TeamsPage() {
       setError('')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de la création')
+      setError(err.response?.data?.detail || t('admin.teams.error_create'))
     },
   })
 
@@ -114,7 +116,7 @@ export default function TeamsPage() {
       setError('')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de la modification')
+      setError(err.response?.data?.detail || t('admin.teams.error_update'))
     },
   })
 
@@ -126,7 +128,7 @@ export default function TeamsPage() {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || "Erreur lors de l'ajout du membre")
+      setError(err.response?.data?.detail || t('admin.teams.error_add_member'))
     },
   })
 
@@ -146,7 +148,7 @@ export default function TeamsPage() {
       setError('')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de la suppression des équipes')
+      setError(err.response?.data?.detail || t('admin.teams.error_delete'))
     },
   })
 
@@ -196,7 +198,7 @@ export default function TeamsPage() {
     if (exerciseFilter === 'none') {
       built.push({
         key: 'none',
-        title: 'Sans exercice',
+        title: t('admin.teams.no_exercise'),
         teams: teamsWithoutExercise,
       })
       return built
@@ -219,7 +221,7 @@ export default function TeamsPage() {
     if (exerciseFilter === 'all') {
       built.push({
         key: 'none',
-        title: 'Sans exercice',
+        title: t('admin.teams.no_exercise'),
         teams: teamsWithoutExercise,
       })
     }
@@ -282,7 +284,7 @@ export default function TeamsPage() {
   const handleDeleteTeamsWithoutExercise = (teamsToDelete: TeamRow[]) => {
     if (teamsToDelete.length === 0) return
     const ok = window.confirm(
-      `Supprimer ${teamsToDelete.length} équipe(s) sans exercice ? Cette action est irréversible.`
+      t('admin.teams.confirm_delete_orphan', { count: teamsToDelete.length })
     )
     if (!ok) return
     deleteOrphanTeamsMutation.mutate(teamsToDelete.map((team) => team.id))
@@ -299,7 +301,7 @@ export default function TeamsPage() {
           <Edit size={16} />
         </button>
       </div>
-      <p className="text-gray-400 text-sm mb-4">{team.description || 'Aucune description'}</p>
+      <p className="text-gray-400 text-sm mb-4">{team.description || t('admin.teams.no_description')}</p>
       {(exerciseNamesByTeam.get(team.id) || []).length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           {(exerciseNamesByTeam.get(team.id) || []).slice(0, 3).map((exerciseName) => (
@@ -317,14 +319,14 @@ export default function TeamsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center text-gray-400 text-sm">
           <Users className="mr-1" size={16} />
-          <span>{team.member_count || 0} membres</span>
+          <span>{t('admin.teams.member_count', { count: team.member_count || 0 })}</span>
         </div>
         <button
           onClick={() => openMembersModal(team)}
           className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
         >
           <UserPlus className="mr-1" size={16} />
-          Gérer
+          {t('admin.teams.manage')}
         </button>
       </div>
     </div>
@@ -335,15 +337,15 @@ export default function TeamsPage() {
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Équipes</h1>
-            <p className="text-sm text-gray-400 mt-1">Gérez les équipes participantes</p>
+            <h1 className="text-2xl font-bold text-white">{t('admin.teams.title')}</h1>
+            <p className="text-sm text-gray-400 mt-1">{t('admin.teams.subtitle')}</p>
           </div>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
           >
             <Plus size={16} />
-            Nouvelle équipe
+            {t('admin.teams.new')}
           </button>
         </div>
       </div>
@@ -351,27 +353,27 @@ export default function TeamsPage() {
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-300 mb-1">Recherche</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher une équipe (nom, description)..."
+                placeholder={t('admin.teams.search_placeholder')}
                 className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Filtrer par exercice</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('admin.teams.filter_exercise')}</label>
             <select
               value={exerciseFilter}
               onChange={(e) => setExerciseFilter(e.target.value as 'all' | 'none' | string)}
               className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-900 text-white"
             >
-              <option value="all">Tous les exercices</option>
-              <option value="none">Sans exercice</option>
+              <option value="all">{t('admin.teams.all_exercises')}</option>
+              <option value="none">{t('admin.teams.no_exercise')}</option>
               {exerciseOptions.map((exercise) => (
                 <option key={exercise.id} value={String(exercise.id)}>
                   {exercise.name}
@@ -380,15 +382,15 @@ export default function TeamsPage() {
             </select>
           </div>
         </div>
-        <p className="text-sm text-gray-400 mt-3">{totalVisibleTeams} équipe(s) affichée(s)</p>
+        <p className="text-sm text-gray-400 mt-3">{t('admin.teams.visible_count', { count: totalVisibleTeams })}</p>
       </div>
 
-      {(isLoading || isExercisesLoading) && <div className="text-center py-8 text-gray-400">Chargement...</div>}
+      {(isLoading || isExercisesLoading) && <div className="text-center py-8 text-gray-400">{t('common.loading')}</div>}
 
       {!isLoading && !isExercisesLoading && sections.every((section) => section.teams.length === 0) && (
         <div className="text-center py-12 bg-gray-800 border border-gray-700 rounded-xl">
           <Users className="mx-auto text-gray-400 mb-4" size={48} />
-          <p className="text-gray-400">Aucune équipe trouvée pour ce filtre</p>
+          <p className="text-gray-400">{t('admin.teams.no_teams_found')}</p>
         </div>
       )}
 
@@ -401,7 +403,7 @@ export default function TeamsPage() {
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-white">{section.title}</h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-400">{section.teams.length} équipe(s)</span>
+                  <span className="text-sm text-gray-400">{t('admin.teams.count', { count: section.teams.length })}</span>
                   {section.key === 'none' && (
                     <button
                       type="button"
@@ -410,7 +412,7 @@ export default function TeamsPage() {
                       className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-400 bg-red-900/20 border border-red-700/40 rounded-md hover:bg-red-900/30 disabled:opacity-50"
                     >
                       <Trash2 className="mr-1" size={14} />
-                      {deleteOrphanTeamsMutation.isPending ? 'Suppression...' : 'Supprimer les équipes sans exercice'}
+                      {deleteOrphanTeamsMutation.isPending ? t('admin.teams.deleting') : t('admin.teams.delete_orphan')}
                     </button>
                   )}
                 </div>
@@ -422,11 +424,11 @@ export default function TeamsPage() {
           ))}
 
       {/* Create Team Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Nouvelle équipe">
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title={t('admin.teams.new')}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">{error}</div>}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Nom de l'équipe</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('admin.teams.name_label')}</label>
             <input
               type="text"
               value={formData.name}
@@ -436,7 +438,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('common.description')}</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -445,7 +447,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Couleur</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('common.color')}</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((color) => (
                 <button
@@ -464,14 +466,14 @@ export default function TeamsPage() {
               onClick={() => setIsCreateModalOpen(false)}
               className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
-              {createMutation.isPending ? 'Création...' : 'Créer'}
+              {createMutation.isPending ? t('admin.teams.creating') : t('admin.teams.create')}
             </button>
           </div>
         </form>
@@ -484,12 +486,12 @@ export default function TeamsPage() {
           setIsEditModalOpen(false)
           setSelectedTeam(null)
         }}
-        title="Modifier l'équipe"
+        title={t('admin.teams.edit')}
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">{error}</div>}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Nom de l'équipe</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('admin.teams.name_label')}</label>
             <input
               type="text"
               value={formData.name}
@@ -499,7 +501,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('common.description')}</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -508,7 +510,7 @@ export default function TeamsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Couleur</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('common.color')}</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((color) => (
                 <button
@@ -530,14 +532,14 @@ export default function TeamsPage() {
               }}
               className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600"
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
-              {updateMutation.isPending ? 'Modification...' : 'Modifier'}
+              {updateMutation.isPending ? t('admin.teams.updating') : t('admin.teams.update')}
             </button>
           </div>
         </form>
@@ -550,16 +552,16 @@ export default function TeamsPage() {
           setIsMembersModalOpen(false)
           setSelectedTeam(null)
         }}
-        title={`Membres - ${selectedTeam?.name || ''}`}
+        title={t('admin.teams.members_modal_title', { name: selectedTeam?.name || '' })}
       >
         <div className="space-y-4">
           {error && <div className="p-3 text-sm text-red-400 bg-red-900/30 border border-red-700/50 rounded-md">{error}</div>}
 
           {/* Current Members */}
           <div>
-            <h4 className="text-sm font-medium text-gray-300 mb-2">Membres actuels</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">{t('admin.teams.current_members')}</h4>
             {members.length === 0 ? (
-              <p className="text-sm text-gray-400">Aucun membre</p>
+              <p className="text-sm text-gray-400">{t('admin.teams.no_members')}</p>
             ) : (
               <ul className="space-y-2">
                 {members.map((member: any) => (
@@ -567,7 +569,7 @@ export default function TeamsPage() {
                     <div>
                       <span className="text-sm font-medium text-white">{member.username}</span>
                       {member.is_leader && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-primary-900/30 text-primary-400 rounded">Chef</span>
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-primary-900/30 text-primary-400 rounded">{t('admin.teams.leader')}</span>
                       )}
                     </div>
                     <button onClick={() => handleRemoveMember(member.id)} className="text-red-600 hover:text-red-700">
@@ -581,9 +583,9 @@ export default function TeamsPage() {
 
           {/* Add Member */}
           <div>
-            <h4 className="text-sm font-medium text-gray-300 mb-2">Ajouter un membre</h4>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">{t('admin.teams.add_member')}</h4>
             {availableUsers.length === 0 ? (
-              <p className="text-sm text-gray-400">Tous les utilisateurs sont déjà dans l'équipe</p>
+              <p className="text-sm text-gray-400">{t('admin.teams.all_members_added')}</p>
             ) : (
               <div className="space-y-2">
                 <select
@@ -592,7 +594,7 @@ export default function TeamsPage() {
                   defaultValue=""
                 >
                   <option value="" disabled>
-                    Sélectionner un utilisateur
+                    {t('admin.teams.select_participant')}
                   </option>
                   {availableUsers.map((user: any) => (
                     <option key={user.id} value={user.id}>
@@ -609,7 +611,7 @@ export default function TeamsPage() {
                     }}
                     className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
                   >
-                    Ajouter comme membre
+                    {t('admin.teams.add_as_member')}
                   </button>
                   <button
                     onClick={() => {
@@ -619,7 +621,7 @@ export default function TeamsPage() {
                     }}
                     className="flex-1 px-3 py-2 text-sm font-medium text-white bg-primary-700 rounded-lg hover:bg-primary-800"
                   >
-                    Ajouter comme chef
+                    {t('admin.teams.add_as_leader')}
                   </button>
                 </div>
               </div>
