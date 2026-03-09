@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trans } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { Building2, Server, BarChart3 } from 'lucide-react'
 import { AppConfiguration } from '../../services/api'
 import BIAManager, { BIAProcess } from './BIAManager'
@@ -56,7 +57,11 @@ export default function OrganisationSection({
   tenantSlug,
 }: OrganisationSectionProps) {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<Tab>('identity')
+  const [searchParams] = useSearchParams()
+  const initialTab = (['identity', 'it_context', 'bia'] as Tab[]).includes(searchParams.get('tab') as Tab)
+    ? (searchParams.get('tab') as Tab)
+    : 'identity'
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
 
   const tabs: { id: Tab; label: string; Icon: React.ElementType }[] = [
     { id: 'identity', label: t('organisation.tab_identity'), Icon: Building2 },

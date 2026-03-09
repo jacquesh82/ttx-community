@@ -148,20 +148,6 @@ export default function Layout({ children }: LayoutProps) {
         {/* Navigation */}
         <nav className="mt-6 px-3">
           <div className="space-y-1">
-            {isAnimateur && (
-              <Link
-                to="/"
-                className={clsx(
-                  'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                  isActive('/') ? 'sidebar-link-active' : ''
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <LayoutDashboard className="mr-3" size={20} />
-                {t('nav.dashboard')}
-              </Link>
-            )}
-
             {isObservateur && (
               <Link
                 to="/exercises"
@@ -260,28 +246,46 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 </div>
 
-                {/* Joueur */}
-                {import.meta.env.DEV ? (
+                {/* Analyses */}
+                <p className="px-4 pt-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--sidebar-footer-muted)' }}>
+                  {t('nav.analyses')}
+                </p>
+                <div className="space-y-0.5 pl-3">
                   <Link
-                    to="/player"
+                    to="/"
                     className={clsx(
-                      'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                      location.pathname.startsWith('/player') ? 'sidebar-link-active' : ''
+                      'sidebar-link flex items-center px-3 py-1.5 rounded-md transition-colors text-sm',
+                      isActive('/') ? 'sidebar-link-active' : ''
                     )}
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <Gamepad2 className="mr-3" size={20} />
-                    {t('nav.player')}
+                    <LayoutDashboard className="mr-2.5" size={16} />
+                    {t('nav.dashboard')}
                   </Link>
-                ) : (
-                  <div className="sidebar-link flex items-center px-4 py-2 rounded-md opacity-50 cursor-not-allowed select-none">
-                    <Gamepad2 className="mr-3" size={20} />
-                    <span className="flex-1">{t('nav.player')}</span>
-                    <span className="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded font-medium">
-                      {t('nav.comingSoon')}
-                    </span>
-                  </div>
-                )}
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* Simulation section */}
+          {isAnimateur && (
+            <div className="mt-8">
+              <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
+                {t('nav.simulation')}
+              </h3>
+              <div className="mt-3 space-y-1">
+                <Link
+                  to="/player"
+                  className={clsx(
+                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
+                    location.pathname.startsWith('/player') ? 'sidebar-link-active' : ''
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Gamepad2 className="mr-3" size={20} />
+                  {t('nav.player')}
+                </Link>
               </div>
             </div>
           )}
