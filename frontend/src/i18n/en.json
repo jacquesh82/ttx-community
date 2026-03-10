@@ -424,7 +424,7 @@
     "select_exercise": "Select an exercise",
     "no_exercise_selected": "No exercise selected",
     "exercise_scope_label": "Data for",
-    "maturity_score": "Platform maturity",
+    "maturity_score": "Readiness overview",
     "org_completeness": "Organisation",
     "org_completeness_sub": "{{score}}/{{max}} fields filled",
     "bia_title": "BIA",

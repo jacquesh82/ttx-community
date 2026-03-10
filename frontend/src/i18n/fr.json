@@ -424,7 +424,7 @@
     "select_exercise": "Sélectionner un exercice",
     "no_exercise_selected": "Aucun exercice sélectionné",
     "exercise_scope_label": "Données pour",
-    "maturity_score": "Maturité plateforme",
+    "maturity_score": "État de préparation",
     "org_completeness": "Organisation",
     "org_completeness_sub": "{{score}}/{{max}} champs renseignés",
     "bia_title": "BIA",

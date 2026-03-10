@@ -445,7 +445,6 @@ export default function DashboardPage() {
                 <RadialProgress pct={pct} size={44} thickness={6} color={color} label={`${pct}%`} />
                 <div>
                   <p className="text-[10px] text-gray-400">{label}</p>
-                  <p className="text-sm font-bold" style={{ color }}>{pct}%</p>
                 </div>
               </div>
             ))}

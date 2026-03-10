@@ -109,39 +109,33 @@ export default function Layout({ children }: LayoutProps) {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Logo */}
-        <div className="sidebar-border flex items-center justify-center h-16 border-b px-4 flex-shrink-0">
-          {organizationLogoUrl ? (
-            <img
-              src={organizationLogoUrl}
-              alt={organizationName}
-              className="max-h-10 max-w-full object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-                setOrganizationLogoUrl(null)
-              }}
-            />
-          ) : (
-            <svg
-              viewBox="0 0 72 28"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-8 w-auto"
-              aria-label="TTX"
-            >
-              <rect width="72" height="28" rx="6" fill="rgb(99,102,241)" opacity="0.9" />
-              <text
-                x="36"
-                y="19.5"
-                textAnchor="middle"
-                fontSize="13"
-                fontWeight="800"
-                fontFamily="ui-monospace, 'Cascadia Code', monospace"
-                fill="white"
-                letterSpacing="4"
-              >
-                TTX
-              </text>
-            </svg>
+        {/* Logos */}
+        <div className="sidebar-border flex flex-col items-center border-b px-4 py-3 gap-2 flex-shrink-0">
+          {/* Crisis Lab branding — dark/light variants */}
+          <img
+            src="/logo_dark.png"
+            alt="Crisis Lab"
+            className="w-full object-contain hidden dark:block"
+          />
+          <img
+            src="/logo_light.png"
+            alt="Crisis Lab"
+            className="w-full object-contain block dark:hidden"
+          />
+          {/* Organisation logo */}
+          {organizationLogoUrl && (
+            <>
+              <div className="sidebar-border w-full border-t" />
+              <img
+                src={organizationLogoUrl}
+                alt={organizationName}
+                className="max-h-8 max-w-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  setOrganizationLogoUrl(null)
+                }}
+              />
+            </>
           )}
         </div>
 
