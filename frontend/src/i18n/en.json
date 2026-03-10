@@ -422,6 +422,10 @@
     "field_keywords": "Keywords",
     "field_tech_stack": "Tech stack",
     "field_it_domains": "IT domains",
-    "field_bia": "BIA processes"
+    "field_bia": "BIA processes",
+    "timeline_empty": "No injects in this exercise",
+    "timeline_go": "Open player",
+    "inject_bank_empty": "The inject bank is empty",
+    "inject_bank_go": "Manage inject bank"
   }
 }

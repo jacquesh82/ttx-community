@@ -203,48 +203,57 @@ function TimelineKpi({ injects, phases, exercise }: TimelineKpiProps) {
       title={t('dashboard.timeline_title')}
       subtitle={t('dashboard.timeline_total', { count: injects.length })}
     >
-      <div className="flex items-start gap-4">
-        <DonutChart
-          slices={statusSlices}
-          centerLabel={String(injects.length)}
-          centerSub="total"
-          size={90}
-          thickness={16}
-        />
-        <div className="flex-1 space-y-2 text-xs">
-          <div className="flex items-center justify-between">
-            <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_phases')}</span>
-            <span className="font-semibold" style={{ color: 'var(--app-fg)' }}>{phases.length}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_business')}</span>
-            <span className="font-semibold text-primary-400">{business}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_technical')}</span>
-            <span className="font-semibold text-purple-400">{technical}</span>
-          </div>
-          {unpositioned > 0 && (
-            <div className="flex items-center gap-1 text-amber-400">
-              <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-              <span>{t('dashboard.timeline_unpositioned', { count: unpositioned })}</span>
-            </div>
-          )}
-          {targetHours > 0 && (
-            <div className="pt-1" style={{ borderTop: '1px solid var(--surface-card-border)' }}>
-              <div className="flex items-center justify-between mb-1">
-                <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_coverage', { covered: coveredHours, total: targetHours })}</span>
-              </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-border)' }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, (coveredHours / targetHours) * 100)}%`, background: '#3b82f6' }}
-                />
-              </div>
-            </div>
-          )}
+      {injects.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+          <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_empty')}</p>
+          <Link to="/player" className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
+            {t('dashboard.timeline_go')} <ExternalLink className="w-3 h-3" />
+          </Link>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-start gap-4">
+          <DonutChart
+            slices={statusSlices}
+            centerLabel={String(injects.length)}
+            centerSub="total"
+            size={90}
+            thickness={16}
+          />
+          <div className="flex-1 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_phases')}</span>
+              <span className="font-semibold" style={{ color: 'var(--app-fg)' }}>{phases.length}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_business')}</span>
+              <span className="font-semibold text-primary-400">{business}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_technical')}</span>
+              <span className="font-semibold text-purple-400">{technical}</span>
+            </div>
+            {unpositioned > 0 && (
+              <div className="flex items-center gap-1 text-amber-400">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                <span>{t('dashboard.timeline_unpositioned', { count: unpositioned })}</span>
+              </div>
+            )}
+            {targetHours > 0 && (
+              <div className="pt-1" style={{ borderTop: '1px solid var(--surface-card-border)' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_coverage', { covered: coveredHours, total: targetHours })}</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-border)' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${Math.min(100, (coveredHours / targetHours) * 100)}%`, background: '#3b82f6' }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </KpiCard>
   )
 }
@@ -270,26 +279,35 @@ function InjectBankKpi({ stats }: { stats: { total: number; by_status: Record<st
       title={t('dashboard.inject_bank_title')}
       subtitle={t('dashboard.inject_bank_sub', { total: stats.total })}
     >
-      <div className="flex items-start gap-4">
-        <DonutChart
-          slices={statusSlices}
-          centerLabel={String(stats.total)}
-          centerSub={`${bankReadinessPct}% prêts`}
-          size={90}
-          thickness={16}
-        />
-        <div className="flex-1 space-y-1.5">
-          {kindEntries.slice(0, 6).map(([kind, count]) => (
-            <div key={kind} className="flex items-center gap-2">
-              <span className="text-[10px] w-14 truncate flex-shrink-0" style={{ color: 'var(--sidebar-muted)' }}>{kind}</span>
-              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-border)' }}>
-                <div className="h-full rounded-full bg-primary-500" style={{ width: `${(count / maxKind) * 100}%` }} />
-              </div>
-              <span className="text-[10px] tabular-nums w-4 text-right" style={{ color: 'var(--app-fg)' }}>{count}</span>
-            </div>
-          ))}
+      {stats.total === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+          <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.inject_bank_empty')}</p>
+          <Link to="/exercises/preparation/injects" className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
+            {t('dashboard.inject_bank_go')} <ExternalLink className="w-3 h-3" />
+          </Link>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-start gap-4">
+          <DonutChart
+            slices={statusSlices}
+            centerLabel={String(stats.total)}
+            centerSub={`${bankReadinessPct}% prêts`}
+            size={90}
+            thickness={16}
+          />
+          <div className="flex-1 space-y-1.5">
+            {kindEntries.slice(0, 6).map(([kind, count]) => (
+              <div key={kind} className="flex items-center gap-2">
+                <span className="text-[10px] w-14 truncate flex-shrink-0" style={{ color: 'var(--sidebar-muted)' }}>{kind}</span>
+                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-border)' }}>
+                  <div className="h-full rounded-full bg-primary-500" style={{ width: `${(count / maxKind) * 100}%` }} />
+                </div>
+                <span className="text-[10px] tabular-nums w-4 text-right" style={{ color: 'var(--app-fg)' }}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </KpiCard>
   )
 }

@@ -422,6 +422,10 @@
     "field_keywords": "Mots-clés",
     "field_tech_stack": "Stack technologique",
     "field_it_domains": "Domaines IT",
-    "field_bia": "Processus BIA"
+    "field_bia": "Processus BIA",
+    "timeline_empty": "Aucun inject dans cet exercice",
+    "timeline_go": "Ouvrir le joueur",
+    "inject_bank_empty": "La banque d'injects est vide",
+    "inject_bank_go": "Gérer la banque"
   }
 }
