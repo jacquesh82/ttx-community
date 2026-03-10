@@ -583,7 +583,7 @@ class DeliveryResponse(BaseModel):
 async def list_injects(
     exercise_id: Optional[int] = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=1000),
     type: Optional[InjectType] = None,
     status: Optional[InjectStatus] = None,
     _: any = Depends(require_auth),

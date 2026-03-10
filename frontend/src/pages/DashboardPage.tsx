@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, ExternalLink, AlertTriangle } from 'lucide-react'
 import { exercisesApi, injectsApi, injectBankApi, adminApi, crisisManagementApi } from '../services/api'
 import type { Exercise, Inject, ExercisePhase } from '../services/api'
+import { useAuthStore } from '../stores/authStore'
 import KpiCard from '../components/dashboard/KpiCard'
 import GaugeChart from '../components/dashboard/GaugeChart'
 import DonutChart from '../components/dashboard/DonutChart'
@@ -316,6 +317,8 @@ function InjectBankKpi({ stats }: { stats: { total: number; by_status: Record<st
 
 export default function DashboardPage() {
   const { t } = useTranslation()
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
 
   // ── Queries globales
   const { data: exercisesData, isLoading: exLoading } = useQuery({

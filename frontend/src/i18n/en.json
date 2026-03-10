@@ -403,7 +403,7 @@
     "criteria_injects": "Positioned injects",
     "timeline_title": "Timelines",
     "timeline_total": "{{count}} inject(s)",
-    "timeline_phases": "{{count}} phase(s)",
+    "timeline_phases": "Phases",
     "timeline_unpositioned": "{{count}} unpositioned",
     "timeline_business": "Business",
     "timeline_technical": "Technical",
