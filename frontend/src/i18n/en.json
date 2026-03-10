@@ -114,6 +114,7 @@
     "users": {
       "title": "Participants",
       "subtitle": "Manage platform participants",
+      "intro": "Participants are the accounts that access the platform. Each account has a role that defines what they can do: a player receives injects, a facilitator runs the exercise, an observer follows along without taking action. You can also assign them to a team and add tags to make inject targeting easier.",
       "new": "New participant",
       "edit": "Edit participant",
       "create": "Create",
@@ -139,6 +140,7 @@
     "teams": {
       "title": "Teams",
       "subtitle": "Manage participating teams",
+      "intro": "Teams let you group participants and send injects to them collectively. A team can represent a department, a directorate, or a functional group. Each participant can be assigned to a team, and injects can be targeted at an entire team at once.",
       "new": "New team",
       "edit": "Edit team",
       "create": "Create",
@@ -209,6 +211,15 @@
         "email": "Email",
         "inject_types": "Inject types",
         "sources": "Sources"
+      },
+      "intros": {
+        "general": "These settings define the default values suggested when creating an exercise. You can update them at any time without affecting exercises that have already been created.",
+        "inject_types": "Inject types represent the communication channels simulated during an exercise: email, SMS, phone call, social media… For each channel, you choose the accepted file formats and the simulator that handles it.",
+        "sources": "Select the news sources that will feed your exercise timelines. You can filter by country and category (press, TV, government) to match the context of your scenarios.",
+        "timelines": "Configure the phases suggested by default when creating an exercise. A phase represents a key period in the scenario — for example: detection, response, crisis communication. These settings do not affect exercises that have already been created.",
+        "simulators": "Simulators replicate everyday communication tools during the exercise: email client, social media, TV channel… Enable only the ones you need and customise their appearance for each scenario.",
+        "security": "Manage platform access rules here: session duration, maximum login attempts, and minimum password length. API keys allow external tools to connect to the platform securely, without requiring a user account.",
+        "email": "Connect an email server (SMTP) so the platform can notify participants. If no server is configured, email notifications will not be sent."
       }
     }
   },
@@ -275,6 +286,18 @@
       "audience_kind_team": "Team",
       "audience_kind_user": "Participant",
       "audience_kind_tag": "Tag"
+    },
+    "intros": {
+      "new": "Define the main characteristics of your exercise here. You can refine all the details — scenario, participants, injects — from the configuration page after creation.",
+      "step_socle": "Choose the type of incident to simulate, the exercise duration, the expected maturity level, and the run mode. These base settings guide the rest of the configuration.",
+      "step_scenario": "Write the story of your exercise: the situation participants walk into, the learning objective you are pursuing, and the broad escalation axes (technical, communication, legal…).",
+      "step_actors": "Assign participants to this exercise and define their roles. You can initialise the full crisis cell in one click, then fine-tune individual roles.",
+      "step_timeline": "Structure the exercise by phases, then create the injects — events and messages sent to participants at precise moments in the simulation.",
+      "step_simulators": "Choose which communication channels are active during the exercise. Each simulator (messaging, social media, TV…) can be toggled on or off to fit your scenario.",
+      "step_validation": "Check that all sections are properly filled in before launching the exercise. Items flagged as incomplete must be resolved to ensure smooth execution.",
+      "contacts": "The crisis directory lists useful contacts for the exercise: external stakeholders, service providers, authorities… Fill it in advance so participants can look them up when needed.",
+      "media": "The media library centralises files used in your injects: images, videos, audio, documents. Upload your assets here to reuse them easily across different injects.",
+      "inject_bank": "The inject bank is a library of reusable content shared across exercises. Create generic injects here, then import them into an exercise and adapt them to your scenario."
     }
   },
   "observer": {
@@ -302,6 +325,9 @@
     "tab_identity": "Identity",
     "tab_it_context": "IT Context",
     "tab_bia": "BIA",
+    "intro_identity": "Describe your organisation: its name, sector and general context. This information is used to personalise scenarios and documents generated during exercises.",
+    "intro_it_context": "Fill in the technical details of your infrastructure: network domain, IP address ranges, key servers… These details make scenarios more realistic and relevant to your actual environment.",
+    "intro_bia": "The BIA (Business Impact Analysis) lists your critical processes and how long they can tolerate an interruption. It helps focus scenarios on what matters most to your organisation.",
     "tenant_scoped_info": "The values displayed and saved here are now tenant-scoped for <bold>{{tenant}}</bold>.",
     "not_defined": "— Not defined —",
     "name": "Organisation name",
@@ -328,6 +354,18 @@
     "tech_dependencies": "Technological dependencies",
     "cloud_providers": "Cloud providers",
     "critical_apps": "Critical business applications",
+    "tips": {
+      "windows_domain": "Internal domain name of your Windows / Active Directory network. This is the suffix used to identify machines on the local network (e.g. corp.acme.local). Your IT manager can provide this.",
+      "public_domain": "Domain name visible on the Internet for your website and emails (e.g. acme.com). This is the address your clients and partners use.",
+      "mail_domain": "The part after @ in your professional email addresses (e.g. for firstname@acme.com, enter acme.com). May differ from the public domain if you use a dedicated subdomain.",
+      "internal_ip_ranges": "IP address ranges of your internal network, in CIDR notation (e.g. 192.168.1.0/24 covers addresses from .0 to .255). An IP address identifies each device on the network, like a phone number.",
+      "dmz_ip_ranges": "An intermediate network zone between the Internet and your internal network, hosting servers accessible from outside (website, email…). Enter the IP ranges of this zone in CIDR notation.",
+      "domain_controllers": "Servers that manage user accounts and access rights on your Windows network. Enter their full names, one per line (e.g. DC01.corp.acme.local).",
+      "server_naming": "Your server naming convention, with brief explanations. Helps understand their role at a glance (e.g. SRV-FILE-01 = file server #1).",
+      "tech_dependencies": "Tools and software your infrastructure relies on: antivirus, backup solution, firewall, SIEM… List the products used and their role.",
+      "cloud_providers": "Cloud platforms in use (AWS, Azure, OVHcloud…), the hosted services and geographic region (e.g. Azure France Central for Microsoft 365 email).",
+      "critical_apps": "Software essential to your organisation's operations: ERP, CRM, email, intranet… If they go down, the impact is felt immediately."
+    },
     "bia_hint": "Define the critical processes of your organisation. These BCP/DRP indicators (MTPD, RTO, RPO) help contextualise TTX exercises and generate realistic scenarios.",
     "sectors": {
       "sante": "Healthcare / Hospital",

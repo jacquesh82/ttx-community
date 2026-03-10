@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { AlertCircle, ArrowLeft, CheckCircle2, CircleDashed, Clock3, FileDown, Gauge, PlayCircle, Plus, ShieldCheck, Trash2, Upload, Users } from 'lucide-react'
@@ -47,11 +48,20 @@ import {
   DEFAULT_PHASES_LIST,
   PHASE_COLOR_PALETTE,
   PHASE_PRESET_DEFAULT_DURATIONS,
-  PHASE_PRESET_LABELS,
   PHASE_PRESETS,
   PhasePresetKey,
 } from '../features/phasePresets'
+import PhasePicker from '../components/PhasePicker'
 import { TimelineType } from '../components/exercise/TimelineGantt'
+
+/** Format minutes → "30min", "1h", "1h30" */
+function fmtMin(minutes: number): string {
+  const m = Math.round(minutes)
+  if (m < 60) return `${m}min`
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  return rem === 0 ? `${h}h` : `${h}h${rem}`
+}
 
 const EXERCISE_TYPE_LABELS: Record<string, string> = {
   cyber: 'Cyber',
@@ -326,6 +336,7 @@ const normalizeApiError = (err: any, fallback: string): string => {
 }
 
 export default function ExerciseDetailPage() {
+  const { t } = useTranslation()
   const appDialog = useAppDialog()
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
@@ -487,6 +498,39 @@ export default function ExerciseDetailPage() {
     () => parseExerciseDurationValuesFromConfig(appConfig?.exercise_duration_options_config),
     [appConfig?.exercise_duration_options_config]
   )
+
+  const isCustomPresetActive = appConfig?.default_phases_preset === 'custom'
+  const customPhasesFromConfig = useMemo<string[]>(() => {
+    if (!appConfig?.custom_phases_config) return []
+    try {
+      const parsed = JSON.parse(appConfig.custom_phases_config)
+      return Array.isArray(parsed) ? parsed.map((p: { name?: string }) => p.name).filter(Boolean) as string[] : []
+    } catch { return [] }
+  }, [appConfig?.custom_phases_config])
+  // Detect which preset matches the current modal selection
+  const activeModalPreset = useMemo(() => {
+    for (const [key, preset] of Object.entries(PHASE_PRESETS) as [PhasePresetKey, string[]][]) {
+      if (
+        preset.length === phaseModalSelection.length &&
+        preset.every((p) => phaseModalSelection.includes(p))
+      ) return key
+    }
+    if (
+      customPhasesFromConfig.length > 0 &&
+      customPhasesFromConfig.length === phaseModalSelection.length &&
+      customPhasesFromConfig.every((p) => phaseModalSelection.includes(p))
+    ) return 'custom'
+    return ''
+  }, [phaseModalSelection, customPhasesFromConfig])
+
+  // Available list: custom phases when that preset is active, standard list otherwise
+  const availablePhasesList = useMemo(() => {
+    if (activeModalPreset === 'custom' && customPhasesFromConfig.length > 0) {
+      return customPhasesFromConfig
+    }
+    return DEFAULT_PHASES_LIST
+  }, [activeModalPreset, customPhasesFromConfig])
+
   const socleGroups = useMemo(() => {
     const durationOptions = exerciseDurationValues.map((value) => ({
       value: String(value),
@@ -553,10 +597,47 @@ export default function ExerciseDetailPage() {
 
   useEffect(() => {
     if (phaseSelectionInitializedRef.current) return
-    if (phases.length === 0) return
-    setPhaseModalSelection(phases.map((phase) => phase.name))
+    if (!appConfig) return // wait for config
+
+    if (phases.length > 0) {
+      // Exercise already has phases saved — restore them
+      setPhaseModalSelection(phases.map((phase) => phase.name))
+      phaseSelectionInitializedRef.current = true
+      return
+    }
+
+    // No phases yet: apply preset from options config
+    const storedPreset = appConfig.default_phases_preset
+    if (storedPreset === 'custom' && customPhasesFromConfig.length > 0) {
+      setPhaseModalSelection([...customPhasesFromConfig])
+      setPhaseDurations((prev) => {
+        const next = { ...prev }
+        customPhasesFromConfig.forEach((p) => { if (!next[p]) next[p] = 15 })
+        return next
+      })
+    } else if (storedPreset && (storedPreset as string) in PHASE_PRESETS) {
+      const key = storedPreset as PhasePresetKey
+      const presetPhases = PHASE_PRESETS[key]
+      const presetDefaults = PHASE_PRESET_DEFAULT_DURATIONS[key] ?? {}
+      const totalBase = presetPhases.reduce((s, p) => s + (presetDefaults[p] ?? 15), 0)
+      const factor = totalBase > 0 ? exerciseDurationMinutes / totalBase : 1
+      const scaled: Record<string, number> = {}
+      presetPhases.forEach((p) => { scaled[p] = Math.max(5, Math.round((presetDefaults[p] ?? 15) * factor)) })
+      setPhaseModalSelection([...presetPhases])
+      setPhaseDurations((prev) => ({ ...prev, ...scaled }))
+    } else {
+      // Default fallback: classique
+      const presetPhases = PHASE_PRESETS.classique
+      const presetDefaults = PHASE_PRESET_DEFAULT_DURATIONS.classique
+      const totalBase = presetPhases.reduce((s, p) => s + (presetDefaults[p] ?? 15), 0)
+      const factor = totalBase > 0 ? exerciseDurationMinutes / totalBase : 1
+      const scaled: Record<string, number> = {}
+      presetPhases.forEach((p) => { scaled[p] = Math.max(5, Math.round((presetDefaults[p] ?? 15) * factor)) })
+      setPhaseModalSelection([...presetPhases])
+      setPhaseDurations((prev) => ({ ...prev, ...scaled }))
+    }
     phaseSelectionInitializedRef.current = true
-  }, [phases])
+  }, [phases, appConfig, customPhasesFromConfig, exerciseDurationMinutes])
 
   useEffect(() => {
     setPhaseDurations((prev) => {
@@ -1669,6 +1750,7 @@ export default function ExerciseDetailPage() {
           <SetupSectionCard
             step={1}
             title="Socle"
+            description={t('exercises.intros.step_socle')}
             status={checklistSafe.sections.socle.status}
             summary={checklistSafe.sections.socle.summary}
             action={
@@ -1720,7 +1802,7 @@ export default function ExerciseDetailPage() {
           <SetupSectionCard
             step={2}
             title="Scenario"
-            description="Intention, contexte et axes d'escalade"
+            description={t('exercises.intros.step_scenario')}
             status={checklistSafe.sections.scenario.status}
             summary={checklistSafe.sections.scenario.summary}
             action={
@@ -1764,7 +1846,7 @@ export default function ExerciseDetailPage() {
           <SetupSectionCard
             step={3}
             title="Acteurs"
-            description="Participants, roles et acces"
+            description={t('exercises.intros.step_actors')}
             status={checklistSafe.sections.actors.status}
             summary={checklistSafe.sections.actors.summary}
             action={canConfigure ? <div className="flex items-center gap-2"><button onClick={() => launchImportFor('actors')} className="inline-flex items-center px-3 py-2 bg-slate-100 border border-slate-300 text-slate-800 rounded hover:bg-slate-200"><Upload size={14} className="mr-1" /> Import</button><button onClick={() => downloadImportTemplate('actors')} className="inline-flex items-center px-3 py-2 bg-white border border-slate-300 text-slate-800 rounded hover:bg-slate-50">Exemple JSON</button><button onClick={() => openBankImportModal('actors')} disabled={importFromBankMutation.isPending} className="inline-flex items-center px-3 py-2 bg-primary-700 text-white rounded hover:bg-primary-800 disabled:opacity-50">Banque/type</button><div className="relative group"><button className="inline-flex items-center px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"><FileDown size={14} className="mr-1" /> Kit bienvenue</button><div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10"><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'player'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-joueurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits joueurs téléchargés.'); } catch (err: any) { setErrorMessage(normalizeApiError(err, 'Erreur génération kits joueurs.')); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Joueurs</button><button onClick={async () => { try { await welcomeKitApi.ensurePasswords(exerciseId); const blob = await welcomeKitApi.downloadAllKits(exerciseId, 'facilitator'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kits-animateurs-${exerciseId}.pdf`; a.click(); URL.revokeObjectURL(url); setFeedbackMessage('Kits animateurs téléchargés.'); } catch (err: any) { setErrorMessage(normalizeApiError(err, 'Erreur génération kits animateurs.')); } }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Users size={14} className="inline mr-2" /> Animateurs</button></div></div></div> : undefined}
@@ -2056,6 +2138,7 @@ export default function ExerciseDetailPage() {
                       {timelineStatusMeta.label}
                     </span>
                   </div>
+                  <p className="mt-1 text-sm text-gray-500">{t('exercises.intros.step_timeline')}</p>
                   <p className="mt-1 text-sm text-gray-600">
                     Phases: {phases.length} | Injects: {injects.length} | {autoTriggers} auto, {manualTriggers} manuels, {conditionalTriggers} conditionnels
                   </p>
@@ -2126,69 +2209,62 @@ export default function ExerciseDetailPage() {
                       Fermer
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6 py-6">
-                    <div className="space-y-4">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Presets de phases</div>
-                      <div className="flex flex-wrap gap-3">
-                        {Object.entries(PHASE_PRESETS).map(([key, preset]) => {
-                          const presetKey = key as PhasePresetKey
-                          const isActivePreset =
-                            preset.length === phaseModalSelection.length &&
-                            preset.every((phase) => phaseModalSelection.includes(phase))
-                          const label = PHASE_PRESET_LABELS[presetKey]
-                          const defaultDurations = PHASE_PRESET_DEFAULT_DURATIONS[presetKey] ?? {}
-                          const summaryTitle = preset
-                            .slice(0, 5)
-                            .map((phase) => `${phase} ${defaultDurations[phase] ?? 15}m`)
-                            .join(' · ')
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => applyPresetDurations(presetKey, preset)}
-                              title={`Répartition par défaut : ${summaryTitle}`}
-                              className={`px-3 py-1 text-xs font-semibold rounded border transition ${
-                                isActivePreset
-                                  ? 'bg-slate-900 text-white border-slate-900'
-                                  : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          )
-                        })}
+                  <div className="px-6 py-6 space-y-6">
+                    {/* 2 colonnes : sélecteur phases | liste durées */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="max-h-96 overflow-y-auto pr-1">
+                        <PhasePicker
+                          phases={availablePhasesList.map((name) => ({
+                            name,
+                            enabled: phaseModalSelection.includes(name),
+                          }))}
+                          onToggle={(index) => togglePhaseSelection(availablePhasesList[index])}
+                          customPhases={customPhasesFromConfig.map((name) => ({ name }))}
+                          onCustomPhasesChange={(updated) =>
+                            setPhaseModalSelection(updated.map((p) => p.name))
+                          }
+                          activePreset={activeModalPreset}
+                          onApplyPreset={(key) => applyPresetDurations(key, PHASE_PRESETS[key])}
+                          onActivateCustom={() => {
+                            setPhaseModalSelection([...customPhasesFromConfig])
+                            setPhaseDurations((prev) => {
+                              const next = { ...prev }
+                              customPhasesFromConfig.forEach((p) => { if (!next[p]) next[p] = 15 })
+                              return next
+                            })
+                          }}
+                          allowCustomEdit={false}
+                          theme="light"
+                        />
                       </div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Phases disponibles</div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {DEFAULT_PHASES_LIST.map((phase) => {
-                          const isActive = phaseModalSelection.includes(phase)
-                          return (
-                            <label
-                              key={phase}
-                              className={`flex items-center justify-between px-3 py-2 rounded-lg border ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 text-gray-600'}`}
-                            >
-                              <span className="text-sm">{phase}</span>
-                              <input
-                                type="checkbox"
-                                checked={isActive}
-                                onChange={() => togglePhaseSelection(phase)}
-                                className="form-checkbox h-4 w-4 text-blue-600"
-                              />
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Timeline estimée</div>
-                        <div className="text-xs text-gray-600">
-                          {computeTotalMinutes()} / {exerciseDurationMinutes} min (exercice)
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          Durées — {fmtMin(computeTotalMinutes())} / {fmtMin(exerciseDurationMinutes)}
+                        </div>
+                        <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
+                          {phaseModalSelection.map((phase, idx) => {
+                            const color = PHASE_COLOR_PALETTE[idx % PHASE_COLOR_PALETTE.length]
+                            return (
+                              <div key={`duration-${phase}`} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-100">
+                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                                <span className="text-xs text-gray-700 flex-1 truncate">{phase}</span>
+                                <span className="text-xs font-semibold text-gray-900 flex-shrink-0">{fmtMin(phaseDurations[phase] || 0)}</span>
+                              </div>
+                            )
+                          })}
+                          {phaseModalSelection.length === 0 && (
+                            <p className="text-xs text-gray-400 text-center py-4">Aucune phase sélectionnée</p>
+                          )}
                         </div>
                       </div>
+                    </div>
+
+                    {/* Timeline graphique — pleine largeur */}
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Timeline estimée</div>
                       <div
                         ref={timelineBarRef}
-                        className="h-12 rounded-xl overflow-hidden shadow-inner shadow-[0_20px_60px_rgba(15,23,42,0.25)] bg-gradient-to-r from-slate-200 to-slate-300 flex text-[10px] uppercase relative"
+                        className="h-12 rounded-xl overflow-hidden shadow-inner bg-gradient-to-r from-slate-200 to-slate-300 flex text-[10px] uppercase relative"
                       >
                         {phaseModalSelection.length === 0 ? (
                           <div className="flex-1 flex items-center justify-center text-slate-400">Aucune phase sélectionnée</div>
@@ -2205,14 +2281,10 @@ export default function ExerciseDetailPage() {
                                   return (
                                     <div
                                       key={`${phase}-${index}`}
-                                      style={{
-                                        width: `${widthPercent}%`,
-                                        backgroundColor: color,
-                                        boxShadow: 'inset 0 -14px 24px rgba(0,0,0,0.25)',
-                                      }}
-                                      className="relative flex items-center justify-center text-xs font-semibold text-white border-r border-white/30 shadow-[0_10px_20px_rgba(15,23,42,0.25)]"
+                                      style={{ width: `${widthPercent}%`, backgroundColor: color, boxShadow: 'inset 0 -14px 24px rgba(0,0,0,0.25)' }}
+                                      className="relative flex items-center justify-center text-xs font-semibold text-white border-r border-white/30"
                                     >
-                                      <span className="px-2">{phase.substring(0, 3)} {Math.round(duration)}m</span>
+                                      <span className="px-2 truncate">{phase.substring(0, 4)} {fmtMin(duration)}</span>
                                       <span
                                         className="absolute inset-y-0 right-0 w-2 cursor-ew-resize"
                                         onPointerDown={(event) => startPhaseResize(phase, event)}
@@ -2225,7 +2297,7 @@ export default function ExerciseDetailPage() {
                                     className="absolute inset-y-0 right-0 flex items-center justify-center px-2 text-[10px] font-semibold text-slate-600 bg-white/70 border-l border-slate-200"
                                     style={{ width: `${((exerciseDurationMinutes - total) / timelineBarTotal) * 100}%` }}
                                   >
-                                    {Math.round(exerciseDurationMinutes - total)} min restantes
+                                    {fmtMin(exerciseDurationMinutes - total)} restantes
                                   </div>
                                 )}
                               </>
@@ -2233,30 +2305,24 @@ export default function ExerciseDetailPage() {
                           })()
                         )}
                       </div>
-                      <div className="space-y-2">
-                        {phaseModalSelection.map((phase) => (
-                          <div key={`duration-${phase}`} className="flex items-center justify-between gap-3">
-                            <span className="text-xs text-gray-700 w-32">{phase}</span>
-                            <span className="text-xs font-semibold text-gray-900">{Math.round(phaseDurations[phase] || 0)} min</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPhaseModalOpen(false)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100"
-                        >
-                          Fermer
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handlePhaseModalConfirm}
-                          className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
-                        >
-                          Confirmer
-                        </button>
-                      </div>
+                    </div>
+
+                    {/* Boutons */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setPhaseModalOpen(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100"
+                      >
+                        Fermer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePhaseModalConfirm}
+                        className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                      >
+                        Confirmer
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2388,7 +2454,7 @@ export default function ExerciseDetailPage() {
           <SetupSectionCard
             step={5}
             title="Simulateurs"
-            description="Configuration des canaux de simulation"
+            description={t('exercises.intros.step_simulators')}
             status={checklistSafe.sections.simulators?.status || 'todo'}
             summary={checklistSafe.sections.simulators?.summary || ''}
             action={undefined}
@@ -2484,7 +2550,7 @@ export default function ExerciseDetailPage() {
           <SetupSectionCard
             step={6}
             title="Validation & Lancement"
-            description="Controle des points bloquants avant execution"
+            description={t('exercises.intros.step_validation')}
             status={checklistSafe.sections.validation.status}
             summary={checklistSafe.sections.validation.summary}
             action={undefined}

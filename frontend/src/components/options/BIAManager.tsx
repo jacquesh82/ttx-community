@@ -149,8 +149,8 @@ export default function BIAManager({ processes, onChange, sector }: BIAManagerPr
   return (
     <div className="space-y-6">
       {/* Chart */}
-      <div className="bg-gray-900/50 rounded-lg border border-gray-700 p-4">
-        <h4 className="text-sm font-medium text-gray-300 mb-3">{t('bia.chart_title')}</h4>
+      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('bia.chart_title')}</h4>
         <BIAChart processes={processes} onSelectProcess={openEdit} />
       </div>
 

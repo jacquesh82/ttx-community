@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { crisisManagementApi, exercisesApi, type ExercisePhasePreset } from '../services/api'
 import { ArrowLeft } from 'lucide-react'
 
@@ -30,6 +31,7 @@ const FALLBACK_CREATION_OPTIONS = {
 
 export default function ExerciseNewPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const hasAppliedServerDefaultsRef = useRef(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -201,7 +203,8 @@ export default function ExerciseNewPage() {
       </button>
 
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-xl font-bold text-gray-900 mb-3">Nouvel exercice</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-2">Nouvel exercice</h1>
+        <p className="mb-4 text-sm text-gray-500 leading-relaxed">{t('exercises.intros.new')}</p>
 
         <div className="bg-white rounded-lg shadow p-4">
           <form onSubmit={handleSubmit} className="space-y-4">

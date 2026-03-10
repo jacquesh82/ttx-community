@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { mediaApi, Media, ExercisePlugin, exercisesApi } from '../services/api'
 import Modal from '../components/Modal'
 import ExerciseSubpageShell from '../components/exercise/ExerciseSubpageShell'
 import { useAppDialog } from '../contexts/AppDialogContext'
 
 export default function MediaLibraryPage() {
+  const { t } = useTranslation()
   const appDialog = useAppDialog()
   const { exerciseId } = useParams<{ exerciseId: string }>()
   const exId = parseInt(exerciseId || '0', 10)
@@ -126,6 +128,7 @@ export default function MediaLibraryPage() {
       exerciseId={exId}
       sectionLabel="Medias"
       title="Mediatheque"
+      subtitle={t('exercises.intros.media')}
       actions={
         <button
           onClick={() => setShowUploadModal(true)}

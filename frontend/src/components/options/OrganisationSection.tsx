@@ -2,7 +2,19 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trans } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
-import { Building2, Server, BarChart3 } from 'lucide-react'
+import { Building2, Server, BarChart3, Info } from 'lucide-react'
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="relative group inline-flex items-center ml-1.5 align-middle cursor-default">
+      <Info className="w-3.5 h-3.5 text-gray-500 group-hover:text-gray-300 transition-colors" />
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-xs text-gray-300 leading-relaxed opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 shadow-xl">
+        {text}
+        <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-600" />
+      </span>
+    </span>
+  )
+}
 import { AppConfiguration } from '../../services/api'
 import BIAManager, { BIAProcess } from './BIAManager'
 
@@ -113,15 +125,6 @@ export default function OrganisationSection({
         <h2 className="text-lg font-medium text-white">{t('organisation.title')}</h2>
       </div>
 
-      <div className="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-        <Trans
-          i18nKey="organisation.tenant_scoped_info"
-          values={{ tenant: tenantLabel }}
-          components={{ bold: <strong /> }}
-        />
-        {tenantSlug ? ` (slug: ${tenantSlug})` : ''}
-      </div>
-
       {/* Tab bar */}
       <div className="flex border-b border-gray-700 mb-6 gap-1">
         {tabs.map(({ id, label, Icon }) => (
@@ -142,6 +145,8 @@ export default function OrganisationSection({
 
       {/* Identité */}
       {activeTab === 'identity' && (
+        <div>
+        <p className="mb-6 text-sm text-gray-400 leading-relaxed">{t('organisation.intro_identity')}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -243,17 +248,19 @@ export default function OrganisationSection({
             </p>
           </div>
         </div>
+        </div>
       )}
 
       {/* Contexte IT */}
       {activeTab === 'it_context' && (
         <div>
+          <p className="mb-4 text-sm text-gray-400 leading-relaxed">{t('organisation.intro_it_context')}</p>
           <p className="text-xs text-gray-500 mb-5">
             {t('organisation.it_context_hint')}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.windows_domain')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.windows_domain')}<InfoTip text={t('organisation.tips.windows_domain')} /></label>
               <input
                 type="text"
                 value={windowsDomain}
@@ -264,7 +271,7 @@ export default function OrganisationSection({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.public_domain')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.public_domain')}<InfoTip text={t('organisation.tips.public_domain')} /></label>
               <input
                 type="text"
                 value={publicDomain}
@@ -275,7 +282,7 @@ export default function OrganisationSection({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.mail_domain')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.mail_domain')}<InfoTip text={t('organisation.tips.mail_domain')} /></label>
               <input
                 type="text"
                 value={mailDomain}
@@ -286,7 +293,7 @@ export default function OrganisationSection({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.internal_ip_ranges')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.internal_ip_ranges')}<InfoTip text={t('organisation.tips.internal_ip_ranges')} /></label>
               <textarea
                 value={internalIpRanges}
                 onChange={(e) => setInternalIpRanges(e.target.value)}
@@ -297,7 +304,7 @@ export default function OrganisationSection({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.dmz_ip_ranges')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.dmz_ip_ranges')}<InfoTip text={t('organisation.tips.dmz_ip_ranges')} /></label>
               <textarea
                 value={dmzIpRanges}
                 onChange={(e) => setDmzIpRanges(e.target.value)}
@@ -308,7 +315,7 @@ export default function OrganisationSection({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.domain_controllers')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.domain_controllers')}<InfoTip text={t('organisation.tips.domain_controllers')} /></label>
               <textarea
                 value={domainControllers}
                 onChange={(e) => setDomainControllers(e.target.value)}
@@ -319,7 +326,7 @@ export default function OrganisationSection({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.server_naming')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.server_naming')}<InfoTip text={t('organisation.tips.server_naming')} /></label>
               <textarea
                 value={serverNamingExamples}
                 onChange={(e) => setServerNamingExamples(e.target.value)}
@@ -330,7 +337,7 @@ export default function OrganisationSection({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.tech_dependencies')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.tech_dependencies')}<InfoTip text={t('organisation.tips.tech_dependencies')} /></label>
               <textarea
                 value={technologicalDependencies}
                 onChange={(e) => setTechnologicalDependencies(e.target.value)}
@@ -341,7 +348,7 @@ export default function OrganisationSection({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.cloud_providers')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.cloud_providers')}<InfoTip text={t('organisation.tips.cloud_providers')} /></label>
               <textarea
                 value={cloudProviders}
                 onChange={(e) => setCloudProviders(e.target.value)}
@@ -352,7 +359,7 @@ export default function OrganisationSection({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.critical_apps')}</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">{t('organisation.critical_apps')}<InfoTip text={t('organisation.tips.critical_apps')} /></label>
               <textarea
                 value={criticalApplications}
                 onChange={(e) => setCriticalApplications(e.target.value)}
@@ -369,6 +376,7 @@ export default function OrganisationSection({
       {/* BIA */}
       {activeTab === 'bia' && (
         <div>
+          <p className="mb-4 text-sm text-gray-400 leading-relaxed">{t('organisation.intro_bia')}</p>
           <p className="text-xs text-gray-500 mb-5">
             {t('organisation.bia_hint')}
           </p>

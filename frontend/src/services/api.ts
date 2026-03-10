@@ -1594,6 +1594,7 @@ export interface AppConfiguration {
   timeline_phase_type_format_config: string | null
   timeline_sources_config: string | null
   timeline_sources_custom_config: string | null
+  custom_phases_config: string | null
 }
 
 export interface PublicConfigurationResponse {

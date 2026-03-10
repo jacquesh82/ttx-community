@@ -288,6 +288,7 @@ export default function UsersPage() {
           <div>
             <h1 className="text-2xl font-bold text-white">{t('admin.users.title')}</h1>
             <p className="text-sm text-gray-400 mt-1">{t('admin.users.subtitle')}</p>
+            <p className="text-sm text-gray-400 mt-2 leading-relaxed max-w-2xl">{t('admin.users.intro')}</p>
           </div>
           <button
             onClick={openCreateModal}

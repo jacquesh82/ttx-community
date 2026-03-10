@@ -1,4 +1,5 @@
 import { Save, X, Loader2, RotateCcw, BookOpen, Tv, Mail, MessageCircle, Newspaper, MessageSquare, Landmark, Shield, Box, type LucideIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { PluginConfiguration, PluginType } from '../../services/api'
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -64,10 +65,11 @@ export default function SimulatorsTab({
   isSaving,
   isResetting,
 }: SimulatorsTabProps) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-gray-400">Configurez les simulateurs disponibles pour les exercices</p>
+      <div className="flex items-start justify-between gap-6">
+        <p className="text-sm text-gray-400 leading-relaxed">{t('admin.options.intros.simulators')}</p>
         <button
           onClick={onReset}
           disabled={isResetting}

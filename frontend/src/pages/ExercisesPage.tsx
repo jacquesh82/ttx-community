@@ -100,7 +100,7 @@ export default function ExercisesPage() {
             <table className="min-w-full divide-y divide-gray-700">
               <thead className="bg-gray-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-full">
                     {t('exercises.columns.name')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -128,15 +128,15 @@ export default function ExercisesPage() {
                         {exercise.description?.length > 50 ? '...' : ''}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-left">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[exercise.status]}`}>
                         {t(`exercises.status.${exercise.status}`)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td className="px-6 py-4 whitespace-nowrap text-left text-sm text-gray-400">
                       {new Date(exercise.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-6 py-4 whitespace-nowrap text-left text-sm" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         {isParticipant && (exercise.status === 'running' || exercise.status === 'paused') && (
                           <Link

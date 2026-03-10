@@ -250,10 +250,27 @@ async def _seed_phases_for_exercise(
     else:
         tenant_config = await get_or_create_tenant_configuration(db, tenant_id=tenant_id)
         overlay = getattr(tenant_config, "legacy_app_config_overrides", None) or {}
-        raw_phases = None
+        names = None
         if isinstance(overlay, dict):
-            raw_phases = overlay.get("default_phases_config")
-        names = _parse_enabled_phase_names(raw_phases)
+            stored_preset = overlay.get("default_phases_preset")
+            if stored_preset == "custom":
+                raw_custom = overlay.get("custom_phases_config")
+                if raw_custom:
+                    try:
+                        parsed = json.loads(raw_custom)
+                        if isinstance(parsed, list):
+                            custom_names = [
+                                item.get("name") for item in parsed
+                                if isinstance(item, dict) and item.get("name")
+                            ]
+                            if custom_names:
+                                names = custom_names
+                    except Exception:
+                        pass
+            if names is None:
+                names = _parse_enabled_phase_names(overlay.get("default_phases_config"))
+        if names is None:
+            names = _parse_enabled_phase_names(None)
     if not names:
         return
 

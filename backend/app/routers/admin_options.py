@@ -121,6 +121,7 @@ class AppConfigurationResponse(BaseModel):
     timeline_phase_type_format_config: str | None = None
     timeline_sources_config: str | None = None
     timeline_sources_custom_config: str | None = None
+    custom_phases_config: str | None = None
 
     class Config:
         from_attributes = True
@@ -173,6 +174,7 @@ class AppConfigurationUpdate(BaseModel):
     timeline_phase_type_format_config: str | None = None
     timeline_sources_config: str | None = None
     timeline_sources_custom_config: str | None = None
+    custom_phases_config: str | None = None
 
 
 # ============== Plugin Configuration Models ==============

@@ -8,6 +8,7 @@ interface ExerciseSubpageShellProps {
   exerciseId: number
   sectionLabel: string
   title: string
+  subtitle?: string
   returnStep?: number
   actions?: ReactNode
   children: ReactNode
@@ -25,6 +26,7 @@ export default function ExerciseSubpageShell({
   exerciseId,
   sectionLabel,
   title,
+  subtitle,
   returnStep,
   actions,
   children,
@@ -61,6 +63,7 @@ export default function ExerciseSubpageShell({
             <div className="mt-1 text-sm text-gray-600">
               {exercise ? statusLabels[exercise.status] || exercise.status : 'Chargement...'}
             </div>
+            {subtitle && <p className="mt-2 text-sm text-gray-500 leading-relaxed max-w-2xl">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-2">{actions}</div>
         </div>

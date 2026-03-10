@@ -42,6 +42,7 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
 }
 
 export default function CrisisContactsPage() {
+  const { t } = useTranslation()
   const { exerciseId } = useParams<{ exerciseId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -89,6 +90,7 @@ export default function CrisisContactsPage() {
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-xl font-bold text-gray-900">Annuaire de Crise</h1>
+          <p className="mt-1 text-sm text-gray-500 leading-relaxed">{t('exercises.intros.contacts')}</p>
         </div>
 
         <div className="flex gap-2">

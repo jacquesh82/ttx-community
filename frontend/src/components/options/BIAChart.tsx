@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import type { BIAProcess } from './BIAManager'
+import { useThemeStore, resolveThemeMode } from '../../stores/themeStore'
 
 interface BIAChartProps {
   processes: BIAProcess[]
@@ -19,6 +20,12 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; p: BIAProcess } | null>(null)
+  const themeMode = useThemeStore((s) => s.mode)
+  const isDark = resolveThemeMode(themeMode) === 'dark'
+
+  const colors = isDark
+    ? { axis: '#4b5563', tick: '#9ca3af', grid: '#374151', label: '#6b7280', empty: '#6b7280' }
+    : { axis: '#d1d5db', tick: '#374151', grid: '#e5e7eb', label: '#9ca3af', empty: '#9ca3af' }
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return
@@ -41,7 +48,7 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
         .attr('x', width / 2)
         .attr('y', height / 2)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#6b7280')
+        .attr('fill', colors.empty)
         .attr('font-size', 14)
         .text('Aucun processus BIA défini')
       return
@@ -64,8 +71,8 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
       .attr('transform', `translate(0,${height - marginBottom})`)
       .call(xAxis)
       .selectAll('text, line, path')
-      .attr('stroke', '#4b5563')
-      .attr('fill', '#9ca3af')
+      .attr('stroke', colors.axis)
+      .attr('fill', colors.tick)
 
     const yAxis = d3.axisLeft(yScale)
     svg
@@ -73,8 +80,8 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
       .attr('transform', `translate(${marginLeft},0)`)
       .call(yAxis)
       .selectAll('text, line, path')
-      .attr('stroke', '#4b5563')
-      .attr('fill', '#9ca3af')
+      .attr('stroke', colors.axis)
+      .attr('fill', colors.tick)
 
     // Gridlines
     svg
@@ -86,7 +93,7 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
       .attr('x2', (d) => xScale(d))
       .attr('y1', marginTop)
       .attr('y2', height - marginBottom)
-      .attr('stroke', '#374151')
+      .attr('stroke', colors.grid)
       .attr('stroke-dasharray', '3,3')
 
     // Bubbles
@@ -133,10 +140,10 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
       .attr('x', width / 2)
       .attr('y', height - 4)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#6b7280')
+      .attr('fill', colors.label)
       .attr('font-size', 12)
       .text('RTO (heures)')
-  }, [processes, onSelectProcess])
+  }, [processes, onSelectProcess, isDark])
 
   return (
     <div ref={containerRef} className="relative w-full">

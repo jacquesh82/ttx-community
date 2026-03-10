@@ -72,6 +72,9 @@ class AppConfiguration(Base):
 
     # Simulator to Inject Type Mapping (JSON)
     simulator_inject_mapping: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Custom phases preset (JSON array of {name: string})
+    custom_phases_config: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -138,4 +141,5 @@ DEFAULT_APP_CONFIG = {
     "timeline_phase_type_format_config": None,
     "timeline_sources_config": None,
     "timeline_sources_custom_config": None,
+    "custom_phases_config": None,
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import * as d3 from 'd3'
 import {
   adminApi,
@@ -1096,6 +1097,7 @@ function ChronogramD3Viewer({ item }: { item: InjectBankItem }) {
 }
 
 export default function InjectBankPage() {
+  const { t } = useTranslation()
   const appDialog = useAppDialog()
   const queryClient = useQueryClient()
 
@@ -1789,7 +1791,7 @@ export default function InjectBankPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-white">Banque d'injects</h1>
-            <p className="text-sm text-gray-400 mt-1">Bibliothèque de scénarios et d'événements</p>
+            <p className="text-sm text-gray-400 mt-1 leading-relaxed max-w-2xl">{t('exercises.intros.inject_bank')}</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Groupe import / export */}

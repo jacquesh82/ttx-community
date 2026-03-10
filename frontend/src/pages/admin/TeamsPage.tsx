@@ -339,6 +339,7 @@ export default function TeamsPage() {
           <div>
             <h1 className="text-2xl font-bold text-white">{t('admin.teams.title')}</h1>
             <p className="text-sm text-gray-400 mt-1">{t('admin.teams.subtitle')}</p>
+            <p className="text-sm text-gray-400 mt-2 leading-relaxed max-w-2xl">{t('admin.teams.intro')}</p>
           </div>
           <button
             onClick={() => setIsCreateModalOpen(true)}

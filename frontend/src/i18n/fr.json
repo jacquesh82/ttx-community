@@ -114,6 +114,7 @@
     "users": {
       "title": "Participants",
       "subtitle": "Gérez les participants de la plateforme",
+      "intro": "Les participants sont les comptes qui accèdent à la plateforme. Chaque compte dispose d'un rôle qui détermine ce qu'il peut faire : un joueur reçoit les injects, un animateur pilote l'exercice, un observateur suit sans intervenir. Vous pouvez aussi les rattacher à une équipe et leur attribuer des tags pour faciliter le ciblage des injects.",
       "new": "Nouveau participant",
       "edit": "Modifier le participant",
       "create": "Créer",
@@ -139,6 +140,7 @@
     "teams": {
       "title": "Équipes",
       "subtitle": "Gérez les équipes participantes",
+      "intro": "Les équipes permettent de regrouper des participants et de leur envoyer des injects collectivement. Une équipe peut représenter un service, une direction ou un groupe fonctionnel. Chaque participant peut être rattaché à une équipe, et les injects peuvent être ciblés par équipe entière.",
       "new": "Nouvelle équipe",
       "edit": "Modifier l'équipe",
       "create": "Créer",
@@ -209,6 +211,15 @@
         "email": "Email",
         "inject_types": "Types d'inject",
         "sources": "Sources"
+      },
+      "intros": {
+        "general": "Ces paramètres définissent les valeurs proposées par défaut lors de la création d'un exercice. Vous pouvez les ajuster à tout moment sans impacter les exercices déjà créés.",
+        "inject_types": "Les types d'inject représentent les canaux de communication simulés pendant l'exercice : e-mail, SMS, appel, réseau social… Pour chaque canal, vous choisissez les formats de fichiers acceptés et le simulateur qui le prend en charge.",
+        "sources": "Sélectionnez les sources d'actualité qui alimenteront la timeline de vos exercices. Vous pouvez filtrer par pays et par catégorie (presse, TV, gouvernement) pour coller au contexte de vos scénarios.",
+        "timelines": "Configurez les phases proposées par défaut lors de la création d'un exercice. Une phase représente une période clé du scénario — par exemple : détection, réponse, communication de crise. Ces réglages n'affectent pas les exercices déjà créés.",
+        "simulators": "Les simulateurs reproduisent les outils de communication du quotidien pendant l'exercice : messagerie, réseau social, chaîne TV… Activez uniquement ceux dont vous avez besoin et personnalisez leur apparence pour chaque scénario.",
+        "security": "Gérez ici les règles d'accès à la plateforme : durée des sessions, nombre de tentatives de connexion autorisées et longueur minimale des mots de passe. Les clés API permettent à des outils externes de se connecter à la plateforme de manière sécurisée, sans passer par un compte utilisateur.",
+        "email": "Connectez un serveur d'envoi d'e-mails (SMTP) pour que la plateforme puisse notifier les participants. Si aucun serveur n'est configuré, les notifications par e-mail ne seront pas envoyées."
       }
     }
   },
@@ -275,6 +286,18 @@
       "audience_kind_team": "Équipe",
       "audience_kind_user": "Participant",
       "audience_kind_tag": "Tag"
+    },
+    "intros": {
+      "new": "Définissez ici les grandes caractéristiques de votre exercice. Vous pourrez affiner tous les détails — scénario, participants, injects — depuis la page de configuration après création.",
+      "step_socle": "Choisissez le type d'incident simulé, la durée de l'exercice, le niveau de maturité attendu et le mode de déroulement. Ces paramètres de base guident toute la suite de la configuration.",
+      "step_scenario": "Rédigez l'histoire de votre exercice : la situation dans laquelle les participants arrivent, l'objectif pédagogique que vous poursuivez, et les grandes lignes des axes d'escalade (technique, communication, juridique…).",
+      "step_actors": "Associez les participants à cet exercice et définissez leur rôle. Vous pouvez initialiser la cellule de crise complète en un clic, puis ajuster les rôles individuellement.",
+      "step_timeline": "Structurez le déroulement de l'exercice en phases, puis créez les injects — les événements et messages envoyés aux participants à un instant précis de la simulation.",
+      "step_simulators": "Choisissez les canaux de communication actifs pendant l'exercice. Chaque simulateur (messagerie, réseau social, TV…) peut être activé ou désactivé selon les besoins de votre scénario.",
+      "step_validation": "Vérifiez que toutes les sections sont correctement renseignées avant de lancer l'exercice. Les points signalés comme incomplets doivent être traités pour garantir un bon déroulement.",
+      "contacts": "L'annuaire de crise regroupe les contacts utiles pendant l'exercice : intervenants externes, prestataires, autorités… Renseignez-les à l'avance pour que les participants puissent les consulter en situation.",
+      "media": "La médiathèque centralise les fichiers utilisés dans vos injects : images, vidéos, audio, documents. Déposez vos ressources ici pour les réutiliser facilement dans différents injects.",
+      "inject_bank": "La banque d'injects est une bibliothèque de contenus réutilisables entre différents exercices. Créez des injects génériques ici, puis importez-les dans un exercice pour les adapter à votre scénario."
     }
   },
   "observer": {
@@ -302,6 +325,9 @@
     "tab_identity": "Identité",
     "tab_it_context": "Contexte IT",
     "tab_bia": "BIA",
+    "intro_identity": "Décrivez votre organisation : son nom, son secteur et son contexte général. Ces informations servent à personnaliser les scénarios et les documents générés pendant les exercices.",
+    "intro_it_context": "Renseignez les éléments techniques de votre infrastructure : domaine réseau, plages d'adresses IP, serveurs clés… Ces données permettent de rendre les scénarios plus réalistes et adaptés à votre environnement réel.",
+    "intro_bia": "Le BIA (Bilan d'Impact sur l'Activité) recense vos processus critiques et leur capacité à tolérer une interruption. Il aide à cibler les scénarios sur ce qui compte vraiment pour votre organisation.",
     "tenant_scoped_info": "Les valeurs affichées et enregistrées ici sont désormais tenant-scopées pour <bold>{{tenant}}</bold>.",
     "not_defined": "— Non défini —",
     "name": "Nom de l'organisation",
@@ -328,6 +354,18 @@
     "tech_dependencies": "Dépendances technologiques",
     "cloud_providers": "Fournisseurs cloud",
     "critical_apps": "Applications métiers critiques",
+    "tips": {
+      "windows_domain": "Nom de domaine interne de votre réseau Windows / Active Directory. C'est le suffixe utilisé pour identifier les machines sur le réseau local (ex : corp.acme.local). Votre responsable IT peut vous le communiquer.",
+      "public_domain": "Nom de domaine visible sur Internet pour votre site web et vos e-mails (ex : acme.com). C'est l'adresse que vos clients et partenaires utilisent.",
+      "mail_domain": "La partie après le @ dans vos adresses e-mail professionnelles (ex : pour prenom@acme.com, entrez acme.com). Peut différer du domaine public si vous utilisez un sous-domaine dédié.",
+      "internal_ip_ranges": "Plages d'adresses IP de votre réseau interne, en notation CIDR (ex : 192.168.1.0/24 couvre les adresses de .0 à .255). Une adresse IP identifie chaque appareil sur le réseau, comme un numéro de téléphone.",
+      "dmz_ip_ranges": "Zone réseau intermédiaire entre Internet et votre réseau interne, qui héberge les serveurs accessibles de l'extérieur (site web, messagerie…). Entrez les plages IP de cette zone, en notation CIDR.",
+      "domain_controllers": "Serveurs qui gèrent les comptes utilisateurs et les droits d'accès sur votre réseau Windows. Entrez leurs noms complets, un par ligne (ex : DC01.corp.acme.local).",
+      "server_naming": "Convention de nommage de vos serveurs, avec de courtes explications. Permet de comprendre leur rôle au premier coup d'œil (ex : SRV-FILE-01 = serveur de fichiers n°1).",
+      "tech_dependencies": "Outils et logiciels sur lesquels repose votre infrastructure : antivirus, solution de sauvegarde, firewall, SIEM… Indiquez les produits utilisés et leur rôle.",
+      "cloud_providers": "Plateformes cloud utilisées (AWS, Azure, OVHcloud…), les services hébergés et la région géographique (ex : Azure France Central pour la messagerie Microsoft 365).",
+      "critical_apps": "Logiciels indispensables au fonctionnement de votre organisation : ERP, CRM, messagerie, intranet… En cas de panne, leur absence est immédiatement ressentie."
+    },
     "bia_hint": "Définissez les processus critiques de votre organisation. Ces indicateurs PCA/PRA (MTPD, RTO, RPO) permettent de contextualiser les exercices TTX et de générer des scénarios réalistes.",
     "sectors": {
       "sante": "Santé / hôpital",

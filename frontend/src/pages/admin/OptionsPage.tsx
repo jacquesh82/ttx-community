@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useAutoSaveStore } from '../../stores/autoSaveStore'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, PluginConfiguration, AppConfiguration, PluginType, ApiKeyItem, ApiKeyCreated } from '../../services/api'
-import { Check, Loader2, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus } from 'lucide-react'
+import { Check, Loader2, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus, MessageSquare, Phone, Share2, Tv, FileText, Monitor, FileType2, Volume2, Video, Image } from 'lucide-react'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
 import LangSelector from '../../components/LangSelector'
-import { DEFAULT_PHASES_LIST, PHASE_PRESET_LABELS, PHASE_PRESETS, PhasePresetKey } from '../../features/phasePresets'
+import { DEFAULT_PHASES_LIST, PHASE_PRESETS, PhasePresetKey } from '../../features/phasePresets'
 import SimulatorsTab from '../../components/options/SimulatorsTab'
+import PhasePicker from '../../components/PhasePicker'
 
 const COLORS = [
   { value: 'green', label: 'Vert', class: 'bg-green-500' },
@@ -171,7 +172,7 @@ const normalizeExerciseTypeValue = (value: string): string =>
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 
-type TabType = 'exercises' | 'plugins' | 'security' | 'email' | 'timelines'
+type TabType = 'exercises' | 'plugins' | 'security' | 'timelines'
 type PhasePreset = PhasePresetKey
 type TimelinePhaseTypeFormat = { type: string; formats: string[]; simulator: string | null }
 // TimelineSettingsTab removed — phases shown directly, inject_types and sources moved to exercises tab
@@ -214,6 +215,40 @@ const TIMELINE_INJECT_TYPE_LABELS: Record<string, string> = {
   tv: 'TV',
   doc: 'Document',
   system: 'Système',
+}
+
+const TIMELINE_INJECT_TYPE_ICONS: Record<string, React.ElementType> = {
+  mail: Mail,
+  sms: MessageSquare,
+  call: Phone,
+  socialnet: Share2,
+  tv: Tv,
+  doc: FileText,
+  system: Monitor,
+}
+
+const TIMELINE_INJECT_TYPE_COLORS: Record<string, { bg: string; border: string; icon: string; accent: string }> = {
+  mail:      { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   icon: 'text-blue-400',   accent: 'bg-blue-500' },
+  sms:       { bg: 'bg-green-500/10',  border: 'border-green-500/30',  icon: 'text-green-400',  accent: 'bg-green-500' },
+  call:      { bg: 'bg-emerald-500/10',border: 'border-emerald-500/30',icon: 'text-emerald-400',accent: 'bg-emerald-500' },
+  socialnet: { bg: 'bg-purple-500/10', border: 'border-purple-500/30', icon: 'text-purple-400', accent: 'bg-purple-500' },
+  tv:        { bg: 'bg-red-500/10',    border: 'border-red-500/30',    icon: 'text-red-400',    accent: 'bg-red-500' },
+  doc:       { bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  icon: 'text-amber-400',  accent: 'bg-amber-500' },
+  system:    { bg: 'bg-gray-500/10',   border: 'border-gray-500/30',   icon: 'text-gray-400',   accent: 'bg-gray-500' },
+}
+
+const FORMAT_ICONS: Record<string, React.ElementType> = {
+  TXT:   FileType2,
+  AUDIO: Volume2,
+  VIDEO: Video,
+  IMAGE: Image,
+}
+
+const FORMAT_COLORS: Record<string, { active: string; inactive: string }> = {
+  TXT:   { active: 'bg-sky-600 text-white border-sky-600',     inactive: 'bg-gray-800 text-gray-500 border-gray-700 hover:border-sky-700 hover:text-sky-400' },
+  AUDIO: { active: 'bg-emerald-600 text-white border-emerald-600', inactive: 'bg-gray-800 text-gray-500 border-gray-700 hover:border-emerald-700 hover:text-emerald-400' },
+  VIDEO: { active: 'bg-violet-600 text-white border-violet-600',  inactive: 'bg-gray-800 text-gray-500 border-gray-700 hover:border-violet-700 hover:text-violet-400' },
+  IMAGE: { active: 'bg-rose-600 text-white border-rose-600',    inactive: 'bg-gray-800 text-gray-500 border-gray-700 hover:border-rose-700 hover:text-rose-400' },
 }
 
 const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
@@ -297,6 +332,14 @@ const TIMELINE_SOURCES_CATALOG: TimelineSourceItem[] = [
   { id: 'uk-gov-govuk', country: 'Royaume-Uni', category: 'Gouvernement', name: 'GOV.UK' },
 ]
 
+const COUNTRY_FLAGS: Record<string, string> = {
+  'France': '🇫🇷',
+  'États-Unis': '🇺🇸',
+  'Allemagne': '🇩🇪',
+  'Espagne': '🇪🇸',
+  'Royaume-Uni': '🇬🇧',
+}
+
 export default function OptionsPage() {
   const { t } = useTranslation()
   const appDialog = useAppDialog()
@@ -308,6 +351,7 @@ export default function OptionsPage() {
   const [newExerciseTypeValue, setNewExerciseTypeValue] = useState('')
   const [newExerciseDuration, setNewExerciseDuration] = useState('')
   const [timelineSourceDrafts, setTimelineSourceDrafts] = useState<Record<string, string>>({})
+  const [selectedSourceCountry, setSelectedSourceCountry] = useState<string>('')
   const importFileInputRef = useRef<HTMLInputElement | null>(null)
   const organizationAutofillFileInputRef = useRef<HTMLInputElement | null>(null)
   
@@ -795,7 +839,6 @@ export default function OptionsPage() {
 
   const tabsSysteme = useMemo(() => [
     { id: 'security' as TabType, label: t('admin.options.tabs.security'), icon: Shield },
-    { id: 'email' as TabType, label: t('admin.options.tabs.email'), icon: Mail },
   ], [t])
 
   if (isLoading) {
@@ -849,6 +892,28 @@ export default function OptionsPage() {
       if (matches) return preset
     }
     return 'custom'
+  }
+
+  const getCustomPhases = (): { name: string }[] => {
+    const raw = getAppConfigValue('custom_phases_config')
+    if (!raw) return []
+    try { return JSON.parse(raw) } catch { return [] }
+  }
+
+  const saveCustomPhases = (phases: { name: string }[]) => {
+    updateAppConfigField('custom_phases_config', JSON.stringify(phases))
+    updateAppConfigField('default_phases_preset', 'custom')
+  }
+
+  const activateCustomPreset = () => {
+    const existing = getCustomPhases()
+    if (existing.length === 0) {
+      // Seed from currently enabled phases
+      const seed = getPhasesConfig().filter((p) => p.enabled).map((p) => ({ name: p.name }))
+      saveCustomPhases(seed)
+    } else {
+      updateAppConfigField('default_phases_preset', 'custom')
+    }
   }
 
   const getTimelinePhaseTypeFormats = (): TimelinePhaseTypeFormat[] => {
@@ -1043,9 +1108,11 @@ export default function OptionsPage() {
   const tenantSlug = tenant?.slug?.trim() || null
 
   // Pre-computed timeline/phases values (used across exercises + timelines tabs)
+  const isCustomPreset = getAppConfigValue('default_phases_preset') === 'custom'
+  const customPhases = getCustomPhases()
   const phasesConfig = getPhasesConfig()
-  const enabledCount = phasesConfig.filter((p) => p.enabled).length
-  const activePreset = resolveActivePreset(phasesConfig)
+  const enabledCount = isCustomPreset ? customPhases.length : phasesConfig.filter((p) => p.enabled).length
+  const activePreset = isCustomPreset ? 'custom' : resolveActivePreset(phasesConfig)
   const timelineRows = getTimelinePhaseTypeFormats()
   const selectedSourceIds = getSelectedTimelineSourceIds()
   const timelineSourcesByCountry = getTimelineSourcesByCountry()
@@ -1368,6 +1435,7 @@ export default function OptionsPage() {
 
               {exercisesSubTab === 'general' && (
                 <div>
+                <p className="mb-6 text-sm text-gray-400 leading-relaxed">{t('admin.options.intros.general')}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1632,84 +1700,118 @@ export default function OptionsPage() {
 
               {exercisesSubTab === 'inject_types' && (
                 <div>
-                  <h3 className="text-base font-semibold text-white">Types d&apos;inject et formats</h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Les types d&apos;inject sont définis par le schéma JSON: <code className="text-indigo-300">mail, sms, call, socialnet, tv, doc, system</code>.
-                    Les types <code className="text-gray-400">story</code> et <code className="text-gray-400">directory</code> sont réservés à la banque d&apos;injects.
-                    Ajustez les formats autorisés (TXT, AUDIO, VIDEO, IMAGE) et le simulateur affecté.
+                  <p className="mb-6 text-sm text-gray-400 leading-relaxed">{t('admin.options.intros.inject_types')}</p>
+                  <p className="text-xs text-gray-500 mb-5">
+                    {timelineRows.length} type(s) d&apos;inject configuré(s)
                   </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-xs text-gray-500">
-                      {timelineRows.length} type(s) d&apos;inject configuré(s)
-                    </p>
-                  </div>
-                  <div className="mt-3 space-y-3">
-                    {timelineRows.length === 0 && (
-                      <div className="text-sm text-gray-500 bg-gray-900 border border-gray-700 rounded px-3 py-2">
-                        Aucun type configuré.
-                      </div>
-                    )}
-                    {timelineRows.map((row, index) => (
-                      <div key={index} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded text-sm text-white flex items-center justify-between">
-                            <span>{TIMELINE_INJECT_TYPE_LABELS[row.type] || row.type}</span>
-                            <span className="text-xs text-gray-500 font-mono">{row.type}</span>
+                  {timelineRows.length === 0 && (
+                    <div className="text-sm text-gray-500 bg-gray-900 border border-gray-700 rounded px-3 py-3">
+                      Aucun type configuré.
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {timelineRows.map((row, index) => {
+                      const colors = TIMELINE_INJECT_TYPE_COLORS[row.type] ?? TIMELINE_INJECT_TYPE_COLORS.system
+                      const TypeIcon = TIMELINE_INJECT_TYPE_ICONS[row.type] ?? Monitor
+                      return (
+                        <div
+                          key={index}
+                          className={`relative rounded-xl border ${colors.border} ${colors.bg} p-4 flex flex-col gap-4`}
+                        >
+                          {/* Card header */}
+                          <div className="flex items-center gap-3">
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-lg ${colors.bg} border ${colors.border} flex items-center justify-center`}>
+                              <TypeIcon className={`w-5 h-5 ${colors.icon}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white leading-tight">
+                                {TIMELINE_INJECT_TYPE_LABELS[row.type] || row.type}
+                              </p>
+                              <p className="text-xs font-mono text-gray-500 mt-0.5">{row.type}</p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                          <div className="flex flex-wrap gap-2">
-                            {TIMELINE_ALLOWED_FORMATS.map((format) => (
-                              <label key={`${index}-${format}`} className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded border border-indigo-700/40 cursor-pointer hover:bg-gray-750">
-                                <input
-                                  type="checkbox"
-                                  checked={row.formats.includes(format)}
-                                  onChange={(e) => toggleTimelineInjectFormat(index, format, e.target.checked)}
-                                  className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="text-xs text-indigo-200">{format}</span>
-                              </label>
-                            ))}
+
+                          {/* Format chips */}
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Formats</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {TIMELINE_ALLOWED_FORMATS.map((format) => {
+                                const active = row.formats.includes(format)
+                                const fColors = FORMAT_COLORS[format]
+                                const FmtIcon = FORMAT_ICONS[format]
+                                return (
+                                  <button
+                                    key={format}
+                                    type="button"
+                                    onClick={() => toggleTimelineInjectFormat(index, format, !active)}
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-all ${active ? fColors.active : fColors.inactive}`}
+                                  >
+                                    <FmtIcon className="w-3 h-3" />
+                                    {format}
+                                  </button>
+                                )
+                              })}
+                            </div>
                           </div>
-                          <div className="w-full lg:w-64">
+
+                          {/* Simulator select */}
+                          <div>
                             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
-                              Simulateur affecté
+                              Simulateur
                             </label>
                             <select
                               value={row.simulator || ''}
                               onChange={(e) => updateTimelineInjectSimulator(index, e.target.value || null)}
-                              className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
                               <option value="">Aucun</option>
-                              {TIMELINE_SIMULATOR_OPTIONS.map((simulator) => (
-                                <option key={simulator.value} value={simulator.value}>
-                                  {simulator.label}
+                              {(plugins ?? []).map((p) => (
+                                <option key={p.plugin_type} value={p.plugin_type}>
+                                  {p.name}{p.coming_soon ? ' (bientôt)' : !p.default_enabled ? ' (désactivé)' : ''}
                                 </option>
                               ))}
                             </select>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
 
-              {exercisesSubTab === 'sources' && (
-                <div>
-                  <h3 className="text-base font-semibold text-white">Sources</h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Activez les sources utilisables par tenant, regroupées par pays et triées par Press, TV puis Gouvernement.
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {selectedSourceIds.length} source(s) active(s) sur {TIMELINE_SOURCES_CATALOG.length + getCustomTimelineSources().length}
-                  </p>
-                  <div className="mt-4 space-y-4">
-                    {timelineSourcesByCountry.map((countryBlock) => (
-                      <div key={countryBlock.country} className="bg-gray-900 border border-gray-700 rounded p-3 space-y-3">
-                        <div className="text-sm font-semibold text-white">{countryBlock.country}</div>
-                        {countryBlock.categories.map((categoryBlock) => (
-                          <div key={`${countryBlock.country}-${categoryBlock.category}`}>
+              {exercisesSubTab === 'sources' && (() => {
+                const activeCountry = selectedSourceCountry || timelineSourcesByCountry[0]?.country || ''
+                const activeBlock = timelineSourcesByCountry.find((b) => b.country === activeCountry)
+                return (
+                  <div>
+                    <p className="mb-4 text-sm text-gray-400 leading-relaxed">{t('admin.options.intros.sources')}</p>
+                    <p className="text-xs text-gray-500 mb-4">
+                      {selectedSourceIds.length} source(s) active(s) sur {TIMELINE_SOURCES_CATALOG.length + getCustomTimelineSources().length}
+                    </p>
+
+                    {/* Country tabs */}
+                    <div className="flex gap-1 border-b border-gray-700 mb-5 overflow-x-auto">
+                      {timelineSourcesByCountry.map((block) => (
+                        <button
+                          key={block.country}
+                          onClick={() => setSelectedSourceCountry(block.country)}
+                          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
+                            block.country === activeCountry
+                              ? 'border-primary-500 text-white'
+                              : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                          }`}
+                        >
+                          <span>{COUNTRY_FLAGS[block.country] ?? '🌐'}</span>
+                          {block.country}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active country content */}
+                    {activeBlock && (
+                      <div className="space-y-4">
+                        {activeBlock.categories.map((categoryBlock) => (
+                          <div key={`${activeBlock.country}-${categoryBlock.category}`}>
                             <div className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">
                               {categoryBlock.category}
                             </div>
@@ -1720,7 +1822,7 @@ export default function OptionsPage() {
                                 {categoryBlock.sources.map((source) => (
                                   <div
                                     key={source.id}
-                                    className="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-800 rounded border border-gray-700 hover:bg-gray-750"
+                                    className="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-900 rounded border border-gray-700"
                                   >
                                     <label className="flex items-center gap-2 cursor-pointer min-w-0">
                                       <input
@@ -1748,11 +1850,11 @@ export default function OptionsPage() {
                             <div className="mt-2 flex items-center gap-2">
                               <input
                                 type="text"
-                                value={timelineSourceDrafts[`${countryBlock.country}|${categoryBlock.category}`] || ''}
+                                value={timelineSourceDrafts[`${activeBlock.country}|${categoryBlock.category}`] || ''}
                                 onChange={(e) =>
                                   setTimelineSourceDrafts((prev) => ({
                                     ...prev,
-                                    [`${countryBlock.country}|${categoryBlock.category}`]: e.target.value,
+                                    [`${activeBlock.country}|${categoryBlock.category}`]: e.target.value,
                                   }))
                                 }
                                 placeholder={`Ajouter une source ${categoryBlock.category.toLowerCase()} custom`}
@@ -1760,7 +1862,7 @@ export default function OptionsPage() {
                               />
                               <button
                                 type="button"
-                                onClick={() => addCustomTimelineSource(countryBlock.country, categoryBlock.category)}
+                                onClick={() => addCustomTimelineSource(activeBlock.country, categoryBlock.category)}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-primary-500/40 bg-primary-500/10 text-primary-300 hover:bg-primary-500/20 text-sm"
                               >
                                 <Plus className="w-4 h-4" />
@@ -1770,78 +1872,27 @@ export default function OptionsPage() {
                           </div>
                         ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {exercisesSubTab === 'timelines' && (
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-400">
-                      Liste des phases proposées lors de la création d&apos;un nouvel exercice.
-                      Les modifications n&apos;affectent pas les exercices existants.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {([
-                        { id: 'minimal', label: 'Minimal' },
-                        { id: 'classique', label: 'Classique' },
-                        { id: 'precis', label: 'Précis' },
-                        { id: 'full', label: 'Full' },
-                      ] as { id: PhasePreset; label: string }[]).map(({ id, label }) => (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => applyPhasePreset(id)}
-                          className={`px-3 py-1.5 rounded-lg border text-sm transition ${
-                            activePreset === id
-                              ? 'bg-primary-600 border-primary-500 text-white'
-                              : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-gray-600'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                      <span className="text-xs text-gray-500 ml-2 self-center">
-                        Préset actif : {activePreset === 'custom' ? 'Personnalisé' : activePreset}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {phasesConfig.map((phase, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-700 bg-gray-900/60 hover:bg-gray-900 transition-colors"
-                      >
-                        <span className="w-5 text-right text-xs text-gray-500 flex-shrink-0 tabular-nums">
-                          {index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={phase.enabled}
-                          onClick={() => togglePhase(index)}
-                          className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                            phase.enabled ? 'bg-primary-600' : 'bg-gray-600'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                              phase.enabled ? 'translate-x-4' : 'translate-x-0.5'
-                            }`}
-                          />
-                        </button>
-                        <span className={`text-sm flex-1 ${phase.enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'}`}>
-                          {phase.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <p className="text-xs text-gray-500">
-                    {enabledCount} phase{enabledCount !== 1 ? 's' : ''} activée{enabledCount !== 1 ? 's' : ''} sur {DEFAULT_PHASES_LIST.length}
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    {t('admin.options.intros.timelines')}
                   </p>
+                  <PhasePicker
+                    phases={phasesConfig}
+                    onToggle={togglePhase}
+                    customPhases={customPhases}
+                    onCustomPhasesChange={saveCustomPhases}
+                    activePreset={activePreset}
+                    onApplyPreset={applyPhasePreset}
+                    onActivateCustom={activateCustomPreset}
+                    allowCustomEdit
+                    theme="dark"
+                  />
                 </div>
               )}
             </div>
@@ -1869,10 +1920,11 @@ export default function OptionsPage() {
         {activeTab === 'security' && (
           <div className="space-y-6">
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <Shield className="w-5 h-5 text-gray-400" />
                 <h2 className="text-lg font-medium text-white">Paramètres de sécurité</h2>
               </div>
+              <p className="mb-6 text-sm text-gray-400 leading-relaxed">{t('admin.options.intros.security')}</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -2040,86 +2092,6 @@ export default function OptionsPage() {
           </div>
         )}
 
-        {/* Email Tab */}
-        {activeTab === 'email' && (
-          <div className="space-y-6">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <h2 className="text-lg font-medium text-white">Configuration SMTP</h2>
-                </div>
-                <button
-                  onClick={() => updateAppConfigField('smtp_enabled', !getAppConfigValue('smtp_enabled'))}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    getAppConfigValue('smtp_enabled') ? 'bg-primary-600' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      getAppConfigValue('smtp_enabled') ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {getAppConfigValue('smtp_enabled') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Serveur SMTP
-                    </label>
-                    <input
-                      type="text"
-                      value={getAppConfigValue('smtp_host') || ''}
-                      onChange={(e) => updateAppConfigField('smtp_host', e.target.value || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="smtp.example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Port
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="65535"
-                      value={getAppConfigValue('smtp_port') || ''}
-                      onChange={(e) => updateAppConfigField('smtp_port', parseInt(e.target.value) || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="587"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Utilisateur
-                    </label>
-                    <input
-                      type="text"
-                      value={getAppConfigValue('smtp_user') || ''}
-                      onChange={(e) => updateAppConfigField('smtp_user', e.target.value || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="user@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Adresse d'expédition
-                    </label>
-                    <input
-                      type="email"
-                      value={getAppConfigValue('smtp_from') || ''}
-                      onChange={(e) => updateAppConfigField('smtp_from', e.target.value || null)}
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="noreply@example.com"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
       </div>
         </div>

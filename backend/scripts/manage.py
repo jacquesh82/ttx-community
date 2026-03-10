@@ -61,11 +61,18 @@ async def _reset_schema():
     print("✅ Schéma recréé")
 
 
+def _in_docker() -> bool:
+    return Path("/.dockerenv").exists()
+
+
 def _run_alembic_migrate() -> bool:
-    result = subprocess.run(
-        ["alembic", "upgrade", "head"],
-        cwd=_BACKEND_DIR,
-    )
+    if _in_docker():
+        cmd = ["alembic", "upgrade", "head"]
+        cwd = _BACKEND_DIR
+    else:
+        cmd = ["docker", "compose", "exec", "ttx-community-backend", "alembic", "upgrade", "head"]
+        cwd = _BACKEND_DIR.parent  # repo root (where docker-compose.yml lives)
+    result = subprocess.run(cmd, cwd=cwd)
     return result.returncode == 0
 
 
