@@ -1,30 +1,12 @@
-#!/usr/bin/env python3
-"""
-Script d'initialisation de l'annuaire de crise avec des données fictives.
-Crée 20 contacts bien répartis entre les catégories et priorités.
-
-Usage:
-    python scripts/init_crisis_contacts.py [--exercise-id ID]
-
-Options:
-    --exercise-id ID    ID de l'exercice auquel ajouter les contacts (défaut: crée un exercice "Annuaire Test")
-"""
-import asyncio
-import argparse
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+"""Seed data and functions for crisis contacts."""
 from sqlalchemy import select
-from app.database import engine, async_session_factory
+
+from app.database import async_session_factory
 from app.models import Exercise, CrisisContact
 from app.models.exercise import ExerciseStatus
 from app.models.crisis_contact import ContactCategory, ContactPriority
 
 
-# Contacts de crise fictifs - 20 entrées bien réparties
 CRISIS_CONTACTS = [
     # === AUTORITÉ (3 contacts) ===
     {
@@ -63,7 +45,6 @@ CRISIS_CONTACTS = [
         "notes": "Relais territorial pour la coordination",
         "availability": "8h30-17h30",
     },
-
     # === EXPERT (3 contacts) ===
     {
         "name": "Dr. Sophie BERNARD",
@@ -101,7 +82,6 @@ CRISIS_CONTACTS = [
         "notes": "Experte cyber-attaques - à contacter en cas d'incident majeur",
         "availability": "24/7",
     },
-
     # === MEDIA (3 contacts) ===
     {
         "name": "Thomas RICHARD",
@@ -139,7 +119,6 @@ CRISIS_CONTACTS = [
         "notes": "Presse nationale - à utiliser avec précaution",
         "availability": "9h-19h",
     },
-
     # === INTERNE (3 contacts) ===
     {
         "name": "Catherine ROUX",
@@ -177,7 +156,6 @@ CRISIS_CONTACTS = [
         "notes": "Responsable IT et cybersécurité interne",
         "availability": "8h-18h / astreinte 24/7",
     },
-
     # === EXTERNE (3 contacts) ===
     {
         "name": "Olivier MERCIER",
@@ -215,7 +193,6 @@ CRISIS_CONTACTS = [
         "notes": "Conseil juridique - gestion des aspects légaux",
         "availability": "9h-19h",
     },
-
     # === URGENCE (3 contacts) ===
     {
         "name": "Centre 18",
@@ -253,7 +230,6 @@ CRISIS_CONTACTS = [
         "notes": "Sécurité et ordre public",
         "availability": "24/7",
     },
-
     # === AUTRE (2 contacts) ===
     {
         "name": "Nathalie VIDAL",
@@ -296,7 +272,6 @@ async def get_or_create_exercise(exercise_id: int | None = None) -> int:
             else:
                 print(f"⚠️  Exercice ID {exercise_id} non trouvé, création d'un nouvel exercice")
 
-        # Créer un nouvel exercice
         exercise = Exercise(
             name="Exercice - Annuaire de Crise Test",
             description="Exercice créé automatiquement pour tester l'annuaire de crise",
@@ -309,50 +284,46 @@ async def get_or_create_exercise(exercise_id: int | None = None) -> int:
         return exercise.id
 
 
-async def create_crisis_contacts(exercise_id: int):
-    """Crée les contacts de crise."""
+async def create_crisis_contacts(exercise_id: int) -> None:
+    """Crée les contacts de crise pour un exercice."""
     print(f"\n📋 Création des contacts de crise pour l'exercice {exercise_id}...")
-    
+
     async with async_session_factory() as session:
-        # Vérifier si des contacts existent déjà pour cet exercice
         result = await session.execute(
             select(CrisisContact).where(CrisisContact.exercise_id == exercise_id)
         )
         existing = result.scalars().all()
-        
+
         if existing:
             print(f"⚠️  {len(existing)} contacts existent déjà pour cet exercice.")
             print("   Utilisez --reset pour supprimer les contacts existants.")
             return
-        
+
         created_counts = {cat: 0 for cat in ContactCategory}
-        
+
         for contact_data in CRISIS_CONTACTS:
-            contact = CrisisContact(
-                exercise_id=exercise_id,
-                **contact_data
-            )
+            contact = CrisisContact(exercise_id=exercise_id, **contact_data)
             session.add(contact)
             created_counts[contact_data["category"]] += 1
             print(f"  ✅ {contact_data['name']} ({contact_data['category'].value})")
-        
+
         await session.commit()
-        
+
         print(f"\n📊 Répartition par catégorie:")
         for cat, count in created_counts.items():
             print(f"   {cat.value:12} : {count} contact(s)")
-        
+
         print(f"\n✅ {len(CRISIS_CONTACTS)} contacts créés avec succès!")
 
 
-async def reset_crisis_contacts(exercise_id: int):
+async def reset_crisis_contacts(exercise_id: int) -> None:
     """Supprime les contacts de crise existants pour un exercice."""
     async with async_session_factory() as session:
         result = await session.execute(
             select(CrisisContact).where(CrisisContact.exercise_id == exercise_id)
         )
         contacts = result.scalars().all()
-        
+
         if contacts:
             for contact in contacts:
                 await session.delete(contact)
@@ -360,41 +331,3 @@ async def reset_crisis_contacts(exercise_id: int):
             print(f"🗑️  {len(contacts)} contacts supprimés")
         else:
             print("ℹ️  Aucun contact à supprimer")
-
-
-async def main():
-    parser = argparse.ArgumentParser(description="Initialisation de l'annuaire de crise")
-    parser.add_argument("--exercise-id", type=int, help="ID de l'exercice auquel ajouter les contacts")
-    parser.add_argument("--reset", action="store_true", help="Supprime les contacts existants avant de créer")
-    args = parser.parse_args()
-    
-    print("\n" + "="*60)
-    print("📞 TTX Platform - Initialisation de l'annuaire de crise")
-    print("="*60 + "\n")
-    
-    try:
-        exercise_id = await get_or_create_exercise(args.exercise_id)
-        
-        if args.reset:
-            await reset_crisis_contacts(exercise_id)
-        
-        await create_crisis_contacts(exercise_id)
-        
-        print("\n" + "="*60)
-        print("✨ Initialisation terminée avec succès!")
-        print("="*60)
-        print(f"\n📌 Exercice ID: {exercise_id}")
-        print("\n💡 Conseil: Utilisez --reset pour réinitialiser les contacts")
-        print("           Utilisez --exercise-id ID pour un exercice spécifique")
-        
-    except Exception as e:
-        print(f"\n❌ Erreur: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-    finally:
-        await engine.dispose()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

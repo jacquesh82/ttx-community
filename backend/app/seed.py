@@ -8,16 +8,7 @@ from app.models import Tenant, TenantConfiguration, TenantStatus, User, UserRole
 from app.utils.security import hash_password
 
 
-DEFAULT_TIMELINE_TYPES_FORMATS = [
-    {"type": "Mail", "formats": ["TXT"], "simulator": "mail"},
-    {"type": "SMS", "formats": ["TXT", "IMAGE"], "simulator": "sms"},
-    {"type": "Call", "formats": ["AUDIO"], "simulator": "tel"},
-    {"type": "Social network", "formats": ["TXT", "VIDEO", "IMAGE"], "simulator": "social"},
-    {"type": "TV", "formats": ["VIDEO"], "simulator": "tv"},
-    {"type": "Document", "formats": ["TXT", "IMAGE"], "simulator": "mail"},
-    {"type": "Annuaire de crise", "formats": ["TXT"], "simulator": None},
-    {"type": "Scenario", "formats": ["TXT"], "simulator": None},
-]
+from app.constants.timeline import TIMELINE_DEFAULT_INJECT_TYPES_FORMATS as DEFAULT_TIMELINE_TYPES_FORMATS
 
 
 async def seed_initial_data() -> None:

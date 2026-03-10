@@ -1,29 +1,12 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-DOCKER_COMPOSE_CMD=()
-
-set_compose_command() {
-  if command -v docker-compose >/dev/null 2>&1; then
-    DOCKER_COMPOSE_CMD=(docker-compose)
-    return 0
-  fi
-  if docker compose version >/dev/null 2>&1; then
-    DOCKER_COMPOSE_CMD=(docker compose)
-    return 0
-  fi
-  echo "[ERROR] Docker Compose is not available" >&2
-  exit 1
-}
-
-run_compose() {
-  "${DOCKER_COMPOSE_CMD[@]}" "$@"
-}
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
 
 usage() {
   cat <<'EOF'
@@ -63,7 +46,7 @@ if [[ -z "$SLUG" ]] || [[ "$SLUG" == "--help" ]] || [[ "$SLUG" == "-h" ]]; then
 fi
 
 if [[ -z "$NAME" ]]; then
-  echo "[ERROR] Missing tenant name" >&2
+  print_error "Missing tenant name"
   usage
   exit 1
 fi
@@ -96,7 +79,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "[ERROR] Unknown option: $1" >&2
+      print_error "Unknown option: $1"
       usage
       exit 1
       ;;
@@ -108,16 +91,16 @@ if [[ -z "$DOMAIN" ]]; then
 fi
 
 if [[ ! "$SLUG" =~ ^[a-z0-9][a-z0-9-]{0,62}$ ]]; then
-  echo "[ERROR] Invalid slug '$SLUG' (allowed: lowercase letters, digits, hyphen, max 63 chars)" >&2
+  print_error "Invalid slug '$SLUG' (allowed: lowercase letters, digits, hyphen, max 63 chars)"
   exit 1
 fi
 
 if [[ ! -f "$PROJECT_ROOT/docker-compose.yml" ]]; then
-  echo "[ERROR] docker-compose.yml not found (run from project root)" >&2
+  print_error "docker-compose.yml not found (run from project root)"
   exit 1
 fi
 
-set_compose_command
+detect_compose
 
 PSQL_BASE=(exec -T postgres psql -U ttx -d ttx -v ON_ERROR_STOP=1)
 
@@ -131,7 +114,7 @@ psql_exec() {
   run_compose "${PSQL_BASE[@]}" -c "$sql"
 }
 
-echo "[INFO] Creating/reusing tenant '$SLUG' ('$NAME')"
+print_info "Creating/reusing tenant '$SLUG' ('$NAME')"
 
 psql_exec "
 SELECT setval(
@@ -157,14 +140,14 @@ LIMIT 1;
 ")"
 
 if [[ -z "$TENANT_ID" ]]; then
-  echo "[ERROR] Unable to create or resolve tenant id for slug '$SLUG'" >&2
+  print_error "Unable to create or resolve tenant id for slug '$SLUG'"
   exit 1
 fi
 
-echo "[SUCCESS] Tenant id: $TENANT_ID"
+print_success "Tenant id: $TENANT_ID"
 
 if [[ "$CREATE_DOMAIN" == true ]]; then
-  echo "[INFO] Creating/reusing domain mapping '$DOMAIN'"
+  print_info "Creating/reusing domain mapping '$DOMAIN'"
   psql_exec "
 INSERT INTO tenant_domains (tenant_id, domain, domain_type, is_primary, is_verified)
 VALUES (${TENANT_ID}, '${DOMAIN}', 'SUBDOMAIN', true, true)
@@ -175,7 +158,7 @@ SET tenant_id = EXCLUDED.tenant_id,
 fi
 
 if [[ "$BOOTSTRAP_ADMIN" == true ]]; then
-  echo "[INFO] Bootstrapping admin from source tenant '${SOURCE_TENANT_SLUG}'"
+  print_info "Bootstrapping admin from source tenant '${SOURCE_TENANT_SLUG}'"
   SOURCE_USER_FILTER=""
   if [[ -n "$SOURCE_ADMIN_USERNAME" ]]; then
     SOURCE_USER_FILTER="AND u.username = '${SOURCE_ADMIN_USERNAME}'"
@@ -183,7 +166,7 @@ if [[ "$BOOTSTRAP_ADMIN" == true ]]; then
 
   EXISTING_USERS_COUNT="$(psql_scalar "SELECT COUNT(*) FROM users WHERE tenant_id = ${TENANT_ID};")"
   if [[ "${EXISTING_USERS_COUNT:-0}" != "0" ]]; then
-    echo "[WARNING] Tenant already has ${EXISTING_USERS_COUNT} user(s); skipping admin bootstrap"
+    print_warning "Tenant already has ${EXISTING_USERS_COUNT} user(s); skipping admin bootstrap"
   else
     CLONED_ID="$(psql_scalar "
 WITH source_tenant AS (
@@ -213,15 +196,15 @@ ins AS (
 SELECT id FROM ins;
 ")"
     if [[ -n "$CLONED_ID" ]]; then
-      echo "[SUCCESS] Cloned admin user id ${CLONED_ID} into tenant '${SLUG}'"
+      print_success "Cloned admin user id ${CLONED_ID} into tenant '${SLUG}'"
     else
-      echo "[WARNING] No source admin/animateur found in tenant '${SOURCE_TENANT_SLUG}'. Tenant created without users."
+      print_warning "No source admin/animateur found in tenant '${SOURCE_TENANT_SLUG}'. Tenant created without users."
     fi
   fi
 fi
 
 echo ""
-echo "[SUCCESS] Tenant ready"
+print_success "Tenant ready"
 echo "  Slug:   ${SLUG}"
 echo "  Name:   ${NAME}"
 if [[ "$CREATE_DOMAIN" == true ]]; then

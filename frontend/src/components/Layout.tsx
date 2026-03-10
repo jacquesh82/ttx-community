@@ -105,12 +105,12 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <aside
         className={clsx(
-          'sidebar-shell fixed inset-y-0 left-0 z-40 w-64 transform transition-transform lg:translate-x-0',
+          'sidebar-shell fixed inset-y-0 left-0 z-40 w-64 transform transition-transform lg:translate-x-0 flex flex-col',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="sidebar-border flex items-center justify-center h-16 border-b px-4">
+        <div className="sidebar-border flex items-center justify-center h-16 border-b px-4 flex-shrink-0">
           {organizationLogoUrl ? (
             <img
               src={organizationLogoUrl}
@@ -146,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="mt-6 px-3">
+        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-4">
           <div className="space-y-1">
             {isObservateur && (
               <Link
@@ -377,7 +377,7 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
 
         {/* User footer */}
-        <div className="sidebar-border absolute bottom-0 left-0 right-0 p-4 border-t space-y-3">
+        <div className="sidebar-border flex-shrink-0 p-4 border-t space-y-3">
           <div className="flex items-center px-1">
             <span
               className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
