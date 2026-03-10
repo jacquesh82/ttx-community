@@ -426,6 +426,7 @@
     "timeline_empty": "No injects in this exercise",
     "timeline_go": "Open player",
     "inject_bank_empty": "The inject bank is empty",
-    "inject_bank_go": "Manage inject bank"
+    "inject_bank_go": "Manage inject bank",
+    "config_admin_only": "Configured by the administrator"
   }
 }

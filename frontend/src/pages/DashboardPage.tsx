@@ -322,11 +322,13 @@ export default function DashboardPage() {
     queryKey: ['exercises-all'],
     queryFn: () => exercisesApi.list({ page: 1, page_size: 100 }),
   })
-  const { data: appConfig } = useQuery({
+  const { data: appConfig, isLoading: configLoading } = useQuery({
     queryKey: ['appConfig'],
     queryFn: adminApi.getAppConfiguration,
+    enabled: isAdmin,
+    retry: false,
   })
-  const { data: bankStats } = useQuery({
+  const { data: bankStats, isLoading: bankLoading } = useQuery({
     queryKey: ['bankStats'],
     queryFn: injectBankApi.getStats,
   })
@@ -463,7 +465,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Organisation */}
-        {orgScore ? (
+        {configLoading ? (
+          <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
+        ) : orgScore ? (
           <KpiCard
             title={t('dashboard.org_completeness')}
             subtitle={t('dashboard.org_completeness_sub', { score: orgScore.score, max: orgScore.max })}
@@ -492,17 +496,27 @@ export default function DashboardPage() {
             </div>
           </KpiCard>
         ) : (
-          <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
+          <KpiCard title={t('dashboard.org_completeness')}>
+            <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+              <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.config_admin_only')}</p>
+            </div>
+          </KpiCard>
         )}
 
         {/* BIA */}
         <BiaKpi raw={appConfig?.bia_processes} />
 
         {/* Banque d'injects */}
-        {bankStats ? (
+        {bankLoading ? (
+          <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
+        ) : bankStats ? (
           <InjectBankKpi stats={bankStats} />
         ) : (
-          <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
+          <KpiCard title={t('dashboard.inject_bank_title')}>
+            <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+              <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.inject_bank_empty')}</p>
+            </div>
+          </KpiCard>
         )}
       </div>
 
@@ -511,16 +525,18 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Scénario */}
-          {scenScore ? (
-            <KpiCard
-              title={t('dashboard.scenario_title')}
-              subtitle={t('dashboard.scenario_sub')}
-            >
+          <KpiCard
+            title={t('dashboard.scenario_title')}
+            subtitle={t('dashboard.scenario_sub')}
+          >
+            {scenScore ? (
               <CriteriaBar criteria={scenScore.criteria} score={scenScore.score} max={scenScore.max} />
-            </KpiCard>
-          ) : (
-            <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
-          )}
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.no_exercise_selected')}</p>
+              </div>
+            )}
+          </KpiCard>
 
           {/* Timeline */}
           <TimelineKpi injects={injects} phases={phases as ExercisePhase[]} exercise={selectedExercise} />
