@@ -54,8 +54,7 @@ function ExerciseSelector({ exercises, selectedId, onChange }: ExerciseSelectorP
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors w-full sm:w-auto"
-        style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)', color: 'var(--app-fg)' }}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors w-full sm:w-auto bg-gray-700 border border-gray-600 text-white"
       >
         {selected ? (
           <>
@@ -65,24 +64,20 @@ function ExerciseSelector({ exercises, selectedId, onChange }: ExerciseSelectorP
             <span className="truncate max-w-48">{selected.name}</span>
           </>
         ) : (
-          <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.select_exercise')}</span>
+          <span className="text-gray-400">{t('dashboard.select_exercise')}</span>
         )}
-        <ChevronDown className="w-4 h-4 flex-shrink-0 ml-auto" style={{ color: 'var(--sidebar-muted)' }} />
+        <ChevronDown className="w-4 h-4 flex-shrink-0 ml-auto text-gray-400" />
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div
-            className="absolute left-0 top-full mt-1 z-20 rounded-xl py-1 min-w-56 max-h-72 overflow-y-auto shadow-xl"
-            style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)' }}
-          >
+          <div className="absolute left-0 top-full mt-1 z-20 bg-gray-800 border border-gray-700 rounded-xl py-1 min-w-56 max-h-72 overflow-y-auto shadow-xl">
             {sorted.map(ex => (
               <button
                 key={ex.id}
                 onClick={() => { onChange(ex.id); setOpen(false) }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-primary-600/10"
-                style={{ color: ex.id === selectedId ? 'var(--app-fg)' : 'var(--sidebar-muted)' }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-primary-600/10 ${ex.id === selectedId ? 'text-white' : 'text-gray-400'}`}
               >
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ex.status === 'running' ? 'bg-green-400' : ex.status === 'paused' ? 'bg-amber-400' : 'bg-gray-400'}`} />
                 <span className="flex-1 truncate">{ex.name}</span>
@@ -90,7 +85,7 @@ function ExerciseSelector({ exercises, selectedId, onChange }: ExerciseSelectorP
               </button>
             ))}
             {sorted.length === 0 && (
-              <p className="px-3 py-2 text-sm" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.no_active_exercise')}</p>
+              <p className="px-3 py-2 text-sm text-gray-400">{t('dashboard.no_active_exercise')}</p>
             )}
           </div>
         </>
@@ -128,7 +123,7 @@ function BiaKpi({ raw }: { raw: string | null | undefined }) {
     >
       {score.total === 0 ? (
         <div className="flex items-center justify-center h-20">
-          <p className="text-xs text-center" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.bia_empty')}</p>
+          <p className="text-xs text-center text-gray-400">{t('dashboard.bia_empty')}</p>
         </div>
       ) : (
         <div className="flex items-center gap-4">
@@ -143,11 +138,11 @@ function BiaKpi({ raw }: { raw: string | null | undefined }) {
             {score.p1Processes.slice(0, 3).map(p => (
               <div key={p.id} className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-red-400 w-5 flex-shrink-0">P1</span>
-                <span className="text-xs truncate" style={{ color: 'var(--app-fg)' }}>{p.process_name}</span>
+                <span className="text-xs truncate text-white">{p.process_name}</span>
               </div>
             ))}
             {score.p1Processes.length === 0 && (
-              <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>—</p>
+              <p className="text-xs text-gray-400">—</p>
             )}
             <div className="flex flex-wrap gap-1.5 pt-1">
               {Object.entries(score.byCriticality).filter(([, v]) => v > 0).map(([k, v]) => (
@@ -206,7 +201,7 @@ function TimelineKpi({ injects, phases, exercise }: TimelineKpiProps) {
     >
       {injects.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-          <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_empty')}</p>
+          <p className="text-xs text-gray-400">{t('dashboard.timeline_empty')}</p>
           <Link to="/player" className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
             {t('dashboard.timeline_go')} <ExternalLink className="w-3 h-3" />
           </Link>
@@ -222,15 +217,15 @@ function TimelineKpi({ injects, phases, exercise }: TimelineKpiProps) {
           />
           <div className="flex-1 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_phases')}</span>
-              <span className="font-semibold" style={{ color: 'var(--app-fg)' }}>{phases.length}</span>
+              <span className="text-gray-400">{t('dashboard.timeline_phases')}</span>
+              <span className="font-semibold text-white">{phases.length}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_business')}</span>
+              <span className="text-gray-400">{t('dashboard.timeline_business')}</span>
               <span className="font-semibold text-primary-400">{business}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_technical')}</span>
+              <span className="text-gray-400">{t('dashboard.timeline_technical')}</span>
               <span className="font-semibold text-purple-400">{technical}</span>
             </div>
             {unpositioned > 0 && (
@@ -240,11 +235,11 @@ function TimelineKpi({ injects, phases, exercise }: TimelineKpiProps) {
               </div>
             )}
             {targetHours > 0 && (
-              <div className="pt-1" style={{ borderTop: '1px solid var(--surface-card-border)' }}>
+              <div className="pt-1 border-t border-gray-700">
                 <div className="flex items-center justify-between mb-1">
-                  <span style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.timeline_coverage', { covered: coveredHours, total: targetHours })}</span>
+                  <span className="text-gray-400">{t('dashboard.timeline_coverage', { covered: coveredHours, total: targetHours })}</span>
                 </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-border)' }}>
+                <div className="h-1.5 rounded-full overflow-hidden bg-gray-700">
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${Math.min(100, (coveredHours / targetHours) * 100)}%`, background: '#3b82f6' }}
@@ -282,7 +277,7 @@ function InjectBankKpi({ stats }: { stats: { total: number; by_status: Record<st
     >
       {stats.total === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-          <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.inject_bank_empty')}</p>
+          <p className="text-xs text-gray-400">{t('dashboard.inject_bank_empty')}</p>
           <Link to="/exercises/preparation/injects" className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
             {t('dashboard.inject_bank_go')} <ExternalLink className="w-3 h-3" />
           </Link>
@@ -299,11 +294,11 @@ function InjectBankKpi({ stats }: { stats: { total: number; by_status: Record<st
           <div className="flex-1 space-y-1.5">
             {kindEntries.slice(0, 6).map(([kind, count]) => (
               <div key={kind} className="flex items-center gap-2">
-                <span className="text-[10px] w-14 truncate flex-shrink-0" style={{ color: 'var(--sidebar-muted)' }}>{kind}</span>
-                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-border)' }}>
+                <span className="text-[10px] w-14 truncate flex-shrink-0 text-gray-400">{kind}</span>
+                <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-700">
                   <div className="h-full rounded-full bg-primary-500" style={{ width: `${(count / maxKind) * 100}%` }} />
                 </div>
-                <span className="text-[10px] tabular-nums w-4 text-right" style={{ color: 'var(--app-fg)' }}>{count}</span>
+                <span className="text-[10px] tabular-nums w-4 text-right text-white">{count}</span>
               </div>
             ))}
           </div>
@@ -413,22 +408,19 @@ export default function DashboardPage() {
     <div className="options-theme space-y-5 pb-8">
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div
-        className="rounded-xl p-5 space-y-4"
-        style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)' }}
-      >
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 space-y-4">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--app-fg)' }}>{t('dashboard.title')}</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--sidebar-muted)' }}>{t('login.platformTagline')}</p>
+          <h1 className="text-xl font-bold text-white">{t('dashboard.title')}</h1>
+          <p className="text-sm mt-0.5 text-gray-400">{t('login.platformTagline')}</p>
         </div>
 
         {/* Sélecteur exercice — nouvelle ligne, aligné à gauche */}
-        <div className="flex items-center gap-3" style={{ borderTop: '1px solid var(--surface-card-border)', paddingTop: '1rem' }}>
-          <span className="text-xs flex-shrink-0" style={{ color: 'var(--sidebar-muted)' }}>
+        <div className="flex items-center gap-3 border-t border-gray-700 pt-4">
+          <span className="text-xs flex-shrink-0 text-gray-400">
             {t('dashboard.exercise_scope_label')} :
           </span>
           {exLoading ? (
-            <div className="h-9 w-48 rounded-xl animate-pulse" style={{ background: 'var(--surface-card-border)' }} />
+            <div className="h-9 w-48 rounded-xl animate-pulse bg-gray-700" />
           ) : (
             <ExerciseSelector exercises={exercises} selectedId={selectedId} onChange={handleSelect} />
           )}
@@ -436,15 +428,12 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Score global ───────────────────────────────────── */}
-      <div
-        className="rounded-xl p-5 flex flex-col sm:flex-row items-center gap-6"
-        style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)' }}
-      >
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 flex flex-col sm:flex-row items-center gap-6">
         <div className="flex-shrink-0">
           <GaugeChart value={globalScore} size={180} />
         </div>
         <div className="flex-1 space-y-2">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--app-fg)' }}>{t('dashboard.maturity_score')}</h2>
+          <h2 className="text-sm font-semibold text-white">{t('dashboard.maturity_score')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: t('dashboard.org_completeness'), pct: orgScore?.pct ?? 0, color: '#3b82f6' },
@@ -455,7 +444,7 @@ export default function DashboardPage() {
               <div key={label} className="flex items-center gap-3">
                 <RadialProgress pct={pct} size={44} thickness={6} color={color} label={`${pct}%`} />
                 <div>
-                  <p className="text-[10px]" style={{ color: 'var(--sidebar-muted)' }}>{label}</p>
+                  <p className="text-[10px] text-gray-400">{label}</p>
                   <p className="text-sm font-bold" style={{ color }}>{pct}%</p>
                 </div>
               </div>
@@ -469,7 +458,7 @@ export default function DashboardPage() {
 
         {/* Organisation */}
         {configLoading ? (
-          <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
+          <div className="rounded-xl animate-pulse h-40 bg-gray-800" />
         ) : orgScore ? (
           <KpiCard
             title={t('dashboard.org_completeness')}
@@ -492,7 +481,7 @@ export default function DashboardPage() {
                 {orgScore.fields.map(f => (
                   <li key={f.key} className="flex items-center gap-1.5 text-[10px]">
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.done ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span style={{ color: f.done ? 'var(--app-fg)' : 'var(--sidebar-muted)' }}>{t(f.i18nKey)}</span>
+                    <span className={f.done ? 'text-white' : 'text-gray-400'}>{t(f.i18nKey)}</span>
                   </li>
                 ))}
               </ul>
@@ -501,7 +490,7 @@ export default function DashboardPage() {
         ) : (
           <KpiCard title={t('dashboard.org_completeness')}>
             <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-              <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.config_admin_only')}</p>
+              <p className="text-xs text-gray-400">{t('dashboard.config_admin_only')}</p>
             </div>
           </KpiCard>
         )}
@@ -511,13 +500,13 @@ export default function DashboardPage() {
 
         {/* Banque d'injects */}
         {bankLoading ? (
-          <div className="rounded-xl animate-pulse h-40" style={{ background: 'var(--surface-card)' }} />
+          <div className="rounded-xl animate-pulse h-40 bg-gray-800" />
         ) : bankStats ? (
           <InjectBankKpi stats={bankStats} />
         ) : (
           <KpiCard title={t('dashboard.inject_bank_title')}>
             <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-              <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.inject_bank_empty')}</p>
+              <p className="text-xs text-gray-400">{t('dashboard.inject_bank_empty')}</p>
             </div>
           </KpiCard>
         )}
@@ -536,7 +525,7 @@ export default function DashboardPage() {
               <CriteriaBar criteria={scenScore.criteria} score={scenScore.score} max={scenScore.max} />
             ) : (
               <div className="flex items-center justify-center py-4">
-                <p className="text-xs" style={{ color: 'var(--sidebar-muted)' }}>{t('dashboard.no_exercise_selected')}</p>
+                <p className="text-xs text-gray-400">{t('dashboard.no_exercise_selected')}</p>
               </div>
             )}
           </KpiCard>
@@ -545,35 +534,26 @@ export default function DashboardPage() {
           <TimelineKpi injects={injects} phases={phases as ExercisePhase[]} exercise={selectedExercise} />
         </div>
       ) : (
-        <div
-          className="rounded-xl p-6 text-center text-sm"
-          style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)', color: 'var(--sidebar-muted)' }}
-        >
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 text-center text-sm text-gray-400">
           {t('dashboard.no_exercise_selected')}
         </div>
       )}
 
       {/* ── Exercices récents ──────────────────────────────── */}
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{ background: 'var(--surface-card)', border: '1px solid var(--surface-card-border)' }}
-      >
-        <div
-          className="px-5 py-3 flex items-center justify-between"
-          style={{ borderBottom: '1px solid var(--surface-card-border)' }}
-        >
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--app-fg)' }}>{t('dashboard.recent_exercises')}</h2>
+      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 flex items-center justify-between border-b border-gray-700">
+          <h2 className="text-sm font-semibold text-white">{t('dashboard.recent_exercises')}</h2>
           <Link to="/exercises" className="text-xs text-primary-400 hover:text-primary-300 font-medium">
             {t('common.viewAll')}
           </Link>
         </div>
 
         {exLoading ? (
-          <div className="p-6 text-center text-sm" style={{ color: 'var(--sidebar-muted)' }}>{t('common.loading')}</div>
+          <div className="p-6 text-center text-sm text-gray-400">{t('common.loading')}</div>
         ) : recentExercises.length === 0 ? (
-          <div className="p-6 text-center text-sm" style={{ color: 'var(--sidebar-muted)' }}>{t('exercises.noneCreated')}</div>
+          <div className="p-6 text-center text-sm text-gray-400">{t('exercises.noneCreated')}</div>
         ) : (
-          <ul className="divide-y" style={{ borderColor: 'var(--surface-card-border)' }}>
+          <ul className="divide-y divide-gray-700">
             {recentExercises.map(ex => {
               const isSelected = ex.id === selectedId
               return (
@@ -587,9 +567,9 @@ export default function DashboardPage() {
                   >
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ex.status === 'running' ? 'bg-green-400' : ex.status === 'paused' ? 'bg-amber-400' : 'bg-gray-500'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--app-fg)' }}>{ex.name}</p>
+                      <p className="text-sm font-medium truncate text-white">{ex.name}</p>
                       {ex.description && (
-                        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--sidebar-muted)' }}>{ex.description}</p>
+                        <p className="text-xs truncate mt-0.5 text-gray-400">{ex.description}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -604,8 +584,7 @@ export default function DashboardPage() {
                       <Link
                         to={`/exercises/${ex.id}`}
                         onClick={e => e.stopPropagation()}
-                        className="p-1 rounded hover:bg-primary-600/10"
-                        style={{ color: 'var(--sidebar-muted)' }}
+                        className="p-1 rounded hover:bg-primary-600/10 text-gray-400"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
