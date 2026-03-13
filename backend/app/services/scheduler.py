@@ -1,7 +1,6 @@
 """Inject scheduler for automatic delivery during exercises."""
 import asyncio
 from datetime import datetime, timezone, timedelta
-from decimal import Decimal
 from typing import Dict, Optional, Set
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession

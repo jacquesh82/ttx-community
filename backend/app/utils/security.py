@@ -1,8 +1,6 @@
 """Security utilities for authentication and password hashing."""
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 

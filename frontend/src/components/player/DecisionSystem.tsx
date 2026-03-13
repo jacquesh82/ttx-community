@@ -6,7 +6,6 @@ import {
   FileText, 
   Plus, 
   Edit, 
-  Trash2, 
   Clock, 
   CheckCircle, 
   X, 
@@ -15,6 +14,7 @@ import {
   Users,
   AlertTriangle
 } from 'lucide-react'
+import LoadingScreen from '../LoadingScreen'
 
 interface DecisionSystemProps {
   onBack?: () => void
@@ -39,16 +39,6 @@ export default function DecisionSystem({ onBack }: DecisionSystemProps) {
   }) => {
     await createDecisionMutation.mutateAsync(data)
     setShowCreateForm(false)
-  }
-
-  const handleUpdateDecision = async (decisionId: number, updates: Partial<any>) => {
-    // Would need update API endpoint
-    console.log('Update decision:', decisionId, updates)
-  }
-
-  const handleDeleteDecision = async (decisionId: number) => {
-    // Would need delete API endpoint
-    console.log('Delete decision:', decisionId)
   }
 
   const getDecisionStatusInfo = (decision: any) => {
@@ -127,7 +117,7 @@ export default function DecisionSystem({ onBack }: DecisionSystemProps) {
       {/* Decisions list */}
       <div className="flex-1 overflow-y-auto p-4">
         {isLoadingDecisions ? (
-          <div className="text-center py-8 text-gray-400">Chargement...</div>
+          <LoadingScreen />
         ) : decisions.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <FileText size={48} className="mx-auto mb-3 opacity-50" />
@@ -146,8 +136,6 @@ export default function DecisionSystem({ onBack }: DecisionSystemProps) {
                 key={decision.id}
                 decision={decision}
                 onEdit={(d) => setEditingDecision(d)}
-                onDelete={(id) => handleDeleteDecision(id)}
-                onUpdate={(id, updates) => handleUpdateDecision(id, updates)}
               />
             ))}
           </div>
@@ -242,11 +230,9 @@ function DecisionForm({ onSubmit, onCancel }: DecisionFormProps) {
 interface DecisionCardProps {
   decision: Decision
   onEdit: (decision: Decision) => void
-  onDelete: (id: number) => void
-  onUpdate: (id: number, updates: Partial<Decision>) => void
 }
 
-function DecisionCard({ decision, onEdit, onDelete, onUpdate }: DecisionCardProps) {
+function DecisionCard({ decision, onEdit }: DecisionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const statusInfo = decision.decided_at 
@@ -293,12 +279,6 @@ function DecisionCard({ decision, onEdit, onDelete, onUpdate }: DecisionCardProp
             className="p-1 hover:bg-gray-600 rounded transition-colors"
           >
             <Edit size={16} />
-          </button>
-          <button
-            onClick={() => onDelete(decision.id)}
-            className="p-1 hover:bg-gray-600 rounded transition-colors"
-          >
-            <Trash2 size={16} />
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}

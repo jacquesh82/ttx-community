@@ -1,9 +1,9 @@
-"""Audit log router for admin compliance and security."""
+"""Audit log router – compliance and security trail for CrisisLab platform actions."""
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,38 +19,126 @@ router = APIRouter()
 
 # Schemas
 class AuditLogResponse(BaseModel):
-    """Schema for audit log response."""
-    id: int
-    user_id: Optional[int]
-    action: str
-    entity_type: Optional[str]
-    entity_id: Optional[int]
-    old_values: Optional[dict]
-    new_values: Optional[dict]
-    ip_address: Optional[str]
-    user_agent: Optional[str]
-    created_at: str
-    user_username: Optional[str] = None
+    """Single audit log entry recording a user or system action on the CrisisLab platform."""
+    id: int = Field(description="Unique audit entry identifier", examples=[1024])
+    user_id: Optional[int] = Field(
+        default=None,
+        description="ID of the user who performed the action (null for system actions)",
+        examples=[3],
+    )
+    action: str = Field(
+        description="HTTP method and path that was executed",
+        examples=["POST /api/exercises"],
+    )
+    entity_type: Optional[str] = Field(
+        default=None,
+        description="Domain entity affected by the action",
+        examples=["exercises"],
+    )
+    entity_id: Optional[int] = Field(
+        default=None,
+        description="ID of the affected entity",
+        examples=[7],
+    )
+    old_values: Optional[dict] = Field(
+        default=None,
+        description="Snapshot of field values before the change (for updates/deletes)",
+        examples=[{"status": "draft"}],
+    )
+    new_values: Optional[dict] = Field(
+        default=None,
+        description="Snapshot of field values after the change",
+        examples=[{"status": "active"}],
+    )
+    ip_address: Optional[str] = Field(
+        default=None,
+        description="Client IP address that originated the request",
+        examples=["192.168.1.42"],
+    )
+    user_agent: Optional[str] = Field(
+        default=None,
+        description="Client User-Agent header",
+        examples=["Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0"],
+    )
+    created_at: str = Field(
+        description="ISO-8601 timestamp of the action",
+        examples=["2024-11-14T10:05:32Z"],
+    )
+    user_username: Optional[str] = Field(
+        default=None,
+        description="Username of the acting user (denormalised for display)",
+        examples=["m.laurent"],
+    )
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 1024,
+                "user_id": 3,
+                "action": "PUT /api/injects/5",
+                "entity_type": "injects",
+                "entity_id": 5,
+                "old_values": {"status": "draft"},
+                "new_values": {"status": "sent"},
+                "ip_address": "192.168.1.42",
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0",
+                "created_at": "2024-11-14T10:05:32Z",
+                "user_username": "m.laurent",
+            }
+        },
+    }
 
 
 class AuditLogListResponse(BaseModel):
-    """Schema for list of audit logs."""
+    """Paginated collection of audit log entries."""
     logs: list[AuditLogResponse]
-    total: int
-    page: int
-    page_size: int
+    total: int = Field(description="Total entries matching the filters", examples=[542])
+    page: int = Field(description="Current page number (1-based)", examples=[1])
+    page_size: int = Field(description="Maximum items per page", examples=[50])
 
 
 class AuditStatsResponse(BaseModel):
-    """Schema for audit statistics."""
-    total_logs: int
-    logs_today: int
-    logs_this_week: int
-    unique_users: int
-    top_actions: list[dict]
-    top_users: list[dict]
+    """Aggregated audit statistics for the platform dashboard."""
+    total_logs: int = Field(description="Total number of audit entries", examples=[4231])
+    logs_today: int = Field(description="Entries recorded today (UTC)", examples=[87])
+    logs_this_week: int = Field(description="Entries recorded in the last 7 days", examples=[614])
+    unique_users: int = Field(description="Distinct users who generated at least one entry", examples=[12])
+    top_actions: list[dict] = Field(
+        description="Most frequent actions, sorted by count descending (max 10)",
+        examples=[[
+            {"action": "POST /api/exercises", "count": 45},
+            {"action": "PUT /api/injects/5", "count": 38},
+            {"action": "DELETE /api/users/3", "count": 12},
+        ]],
+    )
+    top_users: list[dict] = Field(
+        description="Most active users, sorted by count descending (max 10)",
+        examples=[[
+            {"user_id": 3, "username": "m.laurent", "count": 210},
+            {"user_id": 1, "username": "admin", "count": 185},
+        ]],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "total_logs": 4231,
+                "logs_today": 87,
+                "logs_this_week": 614,
+                "unique_users": 12,
+                "top_actions": [
+                    {"action": "POST /api/exercises", "count": 45},
+                    {"action": "PUT /api/injects/5", "count": 38},
+                    {"action": "DELETE /api/users/3", "count": 12},
+                ],
+                "top_users": [
+                    {"user_id": 3, "username": "m.laurent", "count": 210},
+                    {"user_id": 1, "username": "admin", "count": 185},
+                ],
+            }
+        }
+    }
 
 
 def build_audit_log_response(log: AuditLog) -> AuditLogResponse:
@@ -83,7 +171,17 @@ async def list_audit_logs(
     _: User = Depends(require_permission(Permission.AUDIT_READ)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List audit logs with filters (admin only)."""
+    """List audit log entries with optional filters.
+
+    Returns a reverse-chronological paginated list. Supports filtering by:
+    - `user_id` – entries from a specific user
+    - `action` – partial match on the HTTP method+path (case-insensitive)
+    - `entity_type` – domain entity (e.g. `exercises`, `injects`, `users`)
+    - `start_date` / `end_date` – ISO-8601 date range
+    - `search` – free-text search across action and entity_type
+
+    **Auth:** requires `AUDIT_READ` permission (admin only).
+    """
     query = select(AuditLog)
     count_query = select(func.count(AuditLog.id))
     
@@ -149,7 +247,13 @@ async def get_audit_stats(
     _: User = Depends(require_permission(Permission.AUDIT_READ)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get audit log statistics (admin only)."""
+    """Return aggregated audit statistics for the CrisisLab platform.
+
+    Provides totals (all-time, today, this week), the number of distinct
+    users, and the top-10 most frequent actions and most active users.
+
+    **Auth:** requires `AUDIT_READ` permission (admin only).
+    """
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
@@ -217,7 +321,13 @@ async def get_audit_log(
     _: User = Depends(require_permission(Permission.AUDIT_READ)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get a specific audit log entry (admin only)."""
+    """Retrieve a single audit log entry by ID.
+
+    Returns the full entry including old/new value snapshots and the
+    associated username.
+
+    **Auth:** requires `AUDIT_READ` permission (admin only).
+    """
     result = await db.execute(
         select(AuditLog)
         .options(selectinload(AuditLog.user))
@@ -241,7 +351,14 @@ async def export_audit_logs_csv(
     _: User = Depends(require_permission(Permission.AUDIT_EXPORT)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Export audit logs as CSV (admin only)."""
+    """Export audit log entries as a downloadable CSV file.
+
+    Applies the same filters as the list endpoint. The export is capped at
+    10 000 rows. The response has `Content-Type: text/csv` and a
+    `Content-Disposition` header with a timestamped filename.
+
+    **Auth:** requires `AUDIT_EXPORT` permission (admin only).
+    """
     import csv
     import io
     
@@ -298,31 +415,3 @@ async def export_audit_logs_csv(
             'Content-Disposition': f'attachment; filename=audit_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         }
     )
-
-
-# Helper function to create audit log entries
-async def create_audit_log(
-    db: AsyncSession,
-    user_id: int | None,
-    action: str,
-    entity_type: str | None = None,
-    entity_id: int | None = None,
-    old_values: dict | None = None,
-    new_values: dict | None = None,
-    ip_address: str | None = None,
-    user_agent: str | None = None,
-) -> AuditLog:
-    """Create an audit log entry."""
-    log = AuditLog(
-        user_id=user_id,
-        action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        old_values=old_values,
-        new_values=new_values,
-        ip_address=ip_address,
-        user_agent=user_agent,
-    )
-    db.add(log)
-    await db.flush()
-    return log

@@ -99,26 +99,3 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return context?.exercise_time || null
   }
 }))
-
-// Hook for polling exercise time updates
-export const useExerciseTimePolling = (exerciseId: number | null, intervalMs: number = 30000) => {
-  const fetchContext = usePlayerStore(state => state.fetchContext)
-  
-  // Effect for periodic context refresh (for exercise time)
-  if (exerciseId && intervalMs > 0) {
-    setInterval(() => {
-      fetchContext(exerciseId)
-    }, intervalMs)
-  }
-}
-
-// Hook for polling notifications
-export const useNotificationPolling = (exerciseId: number | null, intervalMs: number = 10000) => {
-  const fetchNotifications = usePlayerStore(state => state.fetchNotifications)
-  
-  if (exerciseId && intervalMs > 0) {
-    setInterval(() => {
-      fetchNotifications(exerciseId)
-    }, intervalMs)
-  }
-}

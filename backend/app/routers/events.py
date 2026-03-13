@@ -1,9 +1,9 @@
-"""Events router for timeline."""
+"""Events router – unified timeline of all exercise activity in CrisisLab."""
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,28 +33,77 @@ async def _ensure_exercise_in_tenant(
 
 # Schemas
 class EventResponse(BaseModel):
-    """Schema for event response."""
-    id: int
-    exercise_id: int
-    type: EventType
-    entity_type: Optional[str]
-    entity_id: Optional[int]
-    actor_type: EventActorType
-    actor_id: Optional[int]
-    actor_label: Optional[str]
-    payload: Optional[dict]
-    ts: datetime
-    exercise_time: Optional[datetime]
+    """Single timeline event recorded during a CrisisLab exercise."""
+    id: int = Field(description="Unique event identifier", examples=[42])
+    exercise_id: int = Field(description="Exercise this event belongs to", examples=[1])
+    type: EventType = Field(
+        description="Category of the event (exercise lifecycle, inject, mail, etc.)",
+        examples=["inject_sent"],
+    )
+    entity_type: Optional[str] = Field(
+        default=None,
+        description="Type of the domain object involved (e.g. injects, mails)",
+        examples=["injects"],
+    )
+    entity_id: Optional[int] = Field(
+        default=None,
+        description="ID of the domain object involved",
+        examples=[5],
+    )
+    actor_type: EventActorType = Field(
+        description="Who or what triggered the event",
+        examples=["user"],
+    )
+    actor_id: Optional[int] = Field(
+        default=None,
+        description="ID of the acting user (null for system events)",
+        examples=[3],
+    )
+    actor_label: Optional[str] = Field(
+        default=None,
+        description="Human-readable label for the actor",
+        examples=["Marie Laurent (animateur)"],
+    )
+    payload: Optional[dict] = Field(
+        default=None,
+        description="Arbitrary JSON payload with event-specific details",
+        examples=[{"inject_title": "Alerte ransomware CYBER-STORM 2024", "channel": "mail"}],
+    )
+    ts: datetime = Field(description="Wall-clock timestamp when the event was recorded")
+    exercise_time: Optional[datetime] = Field(
+        default=None,
+        description="In-exercise simulated time (may differ from wall-clock during accelerated play)",
+    )
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 42,
+                "exercise_id": 1,
+                "type": "inject_sent",
+                "entity_type": "injects",
+                "entity_id": 5,
+                "actor_type": "user",
+                "actor_id": 3,
+                "actor_label": "Marie Laurent (animateur)",
+                "payload": {
+                    "inject_title": "Alerte ransomware CYBER-STORM 2024",
+                    "channel": "mail",
+                },
+                "ts": "2024-11-14T10:32:00Z",
+                "exercise_time": "2024-11-14T10:32:00Z",
+            }
+        },
+    }
 
 
 class EventListResponse(BaseModel):
-    """Schema for list of events."""
+    """Paginated list of timeline events."""
     events: list[EventResponse]
-    total: int
-    page: int
-    page_size: int
+    total: int = Field(description="Total events matching the query", examples=[128])
+    page: int = Field(description="Current page number (1-based)", examples=[1])
+    page_size: int = Field(description="Maximum items per page", examples=[50])
 
 
 @router.get("", response_model=EventListResponse)
@@ -70,7 +119,16 @@ async def list_events(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List events for timeline."""
+    """List timeline events across exercises in the current tenant.
+
+    Returns a reverse-chronological paginated list. Supports filtering by:
+    - `exercise_id` – restrict to a single exercise
+    - `type` – event category (e.g. `inject_sent`, `exercise_started`)
+    - `entity_type` / `entity_id` – events related to a specific domain object
+    - `since` – only events after this ISO-8601 timestamp (useful for polling)
+
+    **Auth:** any authenticated user.
+    """
     query = select(Event).join(Exercise, Exercise.id == Event.exercise_id).where(
         Exercise.tenant_id == tenant_ctx.tenant.id
     )
@@ -119,7 +177,13 @@ async def get_event(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get an event by ID."""
+    """Retrieve a single timeline event by its ID.
+
+    Returns the full event payload including actor details and simulated
+    exercise time.
+
+    **Auth:** any authenticated user.
+    """
     result = await db.execute(
         select(Event)
         .join(Exercise, Exercise.id == Event.exercise_id)
@@ -134,33 +198,3 @@ async def get_event(
         raise HTTPException(status_code=404, detail="Event not found")
     
     return EventResponse.model_validate(event)
-
-
-# Service function for creating events
-async def create_event(
-    db: AsyncSession,
-    exercise_id: int,
-    event_type: EventType,
-    entity_type: Optional[str] = None,
-    entity_id: Optional[int] = None,
-    actor_type: EventActorType = EventActorType.SYSTEM,
-    actor_id: Optional[int] = None,
-    actor_label: Optional[str] = None,
-    payload: Optional[dict] = None,
-    exercise_time: Optional[datetime] = None,
-) -> Event:
-    """Create an event and add it to the timeline."""
-    event = Event(
-        exercise_id=exercise_id,
-        type=event_type,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        actor_type=actor_type,
-        actor_id=actor_id,
-        actor_label=actor_label,
-        payload=payload,
-        exercise_time=exercise_time,
-    )
-    db.add(event)
-    await db.flush()
-    return event
