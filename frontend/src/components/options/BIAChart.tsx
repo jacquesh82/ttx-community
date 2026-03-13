@@ -132,7 +132,10 @@ export default function BIAChart({ processes, onSelectProcess }: BIAChartProps) 
       .attr('fill', '#fff')
       .attr('font-size', 11)
       .attr('pointer-events', 'none')
-      .text((d) => (d.process_name.length > 12 ? d.process_name.slice(0, 11) + '…' : d.process_name))
+      .text((d) => {
+        const name = d.process_name ?? ''
+        return name.length > 12 ? name.slice(0, 11) + '…' : name
+      })
 
     // X axis label
     svg

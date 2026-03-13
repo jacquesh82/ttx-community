@@ -41,108 +41,30 @@ plugin_type_enum = PgEnum(
 )
 
 
-# Static fallback metadata used only when plugin_configurations misses a row.
-PLUGIN_CONFIG_FALLBACKS: dict[str, dict[str, Any]] = {
-    "directory": {
-        "name": "Annuaire de Crise",
-        "description": "Gestion des contacts et ressources de crise",
-        "icon": "BookOpen",
-        "color": "green",
-        "default_enabled": True,
-        "coming_soon": False,
-        "sort_order": 1,
-    },
-    "social_internal": {
-        "name": "Reseau social",
-        "description": "Simulation de fil social interne",
-        "icon": "Twitter",
-        "color": "blue",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 2,
-    },
-    "tv": {
-        "name": "TV / Medias",
-        "description": "Simulation de chaines TV et segments media",
-        "icon": "Tv",
-        "color": "purple",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 3,
-    },
-    "mailbox": {
-        "name": "Messagerie",
-        "description": "Simulation de boite mail",
-        "icon": "Mail",
-        "color": "blue",
-        "default_enabled": True,
-        "coming_soon": False,
-        "sort_order": 4,
-    },
-    "chat": {
-        "name": "Chat",
-        "description": "Communication en temps reel",
-        "icon": "MessageCircle",
-        "color": "teal",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 5,
-    },
-    "press_feed": {
-        "name": "Fil presse",
-        "description": "Simulation de flux actualites media",
-        "icon": "Newspaper",
-        "color": "gray",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 6,
-    },
-    "sms": {
-        "name": "SMS simules",
-        "description": "Simulation de messages SMS",
-        "icon": "MessageSquare",
-        "color": "gray",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 7,
-    },
-    "gov_channel": {
-        "name": "Canal gouvernement",
-        "description": "Messages institutionnels gouvernementaux",
-        "icon": "Landmark",
-        "color": "gray",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 8,
-    },
-    "anssi_channel": {
-        "name": "Canal ANSSI",
-        "description": "Communications techniques ANSSI",
-        "icon": "Shield",
-        "color": "gray",
-        "default_enabled": False,
-        "coming_soon": False,
-        "sort_order": 9,
-    },
-}
-
-
 def get_plugin_config_fallback(plugin_type: str, sort_order: int | None = None) -> dict[str, Any]:
-    """Return fallback plugin config when DB row is missing."""
-    fallback = PLUGIN_CONFIG_FALLBACKS.get(plugin_type, {})
-    resolved_sort_order = sort_order if sort_order is not None else int(fallback.get("sort_order", 999))
+    """Return fallback plugin config when DB row is missing.
 
-    if fallback:
+    Uses the plugin registry as the source of truth; falls back to
+    a generic entry for unknown plugin types.
+    """
+    from app.plugins import get_plugin_registry
+
+    registry = get_plugin_registry()
+    manifest = registry.get(plugin_type)
+
+    if manifest is not None:
+        resolved_sort_order = sort_order if sort_order is not None else manifest.sort_order
         return {
-            "name": str(fallback.get("name", plugin_type)),
-            "description": str(fallback.get("description", "")),
-            "icon": str(fallback.get("icon", "Box")),
-            "color": str(fallback.get("color", "gray")),
-            "default_enabled": bool(fallback.get("default_enabled", False)),
-            "coming_soon": bool(fallback.get("coming_soon", False)),
+            "name": manifest.name,
+            "description": manifest.description,
+            "icon": manifest.icon,
+            "color": manifest.default_color,
+            "default_enabled": manifest.default_enabled,
+            "coming_soon": manifest.coming_soon,
             "sort_order": resolved_sort_order,
         }
 
+    resolved_sort_order = sort_order if sort_order is not None else 999
     human_name = plugin_type.replace("_", " ").title() if plugin_type else "Plugin"
     return {
         "name": human_name,

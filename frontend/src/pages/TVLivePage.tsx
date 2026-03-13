@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { tvApi, TickerItem, TVLiveState } from '../services/api'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function TVLivePage() {
   const { exerciseId } = useParams<{ exerciseId: string }>()
@@ -28,11 +29,7 @@ export default function TVLivePage() {
   }, [fetchLiveState])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   if (error) {

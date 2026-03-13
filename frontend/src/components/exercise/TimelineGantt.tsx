@@ -50,6 +50,7 @@ import {
 } from 'lucide-react'
 import Modal from '../Modal'
 import { useAppDialog } from '../../contexts/AppDialogContext'
+import LoadingScreen from '../LoadingScreen'
 import { PHASE_COLOR_PALETTE } from '../../features/phasePresets'
 import { formatSchemaError, validateWithSchema } from '../../utils/jsonSchemaValidation'
 
@@ -2028,7 +2029,7 @@ export default function TimelineGantt({
       {/* Timeline Container */}
       <div className="bg-white rounded-lg shadow overflow-hidden" ref={containerRef}>
         {isLoading || phases === undefined ? (
-          <div className="p-10 text-center text-gray-500">Chargement…</div>
+          <LoadingScreen />
         ) : (
           <div className="overflow-x-auto relative">
             {/* Message si aucun inject */}
@@ -2459,7 +2460,7 @@ export default function TimelineGantt({
           
           <div className="border rounded-md max-h-80 overflow-y-auto">
             {isFetchingBank ? (
-              <div className="p-4 text-center text-gray-500">Chargement...</div>
+              <LoadingScreen />
             ) : (bankCatalog?.items?.length ?? 0) === 0 ? (
               <div className="p-4 text-center text-gray-500">Aucun élément trouvé</div>
             ) : (

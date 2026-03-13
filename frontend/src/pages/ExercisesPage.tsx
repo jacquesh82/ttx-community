@@ -6,6 +6,7 @@ import Modal from '../components/Modal'
 import { Exercise, exercisesApi } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { Plus, Dumbbell, Play, Trash2 } from 'lucide-react'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function ExercisesPage() {
   const { t } = useTranslation()
@@ -80,7 +81,7 @@ export default function ExercisesPage() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
+        <LoadingScreen />
       ) : exercises.length === 0 ? (
         <div className="bg-gray-800 border border-gray-700 rounded-xl py-12 text-center">
           <Dumbbell className="mx-auto text-gray-600 mb-4" size={48} />

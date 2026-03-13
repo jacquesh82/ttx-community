@@ -19,6 +19,9 @@ const queryClient = new QueryClient({
 
 applyThemeToDocument(useThemeStore.getState().mode)
 
+const edition = import.meta.env.VITE_EDITION || 'community'
+document.title = `Crisis Lab ${edition.charAt(0).toUpperCase() + edition.slice(1)}`
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

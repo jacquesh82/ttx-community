@@ -1546,6 +1546,15 @@ export interface ApiKeyCreated extends ApiKeyItem {
   key: string
 }
 
+export interface PlaceholderItem {
+  key: string
+  placeholder: string
+  category: string
+  label: string
+  value: string | null
+  contextual: boolean
+}
+
 // App Configuration API
 export interface AppConfiguration {
   organization_name: string
@@ -1656,6 +1665,12 @@ export const adminApi = {
   },
   revokeApiKey: async (keyId: number): Promise<void> => {
     await api.delete(`/admin/api-keys/${keyId}`)
+  },
+  getPlaceholders: async (exerciseId?: number): Promise<PlaceholderItem[]> => {
+    const response = await api.get('/admin/placeholders', {
+      params: exerciseId ? { exercise_id: exerciseId } : undefined,
+    })
+    return response.data.placeholders
   },
 }
 

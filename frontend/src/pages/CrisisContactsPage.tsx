@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { crisisContactsApi } from '../services/api'
 import { ArrowLeft, Search, Plus, Upload, Download, Phone, Mail, Edit2, Trash2, X, AlertCircle } from 'lucide-react'
 import Modal from '../components/Modal'
+import LoadingScreen from '../components/LoadingScreen'
 
 interface Contact {
   id: number
@@ -153,7 +154,7 @@ export default function CrisisContactsPage() {
 
       {/* Contacts List */}
       {isLoading ? (
-        <div className="text-center py-12">Chargement...</div>
+        <LoadingScreen />
       ) : contacts.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <p className="text-gray-500 mb-4">Aucun contact trouvé</p>

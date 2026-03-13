@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { mediaApi, Media, ExercisePlugin, exercisesApi } from '../services/api'
 import Modal from '../components/Modal'
 import ExerciseSubpageShell from '../components/exercise/ExerciseSubpageShell'
+import LoadingScreen from '../components/LoadingScreen'
 import { useAppDialog } from '../contexts/AppDialogContext'
 
 export default function MediaLibraryPage() {
@@ -196,9 +197,7 @@ export default function MediaLibraryPage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-        </div>
+        <LoadingScreen />
       ) : (
         <>
           {/* Media Grid */}

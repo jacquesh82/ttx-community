@@ -39,6 +39,7 @@ import { exercisesApi, injectsApi, crisisManagementApi, Inject, Exercise } from 
 import { useWebSocket } from '../hooks/useWebSocket'
 import { WebSocketMessage } from '../services/websocketService'
 import Modal from '../components/Modal'
+import LoadingScreen from '../components/LoadingScreen'
 import { useAppDialog } from '../contexts/AppDialogContext'
 
 // Inject type configuration
@@ -453,9 +454,7 @@ export default function AnimateurDashboardPage() {
         {/* Timeline Panel */}
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <RefreshCw size={32} className="animate-spin text-gray-500" />
-            </div>
+            <LoadingScreen />
           ) : !selectedExerciseId ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <Activity size={48} className="mb-4 opacity-50" />

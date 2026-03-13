@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import LoadingScreen from '../LoadingScreen'
 
 interface ChatSystemProps {
   onBack?: () => void
@@ -92,7 +93,7 @@ export default function ChatSystem({ onBack }: ChatSystemProps) {
           <div className="text-sm text-gray-400 mb-2">Salons disponibles</div>
           <div className="space-y-2">
             {isLoadingChatRooms ? (
-              <div className="text-center py-4 text-gray-400">Chargement...</div>
+              <LoadingScreen />
             ) : chatRooms.length === 0 ? (
               <div className="text-center py-4 text-gray-400">Aucun salon de discussion</div>
             ) : (

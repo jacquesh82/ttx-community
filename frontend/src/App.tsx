@@ -1,9 +1,12 @@
-import { useEffect, useState, ReactNode } from 'react'
+import { useEffect, useState, ReactNode, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import ModuleUnavailablePage from './pages/ModuleUnavailablePage'
 import { useAuthStore } from './stores/authStore'
 import { applyThemeToDocument, useThemeStore } from './stores/themeStore'
 import { authApi } from './services/api'
+
+// Loading
+import LoadingScreen from './components/LoadingScreen'
 
 // Layouts
 import Layout from './components/Layout'
@@ -24,18 +27,23 @@ import DebugTimelineRtPage from './pages/debug/DebugTimelineRtPage'
 // Participant
 import ParticipantLandingPage from './pages/ParticipantLandingPage'
 
-// Player pages (joueur)
+// Player pages (joueur) — non-plugin pages
 import PlayerHomePage from './pages/player/PlayerHomePage'
 import PlayerTimelinePage from './pages/player/PlayerTimelinePage'
-import PlayerTVLivePage from './pages/player/PlayerTVLivePage'
-import PlayerMailPage from './pages/player/PlayerMailPage'
-import PlayerChatPage from './pages/player/PlayerChatPage'
 import PlayerDecisionsPage from './pages/player/PlayerDecisionsPage'
 import PlayerMediaPage from './pages/player/PlayerMediaPage'
-import PlayerSocialFeedPage from './pages/player/PlayerSocialFeedPage'
-import PlayerPhonePage from './pages/player/PlayerPhonePage'
-import PlayerPressFeedPage from './pages/player/PlayerPressFeedPage'
-import PlayerSMSPage from './pages/player/PlayerSMSPage'
+
+// Plugin registry for dynamic player routes
+import { getSimulatorPlugins } from './plugins/registry'
+
+// Build dynamic player routes from plugin registry
+const pluginPlayerRoutes = getSimulatorPlugins()
+  .filter((p) => p.playerRoute !== null && p.PlayerPage !== null)
+  .map((p) => ({
+    path: p.playerRoute!.replace(/^\//, ''), // strip leading /
+    Component: p.PlayerPage!,
+    code: p.code,
+  }))
 
 // Admin / Animateur pages
 import DashboardPage from './pages/DashboardPage'
@@ -138,11 +146,7 @@ function App() {
   }, [])
 
   if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white">Chargement...</div>
-      </div>
-    )
+    return <LoadingScreen fullPage />
   }
 
   // Non connecté → login uniquement (mais debug pages accessibles)
@@ -207,30 +211,6 @@ function App() {
         }
       />
       <Route
-        path="/play/:exerciseId/tv"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerTVLivePage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
-      <Route
-        path="/play/:exerciseId/mail"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerMailPage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
-      <Route
-        path="/play/:exerciseId/chat"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerChatPage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
-      <Route
         path="/play/:exerciseId/decisions"
         element={
           <PlayerProvider>
@@ -246,38 +226,22 @@ function App() {
           </PlayerProvider>
         }
       />
-      <Route
-        path="/play/:exerciseId/social"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerSocialFeedPage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
-      <Route
-        path="/play/:exerciseId/phone"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerPhonePage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
-      <Route
-        path="/play/:exerciseId/press"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerPressFeedPage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
-      <Route
-        path="/play/:exerciseId/sms"
-        element={
-          <PlayerProvider>
-            <PlayerLayout><PlayerSMSPage /></PlayerLayout>
-          </PlayerProvider>
-        }
-      />
+      {/* Dynamic player routes from plugin registry */}
+      {pluginPlayerRoutes.map(({ path, Component, code }) => (
+        <Route
+          key={code}
+          path={`/play/:exerciseId/${path}`}
+          element={
+            <PlayerProvider>
+              <PlayerLayout>
+                <Suspense fallback={<LoadingScreen />}>
+                  <Component />
+                </Suspense>
+              </PlayerLayout>
+            </PlayerProvider>
+          }
+        />
+      ))}
 
       {/* ─── OBSERVATEUR : interface lecture seule ─── */}
       {/* L'observateur réutilise les pages joueur mais dans ObservateurLayout */}
@@ -298,30 +262,6 @@ function App() {
         }
       />
       <Route
-        path="/observe/:exerciseId/mail"
-        element={
-          <RoleGuard allowed={['observateur', 'animateur', 'admin']} redirectTo="/">
-            <ObservateurLayout><PlayerMailPage /></ObservateurLayout>
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/observe/:exerciseId/chat"
-        element={
-          <RoleGuard allowed={['observateur', 'animateur', 'admin']} redirectTo="/">
-            <ObservateurLayout><PlayerChatPage /></ObservateurLayout>
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/observe/:exerciseId/tv"
-        element={
-          <RoleGuard allowed={['observateur', 'animateur', 'admin']} redirectTo="/">
-            <ObservateurLayout><PlayerTVLivePage /></ObservateurLayout>
-          </RoleGuard>
-        }
-      />
-      <Route
         path="/observe/:exerciseId/media"
         element={
           <RoleGuard allowed={['observateur', 'animateur', 'admin']} redirectTo="/">
@@ -337,6 +277,22 @@ function App() {
           </RoleGuard>
         }
       />
+      {/* Dynamic observer routes from plugin registry */}
+      {pluginPlayerRoutes.map(({ path, Component, code }) => (
+        <Route
+          key={`observe-${code}`}
+          path={`/observe/:exerciseId/${path}`}
+          element={
+            <RoleGuard allowed={['observateur', 'animateur', 'admin']} redirectTo="/">
+              <ObservateurLayout>
+                <Suspense fallback={<LoadingScreen />}>
+                  <Component />
+                </Suspense>
+              </ObservateurLayout>
+            </RoleGuard>
+          }
+        />
+      ))}
 
       {/* ─── ADMIN / ANIMATEUR : interface standard ─── */}
       <Route

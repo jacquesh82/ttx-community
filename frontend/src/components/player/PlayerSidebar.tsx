@@ -1,38 +1,54 @@
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Home,
   Clock,
-  Mail,
-  Tv,
-  MessageCircle,
   FileText,
   FolderOpen,
   ChevronRight,
-  Phone,
-  Newspaper,
-  MessageSquare,
-  AtSign,
+  type LucideIcon,
 } from 'lucide-react'
+import { getSimulatorPlugins } from '../../plugins/registry'
 
 interface PlayerSidebarProps {
   exerciseId: string
 }
 
-const navItems = [
+interface NavItem {
+  path: string
+  icon: LucideIcon
+  label?: string
+  labelKey?: string
+}
+
+// Static nav items that are not plugins
+const staticItemsBefore: NavItem[] = [
   { path: '', icon: Home, label: 'Accueil' },
   { path: '/timeline', icon: Clock, label: 'Timeline' },
-  { path: '/mail', icon: Mail, label: 'Emails' },
-  { path: '/chat', icon: MessageCircle, label: 'Chat équipe' },
-  { path: '/sms', icon: MessageSquare, label: 'SMS' },
-  { path: '/phone', icon: Phone, label: 'Téléphone' },
-  { path: '/social', icon: AtSign, label: 'Réseaux sociaux' },
-  { path: '/press', icon: Newspaper, label: 'Presse' },
-  { path: '/tv', icon: Tv, label: 'TV Live' },
+]
+
+const staticItemsAfter: NavItem[] = [
   { path: '/decisions', icon: FileText, label: 'Décisions' },
   { path: '/media', icon: FolderOpen, label: 'Médiathèque' },
 ]
 
+// Build plugin-driven nav items from registry
+const pluginNavItems: NavItem[] = getSimulatorPlugins()
+  .filter((p) => p.playerRoute !== null)
+  .map((p) => ({
+    path: p.playerRoute!,
+    icon: p.icon,
+    labelKey: p.name,
+  }))
+
+const navItems: NavItem[] = [
+  ...staticItemsBefore,
+  ...pluginNavItems,
+  ...staticItemsAfter,
+]
+
 export default function PlayerSidebar({ exerciseId }: PlayerSidebarProps) {
+  const { t } = useTranslation()
   return (
     <aside className="w-48 bg-gray-900 border-r border-gray-700 flex flex-col">
       {/* Navigation header */}
@@ -41,7 +57,7 @@ export default function PlayerSidebar({ exerciseId }: PlayerSidebarProps) {
           NAVIGATION
         </h3>
       </div>
-      
+
       {/* Navigation items */}
       <nav className="flex-1 py-2">
         <ul className="space-y-0.5 px-2">
@@ -62,7 +78,7 @@ export default function PlayerSidebar({ exerciseId }: PlayerSidebarProps) {
                     {isActive && <ChevronRight size={16} className="text-white" />}
                     {!isActive && <span className="w-4" />}
                     <item.icon size={18} />
-                    <span className="text-sm">{item.label}</span>
+                    <span className="text-sm">{item.labelKey ? t(item.labelKey) : item.label}</span>
                   </>
                 )}
               </NavLink>

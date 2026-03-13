@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit, Trash2, Eye, FileText } from 'lucide-react'
+import LoadingScreen from '../../components/LoadingScreen'
 import Modal from '../../components/Modal'
 import { welcomeKitApi } from '../../services/api'
 import { useAppDialog } from '../../contexts/AppDialogContext'
@@ -301,7 +302,7 @@ export default function WelcomeKitTemplatesPage() {
         </table>
 
         {isLoading && (
-          <div className="p-8 text-center text-gray-400">Chargement...</div>
+          <LoadingScreen />
         )}
 
         {!isLoading && filteredTemplates.length === 0 && (

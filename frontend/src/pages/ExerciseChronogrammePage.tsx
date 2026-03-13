@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import Modal from '../components/Modal'
 import ExerciseSubpageShell from '../components/exercise/ExerciseSubpageShell'
+import LoadingScreen from '../components/LoadingScreen'
 import { InjectBankKind } from '../services/api'
 import { useAppDialog } from '../contexts/AppDialogContext'
 
@@ -301,7 +302,7 @@ export default function ExerciseChronogrammePage() {
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {isLoading ? (
-          <div className="p-10 text-center text-gray-500">Chargement…</div>
+          <LoadingScreen />
         ) : isError ? (
           <div className="p-10 text-center text-red-500">Erreur</div>
         ) : filteredInjects.length === 0 ? (

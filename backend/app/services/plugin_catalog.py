@@ -131,6 +131,10 @@ async def get_plugin_enum_values(db: AsyncSession) -> list[str]:
     return _dedupe([str(value).strip() for value in plugin_type_enum.enums if str(value).strip()])
 
 
+# Plugin types that exist in the PG enum but should no longer appear in the UI.
+HIDDEN_PLUGIN_TYPES: set[str] = {"gov_channel", "anssi_channel"}
+
+
 async def get_canonical_plugin_types(db: AsyncSession) -> list[str]:
     """Return plugin types from DB while hiding legacy aliases when canonical values exist."""
     enum_values = await get_plugin_enum_values(db)
@@ -145,7 +149,7 @@ async def get_canonical_plugin_types(db: AsyncSession) -> list[str]:
             candidate = mapped_value
         else:
             candidate = raw_value
-        if candidate not in seen:
+        if candidate not in seen and candidate not in HIDDEN_PLUGIN_TYPES:
             seen.add(candidate)
             canonical_types.append(candidate)
 

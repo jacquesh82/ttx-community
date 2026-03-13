@@ -50,6 +50,7 @@ import {
 } from 'lucide-react'
 import Modal from '../components/Modal'
 import ImportCSVModal from '../components/ImportCSVModal'
+import LoadingScreen from '../components/LoadingScreen'
 import { useAppDialog } from '../contexts/AppDialogContext'
 
 // ─── Config par type ──────────────────────────────────────────────────────────
@@ -1071,7 +1072,7 @@ export default function ExerciseInjectsPage() {
       {/* Tableau */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {isLoading ? (
-          <div className="p-10 text-center text-gray-500">Chargement…</div>
+          <LoadingScreen />
         ) : isError ? (
           <div className="p-10 text-center text-red-500">Erreur de chargement</div>
         ) : filteredInjects.length === 0 ? (

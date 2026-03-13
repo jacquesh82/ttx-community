@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { tvApi, mediaApi, TVLiveState, TVChannel, TVSegment, TVPlaylistItem, Media, TickerItem } from '../services/api'
 import Modal from '../components/Modal'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function TVStudioPage() {
   const { exerciseId } = useParams<{ exerciseId: string }>()
@@ -144,11 +145,7 @@ export default function TVStudioPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (

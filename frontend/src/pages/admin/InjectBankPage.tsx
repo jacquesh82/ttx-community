@@ -16,6 +16,7 @@ import { useInjectBankStatuses } from '../../hooks/useInjectBank'
 import { Plus, Pencil, Trash2, Search, LibraryBig, Tag, Upload, Download, Eye, FileArchive, FileJson, Mail, MessageSquare, BookOpen, Shield, Newspaper, Link2, Lightbulb, FileText, Users, ExternalLink, X, Image as ImageIcon, Video, File as FileIcon, ZoomIn, ZoomOut, RotateCw, Maximize2, Play, Pause, Volume2, VolumeX, Repeat2, Heart, BarChart3 } from 'lucide-react'
 import Modal from '../../components/Modal'
 import MediaViewer from '../../components/MediaViewer'
+import LoadingScreen from '../../components/LoadingScreen'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { formatSchemaError, validateWithSchema } from '../../utils/jsonSchemaValidation'
 
@@ -174,12 +175,12 @@ type TimelineInjectTypeFormatConfig = {
 }
 
 const DEFAULT_TIMELINE_INJECT_TYPE_FORMATS: TimelineInjectTypeFormatConfig[] = [
-  { type: 'mail', formats: ['text'] as InjectDataFormat[], simulator: 'mail' },
+  { type: 'mail', formats: ['text'] as InjectDataFormat[], simulator: 'mailbox' },
   { type: 'sms', formats: ['text', 'image'] as InjectDataFormat[], simulator: 'sms' },
-  { type: 'call', formats: ['audio'] as InjectDataFormat[], simulator: 'tel' },
-  { type: 'socialnet', formats: ['text', 'video', 'image'] as InjectDataFormat[], simulator: 'social' },
+  { type: 'call', formats: ['audio'] as InjectDataFormat[], simulator: null },
+  { type: 'socialnet', formats: ['text', 'video', 'image'] as InjectDataFormat[], simulator: 'social_internal' },
   { type: 'tv', formats: ['video'] as InjectDataFormat[], simulator: 'tv' },
-  { type: 'doc', formats: ['text', 'image'] as InjectDataFormat[], simulator: 'mail' },
+  { type: 'doc', formats: ['text', 'image'] as InjectDataFormat[], simulator: 'mailbox' },
   { type: 'directory', formats: ['text'] as InjectDataFormat[], simulator: null },
   { type: 'story', formats: ['text'] as InjectDataFormat[], simulator: null },
 ]
@@ -1909,7 +1910,7 @@ export default function InjectBankPage() {
 
       <div className="rounded-xl border border-gray-700 bg-gray-800">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Chargement...</div>
+          <LoadingScreen />
         ) : items.length === 0 ? (
           <div className="p-10 text-center text-gray-400">
             <LibraryBig className="mx-auto mb-2" size={34} />

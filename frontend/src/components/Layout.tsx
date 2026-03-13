@@ -21,6 +21,7 @@ import {
   FileDown,
   Users,
   Shield,
+  Zap,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import clsx from 'clsx'
@@ -372,7 +373,20 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* User footer */}
         <div className="sidebar-border flex-shrink-0 p-4 border-t space-y-3">
-          <div className="flex items-center px-1">
+          <div className="flex flex-col gap-2 px-1">
+            <a
+              href={`https://${user?.tenant?.slug ?? 'app'}.crisis-lab.eu`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-90"
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: '#fff',
+              }}
+            >
+              <Zap size={11} />
+              {t('nav.upgradeToEnterprise')}
+            </a>
             <span
               className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]"
               style={{

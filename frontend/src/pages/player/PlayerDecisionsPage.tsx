@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { playerApi, Decision } from '../../services/playerApi'
 import { FileText, Plus, CheckCircle, Clock, ChevronRight, X } from 'lucide-react'
+import LoadingScreen from '../../components/LoadingScreen'
 
 export default function PlayerDecisionsPage() {
   const { exerciseId } = useParams<{ exerciseId: string }>()
@@ -206,10 +207,7 @@ export default function PlayerDecisionsPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
-            <p className="mt-4">Chargement...</p>
-          </div>
+          <LoadingScreen />
         ) : decisions.length === 0 ? (
           <div className="p-8 text-center text-gray-400">
             <FileText size={48} className="mx-auto mb-3 opacity-50" />

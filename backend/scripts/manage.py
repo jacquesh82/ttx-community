@@ -8,7 +8,9 @@ Usage:
   manage.py seed users
   manage.py seed teams [--no-assign]
   manage.py seed exercise
+  manage.py seed exercise-content [--force]
   manage.py seed contacts [--exercise-id N] [--reset]
+  manage.py seed organisation [--force]
   manage.py seed all
 
   manage.py init [--reset] [--demo] [--skip-migrate]
@@ -134,14 +136,16 @@ def cmd_seed_teams(args):
 
 def cmd_seed_exercise(args):
     from data.users import create_users, create_teams_and_assign
-    from data.exercises import create_demo_exercise
+    from data.exercises import create_demo_exercise, seed_demo_exercise_content
     from data.timeline import ensure_default_tenant
 
     async def _run():
         tenant = await ensure_default_tenant()
         users = await create_users(tenant.id)
         teams = await create_teams_and_assign(users, tenant.id)
-        await create_demo_exercise(users, teams)
+        exercise = await create_demo_exercise(users, teams, tenant.id)
+        if exercise:
+            await seed_demo_exercise_content(exercise, users)
 
     run(_run())
 
@@ -158,19 +162,49 @@ def cmd_seed_contacts(args):
     run(_run())
 
 
+def cmd_seed_exercise_content(args):
+    from data.users import create_users, create_teams_and_assign
+    from data.exercises import create_demo_exercise, seed_demo_exercise_content
+    from data.timeline import ensure_default_tenant
+
+    async def _run():
+        tenant = await ensure_default_tenant()
+        users = await create_users(tenant.id)
+        teams = await create_teams_and_assign(users, tenant.id)
+        exercise = await create_demo_exercise(users, teams, tenant.id)
+        if exercise:
+            await seed_demo_exercise_content(exercise, users, force=args.force)
+
+    run(_run())
+
+
+def cmd_seed_organisation(args):
+    from data.organisation import seed_demo_organisation
+    from data.timeline import ensure_default_tenant
+
+    async def _run():
+        tenant = await ensure_default_tenant()
+        await seed_demo_organisation(tenant, force=args.force)
+
+    run(_run())
+
+
 def cmd_seed_all(args):
     from data.users import create_users, create_teams_and_assign
-    from data.exercises import create_demo_exercise
+    from data.exercises import create_demo_exercise, seed_demo_exercise_content
     from data.contacts import create_crisis_contacts
     from data.timeline import ensure_default_tenant, ensure_default_timeline_configuration
+    from data.organisation import seed_demo_organisation
 
     async def _run():
         tenant = await ensure_default_tenant()
         await ensure_default_timeline_configuration(tenant)
+        await seed_demo_organisation(tenant)
         users = await create_users(tenant.id)
         teams = await create_teams_and_assign(users, tenant.id)
-        exercise = await create_demo_exercise(users, teams)
+        exercise = await create_demo_exercise(users, teams, tenant.id)
         if exercise:
+            await seed_demo_exercise_content(exercise, users)
             await create_crisis_contacts(exercise.id)
 
     run(_run())
@@ -182,9 +216,10 @@ def cmd_seed_all(args):
 
 def cmd_init(args):
     from data.users import create_users, create_teams_and_assign, print_summary
-    from data.exercises import create_demo_exercise
+    from data.exercises import create_demo_exercise, seed_demo_exercise_content
     from data.contacts import create_crisis_contacts
     from data.timeline import ensure_default_tenant, ensure_default_timeline_configuration
+    from data.organisation import seed_demo_organisation
 
     async def _run():
         if args.reset:
@@ -207,8 +242,10 @@ def cmd_init(args):
 
         exercise = None
         if args.demo:
-            exercise = await create_demo_exercise(users, teams)
+            await seed_demo_organisation(tenant)
+            exercise = await create_demo_exercise(users, teams, tenant.id)
             if exercise:
+                await seed_demo_exercise_content(exercise, users)
                 await create_crisis_contacts(exercise.id)
 
         print_summary(exercise)
@@ -335,11 +372,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     seed_sub.add_parser("exercise", help="Create demo exercise")
 
+    seed_ex_content = seed_sub.add_parser("exercise-content", help="Seed demo exercise full content (scenario, phases, injects)")
+    seed_ex_content.add_argument("--force", action="store_true", help="Overwrite existing content")
+
     seed_contacts = seed_sub.add_parser("contacts", help="Create crisis contacts")
     seed_contacts.add_argument("--exercise-id", type=int, metavar="N", help="Target exercise ID")
     seed_contacts.add_argument("--reset", action="store_true", help="Delete existing contacts first")
 
-    seed_sub.add_parser("all", help="users + teams + exercise + contacts")
+    seed_org = seed_sub.add_parser("organisation", help="Seed demo organisation data")
+    seed_org.add_argument("--force", action="store_true", help="Overwrite existing values")
+
+    seed_sub.add_parser("all", help="users + teams + exercise + contacts + organisation")
 
     # ── init ────────────────────────────────────────────────────
     init = sub.add_parser("init", help="Full environment initialisation")
@@ -382,8 +425,12 @@ def main():
                 cmd_seed_teams(args)
             elif args.seed_action == "exercise":
                 cmd_seed_exercise(args)
+            elif args.seed_action == "exercise-content":
+                cmd_seed_exercise_content(args)
             elif args.seed_action == "contacts":
                 cmd_seed_contacts(args)
+            elif args.seed_action == "organisation":
+                cmd_seed_organisation(args)
             elif args.seed_action == "all":
                 cmd_seed_all(args)
 

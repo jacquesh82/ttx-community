@@ -64,7 +64,7 @@ export default function PhasePicker({
       ? enabled ? 'text-white' : 'text-gray-500 line-through decoration-gray-600'
       : enabled ? 'text-gray-900' : 'text-gray-400 line-through decoration-gray-300'
   const switchTrack = (enabled: boolean) =>
-    enabled ? 'bg-primary-600' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+    enabled ? 'bg-primary-500' : isDark ? 'bg-gray-800 border border-gray-600' : 'bg-gray-300'
   const gripCls = isDark ? 'text-gray-600' : 'text-gray-400'
   const counterCls = isDark ? 'text-gray-500' : 'text-gray-400'
   const emptyBorder = isDark ? 'border-gray-700 text-gray-500' : 'border-gray-300 text-gray-400'

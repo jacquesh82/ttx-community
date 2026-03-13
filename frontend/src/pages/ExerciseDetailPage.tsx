@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { AlertCircle, ArrowLeft, CheckCircle2, CircleDashed, Clock3, FileDown, Gauge, PlayCircle, Plus, ShieldCheck, Trash2, Upload, Users } from 'lucide-react'
 import AutoSaveIndicator, { AutoSaveStatus } from '../components/AutoSaveIndicator'
+import LoadingScreen from '../components/LoadingScreen'
 import {
   adminApi,
   crisisManagementApi,
@@ -1650,7 +1651,7 @@ export default function ExerciseDetailPage() {
     }
   }, [location.search])
 
-  if (isLoading) return <div className="text-center py-12">Chargement...</div>
+  if (isLoading) return <LoadingScreen />
   if (!exercise) return <div className="text-center py-12">Exercice non trouve</div>
 
   const autoTriggers = triggerRules.filter((rule) => rule.trigger_mode === 'auto').length

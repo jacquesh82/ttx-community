@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { webmailApi } from '../services/api'
 import { Mail, Plus, ArrowLeft, Inbox, Send, FileText } from 'lucide-react'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function WebmailPage() {
   const { exerciseId } = useParams<{ exerciseId: string }>()
@@ -56,7 +57,7 @@ export default function WebmailPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Chargement...</div>
+          <LoadingScreen />
         ) : conversations.length === 0 ? (
           <div className="p-8 text-center">
             <Mail className="mx-auto text-gray-400 mb-4" size={48} />

@@ -1,6 +1,10 @@
-import { Save, X, Loader2, RotateCcw, BookOpen, Tv, Mail, MessageCircle, Newspaper, MessageSquare, Landmark, Shield, Box, type LucideIcon } from 'lucide-react'
+import { useState } from 'react'
+import { Save, X, Loader2, RotateCcw, BookOpen, Tv, Mail, MessageCircle, Newspaper, MessageSquare, Landmark, Shield, Box, Phone, AtSign, Eye, type LucideIcon, Twitter } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { PluginConfiguration, PluginType } from '../../services/api'
+import { getPlugin } from '../../plugins/registry'
+import type { PluginManifest } from '../../plugins/types'
+import PluginPreviewModal from '../../plugins/PluginPreviewModal'
 
 const ICON_MAP: Record<string, LucideIcon> = {
   BookOpen,
@@ -12,6 +16,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Landmark,
   Shield,
   Box,
+  Phone,
+  AtSign,
+  Twitter,
 }
 
 const COLORS = [
@@ -25,7 +32,7 @@ const COLORS = [
   { value: 'yellow', label: 'Jaune', class: 'bg-yellow-500' },
 ]
 
-const ICONS = ['BookOpen', 'Tv', 'Mail', 'MessageCircle', 'Newspaper', 'MessageSquare', 'Landmark', 'Shield', 'Box']
+const ICONS = ['BookOpen', 'Tv', 'Mail', 'MessageCircle', 'Newspaper', 'MessageSquare', 'Landmark', 'Shield', 'Box', 'Phone', 'AtSign', 'Twitter']
 
 const COLOR_BAND_MAP: Record<string, string> = {
   green: 'bg-green-500',
@@ -36,6 +43,13 @@ const COLOR_BAND_MAP: Record<string, string> = {
   red: 'bg-red-500',
   orange: 'bg-orange-500',
   yellow: 'bg-yellow-500',
+}
+
+const FORMAT_LABEL: Record<string, string> = {
+  text: 'TXT',
+  audio: 'AUDIO',
+  video: 'VIDEO',
+  image: 'IMAGE',
 }
 
 interface SimulatorsTabProps {
@@ -66,6 +80,8 @@ export default function SimulatorsTab({
   isResetting,
 }: SimulatorsTabProps) {
   const { t } = useTranslation()
+  const [previewPlugin, setPreviewPlugin] = useState<PluginManifest | null>(null)
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-6">
@@ -85,6 +101,7 @@ export default function SimulatorsTab({
           const Icon = ICON_MAP[plugin.icon] ?? Box
           const bandClass = COLOR_BAND_MAP[plugin.color] ?? 'bg-gray-500'
           const isEditing = editingPlugin === plugin.plugin_type
+          const pluginManifest = getPlugin(plugin.plugin_type)
 
           return (
             <div key={plugin.plugin_type} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
@@ -109,6 +126,21 @@ export default function SimulatorsTab({
                 <code className="text-xs text-gray-500 bg-gray-900 px-1.5 py-0.5 rounded">
                   {plugin.plugin_type}
                 </code>
+
+                {/* Supported formats badges */}
+                {pluginManifest && pluginManifest.supportedFormats.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs text-gray-500">{t('plugins.supportedFormats')} :</span>
+                    {pluginManifest.supportedFormats.map((format) => (
+                      <span
+                        key={format}
+                        className="text-xs px-1.5 py-0.5 bg-gray-700 text-gray-300 border border-gray-600 rounded"
+                      >
+                        {FORMAT_LABEL[format] ?? format.toUpperCase()}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Toggle + Edit actions */}
                 <div className="flex items-center justify-between gap-2">
@@ -146,12 +178,23 @@ export default function SimulatorsTab({
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => onEdit(plugin)}
-                      className="px-2 py-1 text-xs bg-gray-700 text-gray-200 border border-gray-600 rounded hover:bg-gray-600"
-                    >
-                      Modifier
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {pluginManifest?.PreviewPopup && (
+                        <button
+                          onClick={() => setPreviewPlugin(pluginManifest)}
+                          className="p-1 text-gray-400 hover:text-primary-400 transition-colors"
+                          title={t('plugins.preview')}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onEdit(plugin)}
+                        className="px-2 py-1 text-xs bg-gray-700 text-gray-200 border border-gray-600 rounded hover:bg-gray-600"
+                      >
+                        Modifier
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -222,6 +265,14 @@ export default function SimulatorsTab({
           <li>• Le toggle « Par défaut » active le simulateur automatiquement à la création d'un exercice.</li>
         </ul>
       </div>
+
+      {/* Preview modal */}
+      {previewPlugin && (
+        <PluginPreviewModal
+          plugin={previewPlugin}
+          onClose={() => setPreviewPlugin(null)}
+        />
+      )}
     </div>
   )
 }

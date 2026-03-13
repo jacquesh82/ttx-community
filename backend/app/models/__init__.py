@@ -34,7 +34,7 @@ from app.models.scoring import Decision, ObserverNote, Score
 from app.models.event import Event, EventType, EventActorType, EventAudience
 from app.models.audit import AuditLog
 from app.models.crisis_contact import CrisisContact, ContactCategory, ContactPriority
-from app.models.plugin import ExercisePlugin, PluginConfiguration, PLUGIN_CONFIG_FALLBACKS, plugin_type_enum
+from app.models.plugin import ExercisePlugin, PluginConfiguration, plugin_type_enum
 from app.models.chat import ChatRoom, ChatRoomType, ChatMessage, ChatReadReceipt
 from app.models.inject_bank import InjectBankItem, InjectBankKind, InjectBankStatus
 from app.models.crisis_management import (
@@ -92,7 +92,7 @@ __all__ = [
     # Crisis Contact
     "CrisisContact", "ContactCategory", "ContactPriority",
     # Plugins
-    "ExercisePlugin", "PluginConfiguration", "PLUGIN_CONFIG_FALLBACKS", "plugin_type_enum",
+    "ExercisePlugin", "PluginConfiguration", "plugin_type_enum",
     # Chat
     "ChatRoom", "ChatRoomType", "ChatMessage", "ChatReadReceipt",
     # Inject Bank

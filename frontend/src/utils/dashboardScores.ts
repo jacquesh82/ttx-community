@@ -71,14 +71,40 @@ export interface ScenarioScore {
   criteria: { key: string; i18nKey: string; done: boolean }[]
 }
 
-export function computeScenarioScore(
-  exercise: { description: string | null; business_objective: string | null; technical_objective: string | null; timeline_configured: boolean },
-  hasPositionedInjects: boolean,
-): ScenarioScore {
+export interface ScenarioInput {
+  exercise: {
+    description: string | null
+    business_objective: string | null
+    technical_objective: string | null
+    timeline_configured: boolean
+  }
+  scenario: {
+    strategic_intent: string | null
+    initial_context: string | null
+    initial_situation: string | null
+    pedagogical_objectives: string[]
+    evaluation_criteria: string[]
+    stress_factors: string[]
+  } | null
+  phasesCount: number
+  escalationAxesCount: number
+  hasPositionedInjects: boolean
+}
+
+export function computeScenarioScore(input: ScenarioInput): ScenarioScore {
+  const { exercise, scenario, phasesCount, escalationAxesCount, hasPositionedInjects } = input
   const criteria = [
     { key: 'description',           i18nKey: 'dashboard.criteria_description',          done: !!exercise.description?.trim() },
     { key: 'business_objective',    i18nKey: 'dashboard.criteria_objective_business',   done: !!exercise.business_objective?.trim() },
     { key: 'technical_objective',   i18nKey: 'dashboard.criteria_objective_technical',  done: !!exercise.technical_objective?.trim() },
+    { key: 'strategic_intent',      i18nKey: 'dashboard.criteria_strategic_intent',     done: !!scenario?.strategic_intent?.trim() },
+    { key: 'initial_context',       i18nKey: 'dashboard.criteria_initial_context',      done: !!scenario?.initial_context?.trim() },
+    { key: 'initial_situation',     i18nKey: 'dashboard.criteria_initial_situation',    done: !!scenario?.initial_situation?.trim() },
+    { key: 'pedagogical_objectives', i18nKey: 'dashboard.criteria_pedagogical',         done: (scenario?.pedagogical_objectives?.length ?? 0) > 0 },
+    { key: 'evaluation_criteria',   i18nKey: 'dashboard.criteria_evaluation',           done: (scenario?.evaluation_criteria?.length ?? 0) > 0 },
+    { key: 'stress_factors',        i18nKey: 'dashboard.criteria_stress_factors',       done: (scenario?.stress_factors?.length ?? 0) > 0 },
+    { key: 'escalation_axes',       i18nKey: 'dashboard.criteria_escalation_axes',      done: escalationAxesCount > 0 },
+    { key: 'phases',                i18nKey: 'dashboard.criteria_phases',               done: phasesCount > 0 },
     { key: 'timeline_configured',   i18nKey: 'dashboard.criteria_timeline',             done: exercise.timeline_configured },
     { key: 'injects_positioned',    i18nKey: 'dashboard.criteria_injects',              done: hasPositionedInjects },
   ]
@@ -86,6 +112,6 @@ export function computeScenarioScore(
   return { score, max: criteria.length, pct: Math.round((score / criteria.length) * 100), criteria }
 }
 
-export function computeGlobalScore(orgPct: number, biaPct: number, scenarioPct: number, bankReadinessPct: number): number {
-  return Math.round(orgPct * 0.25 + biaPct * 0.25 + scenarioPct * 0.25 + bankReadinessPct * 0.25)
+export function computeGlobalScore(orgPct: number, biaPct: number, scenarioPct: number): number {
+  return Math.round(orgPct * (1 / 3) + biaPct * (1 / 3) + scenarioPct * (1 / 3))
 }

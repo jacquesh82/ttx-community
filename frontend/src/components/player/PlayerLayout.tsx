@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react'
 import PlayerHeader from './PlayerHeader'
 import PlayerSidebar from './PlayerSidebar'
 import ToastNotifications from './ToastNotifications'
+import LoadingScreen from '../LoadingScreen'
 import { usePlayer } from '../../contexts/PlayerContext'
 
 interface PlayerLayoutProps {
@@ -15,14 +16,7 @@ export default function PlayerLayout({ children }: PlayerLayoutProps) {
   const navigate = useNavigate()
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="text-gray-400 mt-4">Chargement de l'exercice...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen fullPage />
   }
 
   if (error || !context) {

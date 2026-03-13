@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { webmailApi } from '../services/api'
 import { ArrowLeft, Reply, Mail, User, Clock, CheckCheck } from 'lucide-react'
+import LoadingScreen from '../components/LoadingScreen'
 import { useState } from 'react'
 
 export default function WebmailConversationPage() {
@@ -44,9 +45,7 @@ export default function WebmailConversationPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Chargement...</p>
-      </div>
+      <LoadingScreen />
     )
   }
 

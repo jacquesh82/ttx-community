@@ -15,6 +15,7 @@ import {
   Eye,
   Reply,
 } from 'lucide-react'
+import LoadingScreen from '../../components/LoadingScreen'
 
 export default function PlayerTimelinePage() {
   const { exerciseId } = useParams<{ exerciseId: string }>()
@@ -169,10 +170,7 @@ export default function PlayerTimelinePage() {
 
       {/* Events list */}
       {isLoading ? (
-        <div className="text-center py-12 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4">Chargement...</p>
-        </div>
+        <LoadingScreen />
       ) : events.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <Clock size={48} className="mx-auto mb-3 opacity-50" />

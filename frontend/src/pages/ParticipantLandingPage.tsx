@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { exercisesApi } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { Play, Clock, Users, Pause, CheckCircle, LogOut } from 'lucide-react'
+import LoadingScreen from '../components/LoadingScreen'
 import { authApi } from '../services/api'
 
 /**
@@ -144,10 +145,7 @@ export default function ParticipantLandingPage({ embedded = false }: { embedded?
           </div>
 
           {isLoading ? (
-            <div className="p-8 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-3" />
-              Chargement...
-            </div>
+            <LoadingScreen />
           ) : sortedExercises.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <Clock size={32} className="mx-auto mb-3 text-gray-300" />
