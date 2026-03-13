@@ -518,6 +518,8 @@ async def create_exercise(
         maturity_level=exercise_data.maturity_level,
         mode=exercise_data.mode,
         planned_date=exercise_data.planned_date,
+        business_objective=exercise_data.business_objective,
+        technical_objective=exercise_data.technical_objective,
         lead_organizer_user_id=exercise_data.lead_organizer_user_id,
         created_by=current_user.id,
     )
