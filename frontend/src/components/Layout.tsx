@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/authStore'
 import { authApi, adminApi } from '../services/api'
 import {
@@ -22,8 +23,9 @@ import {
   Users,
   Shield,
   Zap,
+  ChevronDown,
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import clsx from 'clsx'
 import { OFFICIAL_TTX_LOGO_URL } from '../config/branding'
 import { useAutoSaveStore } from '../stores/autoSaveStore'
@@ -51,23 +53,16 @@ export default function Layout({ children }: LayoutProps) {
       : buildDateIso || '-'
   const { status: autoSaveStatus, errorMessage: autoSaveError } = useAutoSaveStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [organizationName, setOrganizationName] = useState<string>('TTX Platform')
-  const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(OFFICIAL_TTX_LOGO_URL)
+  const [adminOpen, setAdminOpen] = useState(true)
+  const [docsOpen, setDocsOpen] = useState(false)
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const config = await adminApi.getPublicConfiguration()
-        if (config.organization_name) {
-          setOrganizationName(config.organization_name)
-        }
-        setOrganizationLogoUrl(config.organization_logo_url || OFFICIAL_TTX_LOGO_URL)
-      } catch (error) {
-        console.warn('Could not load app configuration for logo')
-      }
-    }
-    fetchConfig()
-  }, [])
+  const { data: publicConfig } = useQuery({
+    queryKey: ['public-configuration'],
+    queryFn: adminApi.getPublicConfiguration,
+    staleTime: 30_000,
+  })
+  const organizationName = publicConfig?.organization_name || 'Crisis-Lab'
+  const organizationLogoUrl = publicConfig?.organization_logo_url || OFFICIAL_TTX_LOGO_URL
 
   const handleLogout = async () => {
     try {
@@ -128,12 +123,13 @@ export default function Layout({ children }: LayoutProps) {
             <>
               <div className="sidebar-border w-full border-t" />
               <img
+                key={organizationLogoUrl}
                 src={organizationLogoUrl}
                 alt={organizationName}
-                className="max-h-8 max-w-full object-contain"
+                className="max-w-full object-contain"
+                style={{ maxHeight: '50%' }}
                 onError={(e) => {
                   e.currentTarget.style.display = 'none'
-                  setOrganizationLogoUrl(null)
                 }}
               />
             </>
@@ -285,70 +281,82 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           )}
 
-          {/* Administration section */}
+          {/* Administration section (collapsible) */}
           {isAdmin && (
             <div className="mt-8">
-              <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
+              <button
+                onClick={() => setAdminOpen(o => !o)}
+                className="sidebar-section-title w-full flex items-center justify-between px-4 text-xs font-semibold uppercase tracking-wider"
+              >
                 {t('nav.administration')}
-              </h3>
-              <div className="mt-3 space-y-1">
-                <Link
-                  to="/admin/options"
-                  className={clsx(
-                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/options') ? 'sidebar-link-active' : ''
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Settings className="mr-3" size={20} />
-                  {t('nav.options')}
-                </Link>
+                <ChevronDown size={14} className={clsx('transition-transform', adminOpen ? '' : '-rotate-90')} />
+              </button>
+              {adminOpen && (
+                <div className="mt-3 space-y-1">
+                  <Link
+                    to="/admin/options"
+                    className={clsx(
+                      'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
+                      location.pathname.startsWith('/admin/options') ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Settings className="mr-3" size={20} />
+                    {t('nav.options')}
+                  </Link>
 
-                <Link
-                  to="/admin/audit"
-                  className={clsx(
-                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/audit') ? 'sidebar-link-active' : ''
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <FileText className="mr-3" size={20} />
-                  {t('nav.audit')}
-                </Link>
+                  <Link
+                    to="/admin/audit"
+                    className={clsx(
+                      'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
+                      location.pathname.startsWith('/admin/audit') ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <FileText className="mr-3" size={20} />
+                    {t('nav.audit')}
+                  </Link>
 
-                <Link
-                  to="/admin/logs"
-                  className={clsx(
-                    'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
-                    location.pathname.startsWith('/admin/logs') ? 'sidebar-link-active' : ''
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <ScrollText className="mr-3" size={20} />
-                  {t('nav.logs')}
-                </Link>
-              </div>
+                  <Link
+                    to="/admin/logs"
+                    className={clsx(
+                      'sidebar-link flex items-center px-4 py-2 rounded-md transition-colors',
+                      location.pathname.startsWith('/admin/logs') ? 'sidebar-link-active' : ''
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <ScrollText className="mr-3" size={20} />
+                    {t('nav.logs')}
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Documentation section */}
+          {/* Documentation section (collapsible) */}
           {isAdmin && (
             <div className="mt-8">
-              <h3 className="sidebar-section-title px-4 text-xs font-semibold uppercase tracking-wider">
+              <button
+                onClick={() => setDocsOpen(o => !o)}
+                className="sidebar-section-title w-full flex items-center justify-between px-4 text-xs font-semibold uppercase tracking-wider"
+              >
                 {t('nav.documentations')}
-              </h3>
-              <div className="mt-3 space-y-1">
-                <a
-                  href="/api/docs"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="sidebar-link flex items-center px-4 py-2 rounded-md transition-colors"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <ExternalLink className="mr-3" size={20} />
-                  {t('nav.apiDocs')}
-                </a>
-              </div>
+                <ChevronDown size={14} className={clsx('transition-transform', docsOpen ? '' : '-rotate-90')} />
+              </button>
+              {docsOpen && (
+                <div className="mt-3 space-y-1">
+                  <a
+                    href="/api/docs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sidebar-link flex items-center px-4 py-2 rounded-md transition-colors"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <ExternalLink className="mr-3" size={20} />
+                    {t('nav.apiDocs')}
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

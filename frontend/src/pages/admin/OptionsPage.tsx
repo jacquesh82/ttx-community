@@ -382,6 +382,7 @@ export default function OptionsPage() {
       // between cleanup and background refetch completing).
       queryClient.setQueryData(['app-configuration'], data)
       queryClient.invalidateQueries({ queryKey: ['app-configuration'] })
+      queryClient.invalidateQueries({ queryKey: ['public-configuration'] })
       setEditedAppConfig((prev) => {
         const next = { ...prev }
         for (const [key, value] of Object.entries(variables || {})) {
@@ -607,6 +608,7 @@ export default function OptionsPage() {
       await adminApi.importOptionsConfiguration(importPayload)
       await queryClient.invalidateQueries({ queryKey: ['app-configuration'] })
       await queryClient.invalidateQueries({ queryKey: ['plugin-configurations'] })
+      await queryClient.invalidateQueries({ queryKey: ['public-configuration'] })
       setEditedAppConfig({})
       await appDialog.alert('Import de la configuration réalisé avec succès.')
     } catch (error) {
