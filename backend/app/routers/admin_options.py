@@ -1,11 +1,16 @@
-"""Admin options router for plugin and app configuration."""
+"""Admin options router for CrisisLab plugin and application configuration.
+
+Manages tenant-scoped application settings (organization branding, exercise
+defaults, SMTP, security policies), plugin configuration, placeholder
+registry, API key lifecycle, and configuration import/export.
+"""
 from datetime import datetime, timezone
 from typing import List
 import json
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,10 +44,22 @@ router = APIRouter()
 # ============== Public Configuration Endpoint ==============
 
 class PublicConfigurationResponse(BaseModel):
-    """Public configuration response (organization branding only)."""
+    """Public configuration visible without authentication (organization branding only)."""
     organization_name: str
     organization_logo_url: str | None
     tenant_slug: str | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "organization_name": "Duval Industries",
+                    "organization_logo_url": "/media/logos/duval-industries.png",
+                    "tenant_slug": "duval-industries",
+                }
+            ]
+        }
+    }
 
 
 @router.get("/public/config", response_model=PublicConfigurationResponse)
@@ -50,7 +67,15 @@ async def get_public_configuration(
     tenant_ctx: TenantRequestContext = Depends(get_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get public organization configuration (no auth required)."""
+    """Return public organization branding (no authentication required).
+
+    Used by the login page and public-facing screens to display the
+    organization name, logo, and resolved tenant slug. If the request
+    arrives on a tenant subdomain the tenant-specific branding is returned;
+    otherwise the global (singleton) app configuration is used.
+
+    **Auth required:** No (public endpoint).
+    """
     if tenant_ctx.tenant:
         tenant_cfg = await get_or_create_tenant_configuration(
             db,
@@ -75,7 +100,7 @@ async def get_public_configuration(
 # ============== App Configuration Models ==============
 
 class AppConfigurationResponse(BaseModel):
-    """Response model for app configuration."""
+    """Full application configuration for the current tenant (admin view)."""
     organization_name: str
     organization_logo_url: str | None
     organization_description: str | None
@@ -128,7 +153,7 @@ class AppConfigurationResponse(BaseModel):
 
 
 class AppConfigurationUpdate(BaseModel):
-    """Update model for app configuration."""
+    """Partial update payload for application configuration. All fields are optional."""
     organization_name: str | None = None
     organization_logo_url: str | None = None
     organization_description: str | None = None
@@ -180,7 +205,7 @@ class AppConfigurationUpdate(BaseModel):
 # ============== Plugin Configuration Models ==============
 
 class PluginConfigurationResponse(BaseModel):
-    """Response model for plugin configuration."""
+    """Configuration state of a single CrisisLab plugin (e.g. mail, TV, social)."""
     plugin_type: str
     name: str
     description: str | None
@@ -190,12 +215,27 @@ class PluginConfigurationResponse(BaseModel):
     coming_soon: bool
     sort_order: int
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "plugin_type": "mail",
+                    "name": "Messagerie",
+                    "description": "Simulateur de messagerie email interne et externe",
+                    "icon": "Mail",
+                    "color": "#3B82F6",
+                    "default_enabled": True,
+                    "coming_soon": False,
+                    "sort_order": 1,
+                }
+            ]
+        }
+    }
 
 
 class PluginConfigurationUpdate(BaseModel):
-    """Update model for plugin configuration."""
+    """Partial update payload for a single plugin's configuration."""
     name: str | None = None
     description: str | None = None
     icon: str | None = None
@@ -206,14 +246,14 @@ class PluginConfigurationUpdate(BaseModel):
 
 
 class OptionsExportResponse(BaseModel):
-    """Export model for full options payload."""
+    """Snapshot of the full tenant options (app config + plugins) for export/import."""
     exported_at: datetime
     app_configuration: AppConfigurationResponse
     plugins: List[PluginConfigurationResponse]
 
 
 class OptionsImportPayload(BaseModel):
-    """Import model for full options payload."""
+    """Payload to bulk-import application configuration and plugin settings."""
     app_configuration: AppConfigurationUpdate | None = None
     plugins: List[PluginConfigurationResponse] | None = None
 
@@ -245,11 +285,11 @@ APP_CONFIG_RESPONSE_FIELDS = set(AppConfigurationResponse.model_fields.keys())
 
 TIMELINE_ALLOWED_FORMATS = {"TXT", "AUDIO", "VIDEO", "IMAGE"}
 DEFAULT_TIMELINE_PHASE_TYPE_FORMAT_CONFIG = [
-    {"type": "Mail", "formats": ["TXT"], "simulator": "mail"},
+    {"type": "Mail", "formats": ["TXT", "IMAGE"], "simulator": "mail"},
     {"type": "SMS", "formats": ["TXT", "IMAGE"], "simulator": "sms"},
-    {"type": "Call", "formats": ["AUDIO"], "simulator": "tel"},
-    {"type": "Social network", "formats": ["TXT", "VIDEO", "IMAGE"], "simulator": "social"},
-    {"type": "TV", "formats": ["VIDEO"], "simulator": "tv"},
+    {"type": "Call", "formats": ["TXT", "AUDIO"], "simulator": "tel"},
+    {"type": "Social network", "formats": ["TXT", "IMAGE"], "simulator": "social"},
+    {"type": "TV", "formats": ["TXT", "IMAGE", "AUDIO"], "simulator": "tv"},
     {"type": "Document", "formats": ["TXT", "IMAGE"], "simulator": "mail"},
     {"type": "Annuaire de crise", "formats": ["TXT"], "simulator": None},
     {"type": "Scenario", "formats": ["TXT"], "simulator": None},
@@ -884,6 +924,134 @@ async def _get_or_create_app_config(db: AsyncSession) -> AppConfiguration:
     return config
 
 
+# ============== Placeholders Endpoint ==============
+
+PLACEHOLDER_DEFINITIONS = [
+    # Organisation
+    {"key": "organization_name", "category": "organisation", "label": "Nom de l'organisation"},
+    {"key": "organization_description", "category": "organisation", "label": "Description"},
+    {"key": "organization_sector", "category": "organisation", "label": "Secteur d'activité"},
+    {"key": "organization_keywords", "category": "organisation", "label": "Mots-clés"},
+    {"key": "organization_tech_stack", "category": "organisation", "label": "Stack technique"},
+    {"key": "organization_reference_url", "category": "organisation", "label": "URL de référence"},
+    # Contexte technique
+    {"key": "windows_domain", "category": "it_context", "label": "Domaine Windows / AD"},
+    {"key": "public_domain", "category": "it_context", "label": "Domaine public"},
+    {"key": "mail_domain", "category": "it_context", "label": "Domaine mail"},
+    {"key": "internal_ip_ranges", "category": "it_context", "label": "Plages IP internes"},
+    {"key": "dmz_ip_ranges", "category": "it_context", "label": "Plages IP DMZ"},
+    {"key": "domain_controllers", "category": "it_context", "label": "Contrôleurs de domaine"},
+    {"key": "server_naming_examples", "category": "it_context", "label": "Convention de nommage serveurs"},
+    {"key": "technological_dependencies", "category": "it_context", "label": "Dépendances technologiques"},
+    {"key": "cloud_providers", "category": "it_context", "label": "Fournisseurs cloud"},
+    {"key": "critical_applications", "category": "it_context", "label": "Applications critiques"},
+    # BIA
+    {"key": "bia_processes", "category": "bia", "label": "Processus BIA"},
+    # Email
+    {"key": "smtp_host", "category": "email", "label": "Serveur SMTP"},
+    {"key": "smtp_from", "category": "email", "label": "Adresse expéditeur"},
+    {"key": "smtp_user", "category": "email", "label": "Utilisateur SMTP"},
+    # Exercice par défaut
+    {"key": "default_exercise_type", "category": "exercise", "label": "Type d'exercice par défaut"},
+    {"key": "default_maturity_level", "category": "exercise", "label": "Niveau de maturité par défaut"},
+    {"key": "default_exercise_mode", "category": "exercise", "label": "Mode d'exercice par défaut"},
+    # Exercice (contextuel — par exercice)
+    {"key": "exercise.name", "category": "exercise_ctx", "label": "Nom de l'exercice", "contextual": True},
+    {"key": "exercise.description", "category": "exercise_ctx", "label": "Description de l'exercice", "contextual": True},
+    {"key": "exercise.type", "category": "exercise_ctx", "label": "Type d'exercice", "contextual": True},
+    {"key": "exercise.maturity_level", "category": "exercise_ctx", "label": "Niveau de maturité", "contextual": True},
+    {"key": "exercise.mode", "category": "exercise_ctx", "label": "Mode de déroulement", "contextual": True},
+    {"key": "exercise.duration_hours", "category": "exercise_ctx", "label": "Durée (heures)", "contextual": True},
+    {"key": "exercise.location", "category": "exercise_ctx", "label": "Lieu de l'exercice", "contextual": True},
+    {"key": "exercise.business_objective", "category": "exercise_ctx", "label": "Objectif métier", "contextual": True},
+    {"key": "exercise.technical_objective", "category": "exercise_ctx", "label": "Objectif technique", "contextual": True},
+    # Scénario (contextuel — par exercice)
+    {"key": "scenario.strategic_intent", "category": "scenario", "label": "Intention stratégique", "contextual": True},
+    {"key": "scenario.initial_context", "category": "scenario", "label": "Contexte initial", "contextual": True},
+    {"key": "scenario.initial_situation", "category": "scenario", "label": "Situation initiale", "contextual": True},
+    {"key": "scenario.implicit_hypotheses", "category": "scenario", "label": "Hypothèses implicites", "contextual": True},
+    {"key": "scenario.hidden_brief", "category": "scenario", "label": "Brief caché (animateurs)", "contextual": True},
+    {"key": "scenario.pedagogical_objectives", "category": "scenario", "label": "Objectifs pédagogiques", "contextual": True},
+    {"key": "scenario.evaluation_criteria", "category": "scenario", "label": "Critères d'évaluation", "contextual": True},
+    {"key": "scenario.stress_factors", "category": "scenario", "label": "Facteurs de stress", "contextual": True},
+    # Phases (contextuel — par exercice)
+    {"key": "phases.list", "category": "timeline", "label": "Liste des phases (noms)", "contextual": True},
+    {"key": "phases.current", "category": "timeline", "label": "Phase courante", "contextual": True},
+    # Inject courant (contextuel — par inject)
+    {"key": "inject.title", "category": "inject", "label": "Titre de l'inject", "contextual": True},
+    {"key": "inject.description", "category": "inject", "label": "Description de l'inject", "contextual": True},
+    {"key": "inject.type", "category": "inject", "label": "Type d'inject (canal)", "contextual": True},
+    {"key": "inject.pedagogical_objective", "category": "inject", "label": "Objectif pédagogique de l'inject", "contextual": True},
+]
+
+
+class PlaceholderItem(BaseModel):
+    """A single template placeholder with its resolved value."""
+    key: str = Field(..., description="Dot-notation key used in templates", examples=["organization_name"])
+    placeholder: str = Field(..., description="Template syntax to embed", examples=["{{organization_name}}"])
+    category: str = Field(..., description="Grouping category", examples=["organisation"])
+    label: str = Field(..., description="Human-readable label (French)", examples=["Nom de l'organisation"])
+    value: str | None = Field(None, description="Current resolved value", examples=["Duval Industries"])
+    contextual: bool = False
+
+
+class PlaceholderListResponse(BaseModel):
+    placeholders: list[PlaceholderItem]
+
+
+@router.get("/placeholders", response_model=PlaceholderListResponse)
+async def list_placeholders(
+    exercise_id: int | None = None,
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """List every available template placeholder with its current resolved value.
+
+    Placeholders use the ``{{key}}`` syntax and can be inserted into inject
+    content, welcome-kit templates, and scenario narratives. Categories
+    include ``organisation``, ``it_context``, ``bia``, ``email``,
+    ``exercise``, ``exercise_ctx``, ``scenario``, ``timeline``, and
+    ``inject``.
+
+    If ``exercise_id`` is provided, contextual placeholders (flagged with
+    ``contextual: true``) are resolved against that exercise's data --
+    e.g. ``{{exercise.name}}`` returns *"CYBER-STORM 2024"*.
+
+    **Auth required:** Yes (admin only).
+    """
+    config = await _get_tenant_app_configuration_response(
+        db,
+        tenant_id=tenant_ctx.tenant.id,
+        tenant_name=tenant_ctx.tenant.name,
+    )
+    config_dict = config.model_dump()
+
+    # Resolve exercise context if requested
+    exercise_values: dict[str, str] = {}
+    if exercise_id is not None:
+        from app.utils.placeholders import _load_exercise_values
+        exercise_values = await _load_exercise_values(db, exercise_id)
+
+    items = []
+    for defn in PLACEHOLDER_DEFINITIONS:
+        is_contextual = defn.get("contextual", False)
+        if is_contextual:
+            value = exercise_values.get(defn["key"])
+        else:
+            raw = config_dict.get(defn["key"])
+            value = str(raw) if raw is not None else None
+        items.append(PlaceholderItem(
+            key=defn["key"],
+            placeholder="{{" + defn["key"] + "}}",
+            category=defn["category"],
+            label=defn["label"],
+            value=value,
+            contextual=is_contextual,
+        ))
+    return PlaceholderListResponse(placeholders=items)
+
+
 # ============== App Configuration Endpoints ==============
 
 @router.get("/config", response_model=AppConfigurationResponse)
@@ -892,7 +1060,15 @@ async def get_app_configuration(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get the application configuration (admin only)."""
+    """Return the full application configuration for the current tenant.
+
+    Merges tenant-specific overrides on top of the singleton (platform-wide)
+    defaults. Includes organization branding, exercise defaults, feature
+    flags (TV, social, scoring, welcome kits), security policies, SMTP
+    settings, and timeline configuration.
+
+    **Auth required:** Yes (admin only).
+    """
     return await _get_tenant_app_configuration_response(
         db,
         tenant_id=tenant_ctx.tenant.id,
@@ -907,7 +1083,15 @@ async def update_app_configuration(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update the application configuration (admin only)."""
+    """Partially update the application configuration for the current tenant.
+
+    Only the fields included in the request body are modified; omitted
+    fields keep their current values. Select-option configs (exercise type,
+    duration, maturity, mode) and timeline format configs are sanitized and
+    normalized automatically.
+
+    **Auth required:** Yes (admin only).
+    """
     return await _update_tenant_app_configuration(
         db,
         tenant_id=tenant_ctx.tenant.id,
@@ -924,7 +1108,14 @@ async def list_plugin_configurations(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List all plugin configurations (admin only)."""
+    """List all plugin configurations for the current tenant.
+
+    Returns the merged view of platform-level plugin defaults with any
+    tenant-specific overrides (name, icon, color, enabled state, etc.).
+    Plugins are sorted by ``sort_order`` then ``plugin_type``.
+
+    **Auth required:** Yes (admin only).
+    """
     return await _list_tenant_plugin_configurations(db, tenant_id=tenant_ctx.tenant.id)
 
 
@@ -936,7 +1127,16 @@ async def update_plugin_configuration(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update a plugin configuration (admin only)."""
+    """Update a single plugin's configuration for the current tenant.
+
+    Creates a tenant-level override record if none exists. Only the fields
+    present in the request body are changed.
+
+    **Path parameter:** ``plugin_type`` -- canonical plugin code
+    (e.g. ``mail``, ``tv``, ``social``, ``sms``, ``tel``).
+
+    **Auth required:** Yes (admin only).
+    """
     return await _update_tenant_plugin_configuration(
         db,
         tenant_id=tenant_ctx.tenant.id,
@@ -951,8 +1151,58 @@ async def reset_plugin_configurations(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Reset plugin configuration overrides for current tenant (admin only)."""
+    """Delete all tenant-level plugin configuration overrides.
+
+    After reset, plugins revert to the platform-level defaults defined in
+    the plugin catalog. Returns the resulting (default) plugin list.
+
+    **Auth required:** Yes (admin only).
+    """
     return await _reset_tenant_plugin_configurations(db, tenant_id=tenant_ctx.tenant.id)
+
+
+@router.get("/plugins/registry")
+async def get_plugins_registry(
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Return the full plugin registry with discovered manifests merged with DB state.
+
+    Includes metadata from the Python plugin manifest (``inject_types``,
+    ``router_module``, ``supported_formats``, ``category``) combined with
+    the tenant's DB-level overrides (name, icon, color, enabled, etc.).
+
+    **Auth required:** Yes (admin only).
+    """
+    from app.plugins import get_plugin_registry
+    from app.plugins.base import PluginManifest as PluginManifestDC
+
+    registry = get_plugin_registry()
+    plugin_configs = await _list_tenant_plugin_configurations(db, tenant_id=tenant_ctx.tenant.id)
+    config_by_type = {pc["plugin_type"]: pc for pc in plugin_configs}
+
+    result = []
+    for code, manifest in sorted(registry.items(), key=lambda x: x[1].sort_order):
+        db_config = config_by_type.get(code, {})
+        result.append({
+            "code": manifest.code,
+            "name": db_config.get("name", manifest.name),
+            "name_en": manifest.name_en,
+            "description": db_config.get("description", manifest.description),
+            "category": manifest.category.value,
+            "icon": db_config.get("icon", manifest.icon),
+            "color": db_config.get("color", manifest.default_color),
+            "supported_formats": manifest.supported_formats,
+            "default_enabled": db_config.get("default_enabled", manifest.default_enabled),
+            "coming_soon": db_config.get("coming_soon", manifest.coming_soon),
+            "sort_order": db_config.get("sort_order", manifest.sort_order),
+            "inject_types": manifest.inject_types,
+            "router_module": manifest.router_module,
+            "router_prefix": manifest.router_prefix,
+        })
+
+    return result
 
 
 @router.get("/config/export", response_model=OptionsExportResponse)
@@ -961,7 +1211,14 @@ async def export_options_configuration(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Export full options configuration (app config + plugins)."""
+    """Export the tenant's full options configuration as a JSON snapshot.
+
+    The response contains the complete ``app_configuration`` and all
+    ``plugins`` entries. This payload can be re-imported on another
+    tenant or environment via ``POST /config/import``.
+
+    **Auth required:** Yes (admin only).
+    """
     app_config = await _get_tenant_app_configuration_response(
         db,
         tenant_id=tenant_ctx.tenant.id,
@@ -978,13 +1235,21 @@ async def export_options_configuration(
 # ============== API Key Endpoints ==============
 
 class ApiKeyCreateRequest(BaseModel):
-    name: str
+    """Request to create a new named API key."""
+    name: str = Field(..., description="Human-readable label for this API key", examples=["CI/CD Pipeline"])
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"name": "CI/CD Pipeline"}]
+        }
+    }
 
 
 class ApiKeyItem(BaseModel):
+    """Summary of an existing API key (key value masked)."""
     id: int
     name: str
-    key_preview: str
+    key_preview: str = Field(..., description="Masked key: first 8 chars + last 4 chars", examples=["ttx_abc1...xy9z"])
     is_active: bool
     created_at: datetime
     last_used_at: datetime | None = None
@@ -1006,7 +1271,13 @@ async def list_api_keys(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List all API keys (admin only)."""
+    """List all API keys with masked previews (admin only).
+
+    Returns key metadata (name, creation date, last usage, active status)
+    with the key value partially masked (first 8 + last 4 characters).
+
+    **Auth required:** Yes (admin only).
+    """
     result = await db.execute(select(ApiKey).order_by(ApiKey.created_at.desc()))
     keys = result.scalars().all()
     return [
@@ -1029,7 +1300,14 @@ async def create_api_key(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a new named API key (admin only). The plaintext key is returned only once."""
+    """Generate a new named API key (admin only).
+
+    The full plaintext key (prefixed ``ttx_``) is returned **only once** in
+    this response. Subsequent list calls show only the masked preview.
+    Store the key securely immediately after creation.
+
+    **Auth required:** Yes (admin only).
+    """
     new_key = "ttx_" + secrets.token_urlsafe(32)
     api_key_obj = ApiKey(name=data.name.strip() or "Clé sans nom", key=new_key)
     db.add(api_key_obj)
@@ -1052,7 +1330,13 @@ async def revoke_api_key(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Revoke (delete) an API key by id (admin only)."""
+    """Permanently revoke and delete an API key by its database ID.
+
+    Once revoked, any request using this key will receive a **401**. This
+    action cannot be undone.
+
+    **Auth required:** Yes (admin only).
+    """
     result = await db.execute(select(ApiKey).where(ApiKey.id == key_id))
     api_key_obj = result.scalar_one_or_none()
     if not api_key_obj:
@@ -1069,7 +1353,16 @@ async def import_options_configuration(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import full options configuration (app config + plugins)."""
+    """Import a full options configuration snapshot (app config + plugins).
+
+    Accepts a payload previously obtained from ``GET /config/export`` (or
+    hand-crafted). Both ``app_configuration`` and ``plugins`` sections are
+    optional -- omit a section to leave it unchanged.
+
+    Returns the resulting merged configuration after import.
+
+    **Auth required:** Yes (admin only).
+    """
     if payload.app_configuration is not None:
         await _update_tenant_app_configuration(
             db,

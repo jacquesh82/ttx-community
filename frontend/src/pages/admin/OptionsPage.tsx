@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useAutoSaveStore } from '../../stores/autoSaveStore'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminApi, PluginConfiguration, AppConfiguration, PluginType, ApiKeyItem, ApiKeyCreated } from '../../services/api'
-import { Check, Loader2, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus, MessageSquare, Phone, Share2, Tv, FileText, Monitor, FileType2, Volume2, Video, Image } from 'lucide-react'
+import { adminApi, exercisesApi, PluginConfiguration, AppConfiguration, PluginType, ApiKeyItem, ApiKeyCreated, PlaceholderItem, Exercise } from '../../services/api'
+import { Check, Loader2, Puzzle, Shield, Mail, Building2, Clock, Key, Download, Upload, Eye, EyeOff, Copy, RefreshCw, Trash2, Plus, MessageSquare, Phone, Share2, Tv, FileText, Monitor, FileType2, Volume2, Video, Image, Braces } from 'lucide-react'
 import { useAppDialog } from '../../contexts/AppDialogContext'
 import { useAuthStore } from '../../stores/authStore'
 import ThemeModeSelector from '../../components/ThemeModeSelector'
@@ -11,6 +11,8 @@ import LangSelector from '../../components/LangSelector'
 import { DEFAULT_PHASES_LIST, PHASE_PRESETS, PhasePresetKey } from '../../features/phasePresets'
 import SimulatorsTab from '../../components/options/SimulatorsTab'
 import PhasePicker from '../../components/PhasePicker'
+import LoadingScreen from '../../components/LoadingScreen'
+import { getSimulatorPluginCodes, getInjectTypeToSimulatorMap } from '../../plugins/registry'
 
 const COLORS = [
   { value: 'green', label: 'Vert', class: 'bg-green-500' },
@@ -26,18 +28,6 @@ const COLORS = [
 const ICONS = [
   'BookOpen', 'Twitter', 'Tv', 'Mail', 'MessageCircle', 
   'Newspaper', 'MessageSquare', 'Landmark', 'Shield', 'Box'
-]
-
-const MATURITY_LEVELS = [
-  { value: 'beginner', label: 'Débutant' },
-  { value: 'intermediate', label: 'Intermédiaire' },
-  { value: 'expert', label: 'Expert' },
-]
-
-const EXERCISE_MODES = [
-  { value: 'real_time', label: 'Temps réel' },
-  { value: 'compressed', label: 'Compressé' },
-  { value: 'simulated', label: 'Simulé' },
 ]
 
 type ExerciseTypeOption = { value: string; label: string }
@@ -172,7 +162,7 @@ const normalizeExerciseTypeValue = (value: string): string =>
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 
-type TabType = 'exercises' | 'plugins' | 'security' | 'timelines'
+type TabType = 'exercises' | 'plugins' | 'security' | 'timelines' | 'placeholders'
 type PhasePreset = PhasePresetKey
 type TimelinePhaseTypeFormat = { type: string; formats: string[]; simulator: string | null }
 // TimelineSettingsTab removed — phases shown directly, inject_types and sources moved to exercises tab
@@ -187,24 +177,9 @@ type TimelineCustomSourceItem = TimelineSourceItem
 
 const TIMELINE_ALLOWED_FORMATS = ['TXT', 'AUDIO', 'VIDEO', 'IMAGE'] as const
 type TimelineAllowedFormat = (typeof TIMELINE_ALLOWED_FORMATS)[number]
-const TIMELINE_SIMULATOR_OPTIONS = [
-  { value: 'mail', label: 'Mail' },
-  { value: 'chat', label: 'Chat' },
-  { value: 'sms', label: 'SMS' },
-  { value: 'tel', label: 'Call' },
-  { value: 'tv', label: 'TV' },
-  { value: 'social', label: 'Social network' },
-  { value: 'press', label: 'Press' },
-]
+const TIMELINE_SIMULATOR_PLUGIN_TYPES = getSimulatorPluginCodes()
 
-const TIMELINE_DEFAULT_SIMULATOR_BY_TYPE: Record<string, string> = {
-  mail: 'mail',
-  sms: 'sms',
-  call: 'tel',
-  socialnet: 'social',
-  tv: 'tv',
-  doc: 'mail',
-}
+const TIMELINE_DEFAULT_SIMULATOR_BY_TYPE: Record<string, string> = getInjectTypeToSimulatorMap()
 
 /** Canonical type keys — timeline-inject-item.schema.json enum values (story and directory are bank-only). */
 const TIMELINE_INJECT_TYPE_LABELS: Record<string, string> = {
@@ -251,13 +226,14 @@ const FORMAT_COLORS: Record<string, { active: string; inactive: string }> = {
   IMAGE: { active: 'bg-rose-600 text-white border-rose-600',    inactive: 'bg-gray-800 text-gray-500 border-gray-700 hover:border-rose-700 hover:text-rose-400' },
 }
 
+/** Formats supportés par le LLM OpenAI pour la génération de contenu (TXT, IMAGE via DALL-E, AUDIO via TTS — pas de VIDEO). */
 const DEFAULT_TIMELINE_PHASE_TYPE_FORMATS: TimelinePhaseTypeFormat[] = [
-  { type: 'mail', formats: ['TXT'], simulator: 'mail' },
+  { type: 'mail', formats: ['TXT', 'IMAGE'], simulator: 'mailbox' },
   { type: 'sms', formats: ['TXT', 'IMAGE'], simulator: 'sms' },
-  { type: 'call', formats: ['AUDIO'], simulator: 'tel' },
-  { type: 'socialnet', formats: ['TXT', 'VIDEO', 'IMAGE'], simulator: 'social' },
-  { type: 'tv', formats: ['VIDEO'], simulator: 'tv' },
-  { type: 'doc', formats: ['TXT', 'IMAGE'], simulator: 'mail' },
+  { type: 'call', formats: ['TXT', 'AUDIO'], simulator: null },
+  { type: 'socialnet', formats: ['TXT', 'IMAGE'], simulator: 'social_internal' },
+  { type: 'tv', formats: ['TXT', 'IMAGE', 'AUDIO'], simulator: 'tv' },
+  { type: 'doc', formats: ['TXT', 'IMAGE'], simulator: 'mailbox' },
 ]
 
 const TIMELINE_ALLOWED_INJECT_TYPE_NAMES = new Set(
@@ -281,7 +257,7 @@ const normalizeTimelineTypeFormatRows = (rows: TimelinePhaseTypeFormat[]): Timel
     ) || []
     const simulator =
       typeof sourceRow?.simulator === 'string' &&
-      TIMELINE_SIMULATOR_OPTIONS.some((option) => option.value === sourceRow.simulator)
+      TIMELINE_SIMULATOR_PLUGIN_TYPES.has(sourceRow.simulator)
         ? sourceRow.simulator
         : defaultRow.simulator
 
@@ -400,7 +376,11 @@ export default function OptionsPage() {
   // Update app config mutation
   const updateAppConfigMutation = useMutation({
     mutationFn: (data: Partial<AppConfiguration>) => adminApi.updateAppConfiguration(data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      // Immediately update the cache so getAppConfigValue falls back to
+      // fresh data when we clean up editedAppConfig below (avoids flicker
+      // between cleanup and background refetch completing).
+      queryClient.setQueryData(['app-configuration'], data)
       queryClient.invalidateQueries({ queryKey: ['app-configuration'] })
       setEditedAppConfig((prev) => {
         const next = { ...prev }
@@ -439,6 +419,25 @@ export default function OptionsPage() {
     queryKey: ['api-keys'],
     queryFn: adminApi.listApiKeys,
   })
+
+  // Placeholders
+  const [placeholderExerciseId, setPlaceholderExerciseId] = useState<number | undefined>(undefined)
+  const { data: placeholderExercises } = useQuery({
+    queryKey: ['exercises-list-for-placeholders'],
+    queryFn: () => exercisesApi.list({ page_size: 100 }),
+    enabled: activeTab === 'placeholders',
+  })
+  const { data: placeholders, isLoading: placeholdersLoading, refetch: refetchPlaceholders, isFetching: placeholdersFetching } = useQuery({
+    queryKey: ['placeholders', placeholderExerciseId],
+    queryFn: () => adminApi.getPlaceholders(placeholderExerciseId),
+    enabled: activeTab === 'placeholders',
+  })
+  const [copiedPlaceholder, setCopiedPlaceholder] = useState<string | null>(null)
+  const handleCopyPlaceholder = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedPlaceholder(text)
+    setTimeout(() => setCopiedPlaceholder(null), 1500)
+  }
 
   // API key mutations
   const createApiKeyMutation = useMutation({
@@ -839,14 +838,11 @@ export default function OptionsPage() {
 
   const tabsSysteme = useMemo(() => [
     { id: 'security' as TabType, label: t('admin.options.tabs.security'), icon: Shield },
+    { id: 'placeholders' as TabType, label: t('admin.options.tabs.placeholders'), icon: Braces },
   ], [t])
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   if (hasError) {
@@ -901,8 +897,13 @@ export default function OptionsPage() {
   }
 
   const saveCustomPhases = (phases: { name: string }[]) => {
-    updateAppConfigField('custom_phases_config', JSON.stringify(phases))
-    updateAppConfigField('default_phases_preset', 'custom')
+    setEditedAppConfig(prev => ({
+      ...prev,
+      custom_phases_config: JSON.stringify(phases),
+      default_phases_preset: 'custom',
+    }))
+    setAppConfigAutosaveError(null)
+    lastFailedAppConfigAutosaveSignatureRef.current = null
   }
 
   const activateCustomPreset = () => {
@@ -912,7 +913,9 @@ export default function OptionsPage() {
       const seed = getPhasesConfig().filter((p) => p.enabled).map((p) => ({ name: p.name }))
       saveCustomPhases(seed)
     } else {
-      updateAppConfigField('default_phases_preset', 'custom')
+      setEditedAppConfig(prev => ({ ...prev, default_phases_preset: 'custom' }))
+      setAppConfigAutosaveError(null)
+      lastFailedAppConfigAutosaveSignatureRef.current = null
     }
   }
 
@@ -955,18 +958,6 @@ export default function OptionsPage() {
   const saveTimelinePhaseTypeFormats = (rows: TimelinePhaseTypeFormat[]) => {
     const sanitized = normalizeTimelineTypeFormatRows(rows)
     updateAppConfigField('timeline_phase_type_format_config', JSON.stringify(sanitized))
-  }
-
-  const toggleTimelineInjectFormat = (index: number, format: TimelineAllowedFormat, checked: boolean) => {
-    const rows = getTimelinePhaseTypeFormats()
-    const row = rows[index]
-    if (!row) return
-    if (checked) {
-      row.formats = row.formats.includes(format) ? row.formats : [...row.formats, format]
-    } else {
-      row.formats = row.formats.filter((item) => item !== format)
-    }
-    saveTimelinePhaseTypeFormats(rows)
   }
 
   const updateTimelineInjectSimulator = (index: number, simulator: string | null) => {
@@ -1259,6 +1250,7 @@ export default function OptionsPage() {
                 { id: 'organisation' as ExercisesSubTab, label: 'Organisation' },
                 { id: 'inject_types' as ExercisesSubTab, label: t('admin.options.tabs.inject_types') },
                 { id: 'sources' as ExercisesSubTab, label: t('admin.options.tabs.sources') },
+                { id: 'timelines' as ExercisesSubTab, label: t('admin.options.tabs.timelines') },
               ]).map(({ id, label }) => (
                 <button
                   key={id}
@@ -1577,51 +1569,6 @@ export default function OptionsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4 mt-6">
-                  <h3 className="text-sm font-semibold text-gray-200">Niveaux de maturité disponibles</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {[
-                      { value: 'beginner', label: 'Débutant' },
-                      { value: 'intermediate', label: 'Intermédiaire' },
-                      { value: 'expert', label: 'Expert' },
-                    ].map((level) => (
-                      <label key={level.value} className="flex items-center gap-2 text-gray-300">
-                        <input
-                          type="radio"
-                          name="default_maturity_level"
-                          value={level.value}
-                          checked={getAppConfigValue('default_maturity_level') === level.value}
-                          onChange={(e) => updateAppConfigField('default_maturity_level', e.target.value)}
-                          className="text-primary-500"
-                        />
-                        {level.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4 mt-6">
-                  <h3 className="text-sm font-semibold text-gray-200">Modes d'exercice disponibles</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {[
-                      { value: 'real_time', label: 'Temps réel' },
-                      { value: 'compressed', label: 'Compressé' },
-                      { value: 'simulated', label: 'Simulé' },
-                    ].map((mode) => (
-                      <label key={mode.value} className="flex items-center gap-2 text-gray-300">
-                        <input
-                          type="radio"
-                          name="default_exercise_mode"
-                          value={mode.value}
-                          checked={getAppConfigValue('default_exercise_mode') === mode.value}
-                          onChange={(e) => updateAppConfigField('default_exercise_mode', e.target.value)}
-                          className="text-primary-500"
-                        />
-                        {mode.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
                 </div>
               )}
 
@@ -1731,24 +1678,23 @@ export default function OptionsPage() {
                             </div>
                           </div>
 
-                          {/* Format chips */}
+                          {/* Format chips (read-only — determined by LLM capabilities) */}
                           <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Formats</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Formats supportés lors de la génération</p>
                             <div className="flex flex-wrap gap-1.5">
                               {TIMELINE_ALLOWED_FORMATS.map((format) => {
                                 const active = row.formats.includes(format)
+                                if (!active) return null
                                 const fColors = FORMAT_COLORS[format]
                                 const FmtIcon = FORMAT_ICONS[format]
                                 return (
-                                  <button
+                                  <span
                                     key={format}
-                                    type="button"
-                                    onClick={() => toggleTimelineInjectFormat(index, format, !active)}
-                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-all ${active ? fColors.active : fColors.inactive}`}
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium ${fColors.active}`}
                                   >
                                     <FmtIcon className="w-3 h-3" />
                                     {format}
-                                  </button>
+                                  </span>
                                 )
                               })}
                             </div>
@@ -1765,11 +1711,13 @@ export default function OptionsPage() {
                               className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
                               <option value="">Aucun</option>
-                              {(plugins ?? []).map((p) => (
-                                <option key={p.plugin_type} value={p.plugin_type}>
-                                  {p.name}{p.coming_soon ? ' (bientôt)' : !p.default_enabled ? ' (désactivé)' : ''}
-                                </option>
-                              ))}
+                              {(plugins ?? [])
+                                .filter((p) => TIMELINE_SIMULATOR_PLUGIN_TYPES.has(p.plugin_type))
+                                .map((p) => (
+                                  <option key={p.plugin_type} value={p.plugin_type}>
+                                    {p.name}{p.coming_soon ? ' (bientôt)' : ''}
+                                  </option>
+                                ))}
                             </select>
                           </div>
                         </div>
@@ -2088,6 +2036,133 @@ export default function OptionsPage() {
                   )
                 })()}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Placeholders Tab */}
+        {activeTab === 'placeholders' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Braces className="w-5 h-5 text-gray-400" />
+                  <h2 className="text-lg font-medium text-white">{t('admin.options.placeholders.title')}</h2>
+                </div>
+                <button
+                  onClick={() => refetchPlaceholders()}
+                  disabled={placeholdersFetching}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${placeholdersFetching ? 'animate-spin' : ''}`} />
+                  {t('common.refresh')}
+                </button>
+              </div>
+              <p className="mb-4 text-sm text-gray-400 leading-relaxed">
+                {t('admin.options.placeholders.intro')}
+              </p>
+
+              <div className="mb-6 flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-300 whitespace-nowrap">
+                  {t('admin.options.placeholders.exercise_context')}
+                </label>
+                <select
+                  value={placeholderExerciseId ?? ''}
+                  onChange={(e) => setPlaceholderExerciseId(e.target.value ? Number(e.target.value) : undefined)}
+                  className="flex-1 max-w-md px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">{t('admin.options.placeholders.no_exercise')}</option>
+                  {(placeholderExercises?.exercises ?? []).map((ex: Exercise) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.name} ({ex.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {placeholdersLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                </div>
+              ) : placeholders && placeholders.length > 0 ? (
+                (() => {
+                  const categories: Record<string, { label: string; items: PlaceholderItem[] }> = {}
+                  const categoryLabels: Record<string, string> = {
+                    organisation: t('admin.options.placeholders.categories.organisation'),
+                    it_context: t('admin.options.placeholders.categories.it_context'),
+                    bia: t('admin.options.placeholders.categories.bia'),
+                    email: t('admin.options.placeholders.categories.email'),
+                    exercise: t('admin.options.placeholders.categories.exercise'),
+                    exercise_ctx: t('admin.options.placeholders.categories.exercise_ctx'),
+                    scenario: t('admin.options.placeholders.categories.scenario'),
+                    timeline: t('admin.options.placeholders.categories.timeline'),
+                    inject: t('admin.options.placeholders.categories.inject'),
+                  }
+                  for (const p of placeholders) {
+                    if (!categories[p.category]) {
+                      categories[p.category] = { label: categoryLabels[p.category] || p.category, items: [] }
+                    }
+                    categories[p.category].items.push(p)
+                  }
+                  return (
+                    <div className="space-y-6">
+                      {Object.entries(categories).map(([catKey, cat]) => (
+                        <div key={catKey}>
+                          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+                            {cat.label}
+                          </h3>
+                          <div className="rounded-lg border border-gray-700 overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-900 text-gray-400">
+                                <tr>
+                                  <th className="px-4 py-2 text-left font-medium">{t('admin.options.placeholders.col_label')}</th>
+                                  <th className="px-4 py-2 text-left font-medium">{t('admin.options.placeholders.col_placeholder')}</th>
+                                  <th className="px-4 py-2 text-left font-medium">{t('admin.options.placeholders.col_value')}</th>
+                                  <th className="px-4 py-2 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-700">
+                                {cat.items.map((p) => (
+                                  <tr key={p.key} className="hover:bg-gray-750">
+                                    <td className="px-4 py-2.5 text-gray-300 font-medium">{p.label}</td>
+                                    <td className="px-4 py-2.5">
+                                      <code className="text-xs text-primary-300 font-mono bg-gray-900 px-2 py-1 rounded">
+                                        {p.placeholder}
+                                      </code>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-gray-400 text-sm max-w-xs" title={p.contextual ? t('admin.options.placeholders.contextual_hint') : (p.value ? (p.value.length > 90 ? p.value.slice(0, 90) + '…' : p.value) : '')}>
+                                      {p.contextual
+                                        ? <span className="text-amber-500/70 italic text-xs">{t('admin.options.placeholders.contextual')}</span>
+                                        : p.value
+                                          ? (p.value.length > 30 ? p.value.slice(0, 30) + '…' : p.value)
+                                          : <span className="text-gray-600 italic">{t('admin.options.placeholders.empty')}</span>}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right">
+                                      <button
+                                        onClick={() => handleCopyPlaceholder(p.placeholder)}
+                                        className="p-1.5 text-gray-400 hover:text-white transition-colors"
+                                        title={t('admin.options.placeholders.copy')}
+                                      >
+                                        {copiedPlaceholder === p.placeholder ? (
+                                          <Check className="w-4 h-4 text-green-400" />
+                                        ) : (
+                                          <Copy className="w-4 h-4" />
+                                        )}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()
+              ) : (
+                <p className="text-sm text-gray-500 italic">{t('admin.options.placeholders.none')}</p>
+              )}
             </div>
           </div>
         )}
