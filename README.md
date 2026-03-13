@@ -1,12 +1,12 @@
-# TTX Platform – Table Top Exercise Platform
+# Crisis-Lab Community — Plateforme de simulation de crise
 
-Plateforme de simulation d'exercices de crise (**Table Top Exercise**) pour la formation et l'entraînement à la gestion de situations d'urgence.
+Plateforme de simulation d'exercices de crise pour la formation et l'entraînement à la gestion de situations d'urgence.
 
 ---
 
-## 📖 Description
+## Description
 
-TTX Platform permet de concevoir, animer et vivre des exercices de crise simulés. Elle reproduit les outils de communication d'une vraie cellule de crise (webmail, médias sociaux, TV en direct, messagerie d'équipe) dans un environnement maîtrisé et scénarisé.
+Crisis-Lab Community permet de concevoir, animer et vivre des exercices de crise simulés. Elle reproduit les outils de communication d'une vraie cellule de crise (webmail, médias sociaux, TV en direct, messagerie d'équipe) dans un environnement maîtrisé et scénarisé.
 
 ### Cas d'usage typiques
 - Formation des équipes de gestion de crise
@@ -16,7 +16,7 @@ TTX Platform permet de concevoir, animer et vivre des exercices de crise simulé
 
 ---
 
-## 👥 Rôles
+## Rôles
 
 | Rôle | Description | Accès |
 |------|-------------|-------|
@@ -37,16 +37,17 @@ Un utilisateur peut avoir un rôle différent selon l'exercice :
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-ttx-platform/
+crisis-lab-community/
 ├── backend/                    # FastAPI Python Backend
 │   ├── app/
 │   │   ├── models/            # SQLAlchemy Models (User, Exercise, Inject, Team...)
 │   │   ├── routers/           # Endpoints REST API
 │   │   ├── schemas/           # Pydantic Schemas (validation)
 │   │   ├── services/          # Services métier
+│   │   ├── plugins/           # Architecture plugin (simulateurs)
 │   │   ├── utils/
 │   │   │   ├── permissions.py # Système RBAC complet
 │   │   │   └── security.py    # Hash passwords, sessions
@@ -62,31 +63,31 @@ ttx-platform/
 │   │   │   ├── ObservateurLayout.tsx  # Layout observateur (lecture seule)
 │   │   │   └── player/             # Composants layout joueur
 │   │   ├── pages/
-│   │   │   ├── admin/              # Pages admin (users, teams, audit)
+│   │   │   ├── admin/              # Pages admin (users, teams, audit, options)
 │   │   │   ├── player/             # Pages interface joueur
 │   │   │   ├── observateur/        # Pages interface observateur
 │   │   │   └── ParticipantLandingPage.tsx  # Page d'accueil participants
-│   │   ├── services/              # Clients API (api.ts, playerApi.ts)
-│   │   └── stores/                # État global Zustand (authStore)
+│   │   ├── plugins/              # Plugins simulateurs frontend
+│   │   ├── services/             # Client API (api.ts)
+│   │   ├── stores/               # État global Zustand
+│   │   └── i18n/                 # Traductions FR / EN
 │   └── package.json
 └── docker-compose.yml          # Environnement de développement
 ```
 
 ---
 
-## 🚀 Démarrage rapide
+## Démarrage rapide
 
 ### Prérequis
 - Docker & Docker Compose
-- (Optionnel) Node.js 18+ / Python 3.11+ pour développement local
 
 ### 1. Cloner et configurer
 
 ```bash
 git clone <repo-url>
-cd inject
+cd crisis-lab-community
 cp .env.example .env
-# Éditer .env si nécessaire
 ```
 
 ### 2. Lancer les services
@@ -95,17 +96,14 @@ cp .env.example .env
 docker compose up -d
 ```
 
-### 3. Initialiser l'environnement complet
+### 3. Initialiser l'environnement
 
 ```bash
-# Option A : initialisation complète avec exercice de démo
-docker compose exec backend python scripts/init_env.py --demo-exercise
+# Initialisation complète avec exercice de démo
+docker compose exec ttx-community-backend python scripts/init_env.py --demo-exercise
 
-# Option B : reset complet + réinitialisation
-docker compose exec backend python scripts/init_env.py --reset --demo-exercise
-
-# Option C : init minimale (tables + utilisateurs de base uniquement)
-docker compose exec backend python scripts/init_db.py
+# Ou reset complet + réinitialisation
+docker compose exec ttx-community-backend python scripts/init_env.py --reset --demo-exercise
 ```
 
 ### 4. Accéder à l'application
@@ -114,11 +112,11 @@ docker compose exec backend python scripts/init_db.py
 |---------|-----|
 | Frontend | http://localhost:5173 |
 | Backend API | http://localhost:3000 |
-| API Docs (Swagger) | http://localhost:3000/docs |
+| API Docs (Swagger) | http://localhost:3000/api/docs |
 
 ---
 
-## 🔑 Comptes par défaut
+## Comptes par défaut
 
 Créés par `init_env.py` :
 
@@ -131,13 +129,12 @@ Créés par `init_env.py` :
 | Observateur | `observateur2` | `Obs123!` |
 | Participant | `participant1` | `Part123!` |
 | Participant | `participant2` | `Part123!` |
-| ... | ... | ... |
 
-> ⚠️ **Changer ces mots de passe en production !**
+> **Changer ces mots de passe en production !**
 
 ---
 
-## 🎮 Flux d'utilisation typique
+## Flux d'utilisation typique
 
 ```
 1. ADMIN        → Configure les utilisateurs et les équipes
@@ -154,65 +151,38 @@ Créés par `init_env.py` :
 
 ---
 
-## 🛠️ Développement
-
-### Backend seul
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 3000
-```
-
-### Frontend seul
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Développement
 
 ### Migrations base de données
 
 ```bash
 # Créer une nouvelle migration
-docker compose exec backend alembic revision --autogenerate -m "description"
+docker compose exec ttx-community-backend alembic revision -m "description"
 
 # Appliquer les migrations
-docker compose exec backend alembic upgrade head
-
-# Revenir à une version précédente
-docker compose exec backend alembic downgrade -1
+docker compose exec ttx-community-backend alembic upgrade head
 ```
 
 ### Logs
 
 ```bash
-docker compose logs -f backend
-docker compose logs -f frontend
+docker compose logs -f ttx-community-backend
+docker compose logs -f ttx-community-frontend
 ```
 
 ---
 
-## 🔐 Sécurité
+## Sécurité
 
-- Sessions serveur (pas de JWT stocké côté client)
+- Sessions serveur (pas de JWT côté client)
 - Protection CSRF sur toutes les mutations
-
-## 📚 Documentation
-
-- L’admin dispose d’un guide dédié (`ADMIN.md`) qui détaille les responsabilités de configuration, l’exploitation des données et les nouveaux points d’extension comme les schémas JSON exposés par l’API.
-- Les schémas canoniques accessibles via l’API permettent de valider les imports :
-  - `GET /api/inject-bank/schema` retourne le schéma Draft-07 de la banque d’injects.
-  - `GET /api/injects/schema/timeline` retourne le schéma Draft-07 des injects timeline (réutilise la définition banque via `allOf`).
-  Ces endpoints peuvent être utilisés dans les scripts d’import/export pour garantir la conformité JSON avant de pousser les données via `/inject-bank` ou `/injects`.
 - RBAC à deux niveaux : rôle global + rôle par exercice
 - Verrouillage de compte après échecs de connexion
 - Audit trail complet des actions
 
 ---
 
-## 📦 Variables d'environnement
+## Variables d'environnement
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
@@ -220,4 +190,10 @@ docker compose logs -f frontend
 | `SESSION_SECRET` | Clé secrète des sessions (min 32 chars) | *(à changer)* |
 | `ENVIRONMENT` | `development` ou `production` | `development` |
 | `CORS_ORIGINS` | Origines CORS autorisées | `http://localhost:5173` |
-| `API_URL` | URL de l'API (frontend) | `http://localhost:3000` |
+| `MEDIA_STORAGE_PATH` | Stockage des fichiers uploadés | `/app/media` |
+
+---
+
+## Licence
+
+AGPLv3 — voir [LICENSE](LICENSE).
