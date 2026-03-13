@@ -7,42 +7,32 @@ import ThemeModeSelector from '../components/ThemeModeSelector'
 import LangSelector from '../components/LangSelector'
 import DevDrawer from '../components/login/DevDrawer'
 import { OFFICIAL_TTX_LOGO_URL } from '../config/branding'
-
-const isDevelopment = import.meta.env.DEV
+import { useThemeStore, resolveThemeMode } from '../stores/themeStore'
+import { User, Lock, Eye, EyeOff } from 'lucide-react'
 
 function inferTenantSlugFromHost(hostname: string): string | null {
   const host = hostname.toLowerCase()
-
-  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
-    return 'default'
-  }
-
-  if (host.endsWith('.localhost')) {
-    const tenantSlug = host.slice(0, -'.localhost'.length)
-    return tenantSlug || null
-  }
-
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return 'default'
+  if (host.endsWith('.localhost')) return host.slice(0, -'.localhost'.length) || null
   const parts = host.split('.').filter(Boolean)
-  if (parts.length >= 3 && parts[0] !== 'www') {
-    return parts[0]
-  }
-
+  if (parts.length >= 3 && parts[0] !== 'www') return parts[0]
   return null
 }
 
 function formatTenantName(slug: string | null): string | null {
   if (!slug) return null
-  return slug
-    .split(/[-_]+/)
-    .filter(Boolean)
-    .map((part) => part.toUpperCase())
-    .join(' ')
+  return slug.split(/[-_]+/).filter(Boolean).map((p) => p.toUpperCase()).join(' ')
 }
 
 export default function LoginPage() {
   const { t } = useTranslation()
+  const themeMode = useThemeStore((s) => s.mode)
+  const isDark = resolveThemeMode(themeMode) === 'dark'
+  const crisisLabLogo = isDark ? '/logo_dark.png' : '/logo_light.png'
+
   const [usernameOrEmail, setUsernameOrEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [devLoading, setDevLoading] = useState<string | null>(null)
@@ -56,41 +46,21 @@ export default function LoginPage() {
 
   useEffect(() => {
     let canceled = false
-
-    const hostTenantSlug =
-      typeof window !== 'undefined' ? inferTenantSlugFromHost(window.location.hostname) : null
-    if (hostTenantSlug) {
-      setTenantSlug(hostTenantSlug)
-    }
-
-    const loadPublicConfig = async () => {
-      try {
-        const config = await adminApi.getPublicConfiguration()
-        if (canceled) return
-
-        if (config.organization_name?.trim()) {
-          setOrganizationName(config.organization_name.trim())
-        }
-        setOrganizationLogoUrl(config.organization_logo_url || OFFICIAL_TTX_LOGO_URL)
-        if (config.tenant_slug?.trim()) {
-          setTenantSlug(config.tenant_slug.trim())
-        }
-      } catch {
-        // Public branding is optional on login.
-      }
-    }
-
-    loadPublicConfig()
-    return () => {
-      canceled = true
-    }
+    const hostSlug = typeof window !== 'undefined' ? inferTenantSlugFromHost(window.location.hostname) : null
+    if (hostSlug) setTenantSlug(hostSlug)
+    adminApi.getPublicConfiguration().then((config) => {
+      if (canceled) return
+      if (config.organization_name?.trim()) setOrganizationName(config.organization_name.trim())
+      setOrganizationLogoUrl(config.organization_logo_url || OFFICIAL_TTX_LOGO_URL)
+      if (config.tenant_slug?.trim()) setTenantSlug(config.tenant_slug.trim())
+    }).catch(() => {})
+    return () => { canceled = true }
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
       const response = await authApi.login(usernameOrEmail, password)
       setUser({ ...response.user, tenant: response.tenant })
@@ -106,7 +76,6 @@ export default function LoginPage() {
   const handleDevLogin = async (role: 'admin' | 'animateur' | 'observateur' | 'participant') => {
     setError('')
     setDevLoading(role)
-
     try {
       const response = await authApi.devLogin(role)
       setUser({ ...response.user, tenant: response.tenant })
@@ -120,170 +89,217 @@ export default function LoginPage() {
   }
 
   const tenantName = (tenantSlug && tenantSlug !== 'default') ? formatTenantName(tenantSlug) : null
-  const loginTitle = organizationName || tenantName || 'TTX Platform'
+
+  /* ── Couleurs panel droit selon thème ── */
+  const panel = {
+    bg:          isDark ? '#0f172a' : '#ffffff',
+    text:        isDark ? '#f1f5f9' : '#0f172a',
+    muted:       isDark ? '#94a3b8' : '#64748b',
+    inputBg:     isDark ? 'rgba(255,255,255,0.06)' : '#f8fafc',
+    inputBorder: isDark ? 'rgba(148,163,184,0.22)' : '#e2e8f0',
+    inputText:   isDark ? '#f1f5f9' : '#0f172a',
+    inputPlaceholder: isDark ? '#475569' : '#94a3b8',
+  }
 
   return (
-    <div className="login-scene relative isolate min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
-      <div className="login-grid" aria-hidden="true" />
-      <div className="login-orb login-orb-a" aria-hidden="true" />
-      <div className="login-orb login-orb-b" aria-hidden="true" />
-      <div className="login-orb login-orb-c" aria-hidden="true" />
-      <div className="login-vignette" aria-hidden="true" />
+    <div className="flex min-h-screen">
 
-      <div className="relative mx-auto mb-6 flex max-w-5xl items-center justify-end gap-2">
-        <div className="flex items-center gap-2">
-          <LangSelector />
-          <ThemeModeSelector />
+      {/* ══════════════════════════════════
+          LEFT — Photo avec bord 3D
+      ══════════════════════════════════ */}
+      {/* drop-shadow sur le wrapper, clip-path sur l'inner → shadow suit la découpe */}
+      <div
+        className="relative hidden lg:block lg:w-[55%] shrink-0"
+        style={{
+          zIndex: 10,
+          filter: 'drop-shadow(20px 0 40px rgba(0,0,0,0.55)) drop-shadow(4px 0 6px rgba(0,0,0,0.30))',
+        }}
+      >
+        <div
+          className="relative h-full w-full overflow-hidden"
+          style={{ clipPath: 'polygon(0 0, 100% 0, calc(100% - 56px) 100%, 0 100%)' }}
+        >
+          <img
+            src="/login-bg.jpg"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-60"
+          />
+          {/* Dégradé bas */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent" />
+          <p className="absolute bottom-5 left-6 text-xs font-medium text-white/70">
+            © {new Date().getFullYear()} CrisisLab
+          </p>
         </div>
       </div>
 
-      <div className="relative mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center">
-        <div className="grid w-full items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="hidden lg:block px-4">
-            <div className="flex flex-wrap items-center gap-3 mt-3">
-              <span
-                className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-                style={{
-                  borderColor: 'var(--login-panel-subtle-border)',
-                  backgroundColor: 'var(--login-panel-subtle-bg)',
-                  color: 'var(--login-text)',
-                }}
-              >
-                Community Edition
-              </span>
+      {/* ══════════════════════════════════
+          RIGHT — Formulaire
+      ══════════════════════════════════ */}
+      <div
+        className="flex w-full flex-col lg:w-[45%]"
+        style={{ backgroundColor: panel.bg, marginLeft: '-28px', zIndex: 5 }}
+      >
+        {/* Barre du haut */}
+        <div className="flex items-center justify-end gap-2 px-8 pt-6">
+          <LangSelector />
+          <ThemeModeSelector />
+        </div>
 
-              {tenantName && (
-                <span
-                  className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-                  style={{
-                    borderColor: 'var(--login-panel-subtle-border)',
-                    backgroundColor: 'var(--login-panel-subtle-bg)',
-                    color: 'var(--login-text)',
-                  }}
-                >
-                  {t('common.tenant')}: {tenantName}
-                </span>
-              )}
+        {/* Contenu centré verticalement */}
+        <div className="flex flex-1 flex-col items-center justify-center px-10 pb-24 pt-0 sm:px-16" style={{ marginTop: '-80px' }}>
+          <div className="w-full max-w-sm">
+
+            {/* Logo grand centré */}
+            <div className="mb-10 flex justify-center">
+              <img
+                src={crisisLabLogo}
+                alt="CrisisLab"
+                className="h-24 object-contain sm:h-28"
+              />
             </div>
-            <h1 className="mt-4 text-4xl font-extrabold leading-tight md:text-5xl" style={{ color: 'var(--login-text)' }}>
-              {loginTitle}
-            </h1>
-            <p className="mt-4 max-w-lg text-base leading-relaxed login-muted">
-              {t('login.platformTagline')}
-            </p>
-            {tenantName && (
-              <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-md" style={{ borderColor: 'var(--login-panel-subtle-border)', backgroundColor: 'var(--login-panel-subtle-bg)' }}>
-                <div className="h-10 w-10 rounded-xl bg-primary-500/20 ring-1 ring-primary-400/30 flex items-center justify-center text-primary-300 font-bold">
-                  {tenantName.slice(0, 2)}
-                </div>
-                <div>
-                  <span
-                    className="mb-1 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]"
-                    style={{
-                      borderColor: 'var(--login-panel-subtle-border)',
-                      backgroundColor: 'var(--login-panel-subtle-bg)',
-                      color: 'var(--login-text)',
-                    }}
-                  >
-                    Community Edition
-                  </span>
-                  <p className="text-xs uppercase tracking-[0.2em] login-muted">{t('common.tenant')}</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--login-text)' }}>
-                    {tenantName}
-                  </p>
-                </div>
-              </div>
-            )}
-          </section>
 
-          <section
-            className="w-full rounded-2xl border p-6 shadow-2xl backdrop-blur-xl sm:p-8"
-            style={{
-              backgroundColor: 'var(--login-card-bg)',
-              borderColor: 'var(--login-card-border)',
-              boxShadow: '0 24px 80px rgba(2, 6, 23, 0.35)',
-            }}
-          >
-            <div>
-              {organizationLogoUrl ? (
-                <div className="mb-4 flex justify-center">
-                  <img
-                    src={organizationLogoUrl}
-                    alt={organizationName}
-                    className="max-h-14 max-w-[220px] object-contain"
-                    onError={() => setOrganizationLogoUrl(null)}
-                  />
-                </div>
-              ) : null}
-
-              <h2 className="text-center text-3xl font-extrabold" style={{ color: 'var(--login-text)' }}>
-                {t('login.title')}
-              </h2>
-              <p className="mt-2 text-center text-sm login-muted">
+            {/* Titre */}
+            <div className="mb-8">
+              {organizationLogoUrl && (
+                <img
+                  src={organizationLogoUrl}
+                  alt={organizationName}
+                  className="mb-3 max-h-10 max-w-[160px] object-contain"
+                  onError={() => setOrganizationLogoUrl(null)}
+                />
+              )}
+              <h1 className="text-3xl font-extrabold leading-tight" style={{ color: panel.text }}>
+                {organizationName}
+              </h1>
+              <p className="mt-1 text-base" style={{ color: panel.muted }}>
                 {tenantName ? t('login.tenantSpace', { name: tenantName }) : t('login.subtitle')}
               </p>
-              {tenantSlug && tenantSlug !== 'default' && (
-                <p className="mt-1 text-center text-xs uppercase tracking-[0.18em] login-muted">
-                  {tenantSlug}
-                </p>
-              )}
             </div>
 
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {/* Formulaire */}
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {error && (
-                <div className="rounded-lg border border-red-500/50 bg-red-950/60 px-4 py-3 text-sm font-medium text-red-200">
+                <div className="rounded-lg border border-red-400/50 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:bg-red-950/50 dark:text-red-200">
                   {error}
                 </div>
               )}
 
-              <div className="rounded-md shadow-sm -space-y-px">
-                <div>
-                  <label htmlFor="username" className="sr-only">
-                    {t('login.username')}
-                  </label>
+              {/* Username */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium"
+                  style={{ color: panel.muted }}
+                >
+                  {t('login.username')}
+                </label>
+                <div className="relative">
+                  <span
+                    className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
+                    style={{ color: panel.inputPlaceholder }}
+                  >
+                    <User size={15} />
+                  </span>
                   <input
                     id="username"
                     name="username"
                     type="text"
                     required
-                    className="login-input appearance-none rounded-none relative block w-full px-3 py-2 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                    autoComplete="username"
+                    className="block w-full rounded-xl py-3 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    style={{
+                      backgroundColor: panel.inputBg,
+                      border: `1.5px solid ${panel.inputBorder}`,
+                      color: panel.inputText,
+                    }}
                     placeholder={t('login.username')}
                     value={usernameOrEmail}
                     onChange={(e) => setUsernameOrEmail(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label htmlFor="password" className="sr-only">
-                    {t('login.password')}
-                  </label>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium"
+                  style={{ color: panel.muted }}
+                >
+                  {t('login.password')}
+                </label>
+                <div className="relative">
+                  <span
+                    className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
+                    style={{ color: panel.inputPlaceholder }}
+                  >
+                    <Lock size={15} />
+                  </span>
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
-                    className="login-input appearance-none rounded-none relative block w-full px-3 py-2 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                    autoComplete="current-password"
+                    className="block w-full rounded-xl py-3 pl-9 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    style={{
+                      backgroundColor: panel.inputBg,
+                      border: `1.5px solid ${panel.inputBorder}`,
+                      color: panel.inputText,
+                    }}
                     placeholder={t('login.password')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute inset-y-0 right-3 flex items-center opacity-60 hover:opacity-100"
+                    style={{ color: panel.muted }}
+                    aria-label={showPassword ? 'Masquer' : 'Afficher'}
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 disabled:opacity-50"
-                >
-                  {loading ? t('login.connecting') : t('login.submit')}
-                </button>
-              </div>
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+                style={{ backgroundColor: '#0f172a' }}
+              >
+                {loading ? t('login.connecting') : t('login.submit')}
+              </button>
             </form>
-          </section>
+
+            {/* Enterprise upgrade badge */}
+            <a
+              href="https://crisis-lab.eu/enterprise"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-opacity hover:opacity-80"
+              style={{
+                borderColor: isDark ? 'rgba(250,204,21,0.35)' : 'rgba(202,138,4,0.35)',
+                backgroundColor: isDark ? 'rgba(250,204,21,0.08)' : 'rgba(254,252,232,0.9)',
+                color: isDark ? '#fde047' : '#854d0e',
+              }}
+            >
+              <span className="text-base leading-none">⭐</span>
+              {t('nav.upgradeToEnterprise')}
+            </a>
+
+            {/* Community edition tag */}
+            <p className="mt-4 text-center text-xs" style={{ color: panel.muted }}>
+              Community Edition
+            </p>
+          </div>
         </div>
       </div>
 
-      {isDevelopment && (
+      {import.meta.env.DEV && (
         <DevDrawer onDevLogin={handleDevLogin} devLoading={devLoading} />
       )}
     </div>

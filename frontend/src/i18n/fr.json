@@ -8,6 +8,10 @@
     "submit": "Se connecter",
     "connecting": "Connexion...",
     "platformTagline": "Plateforme de pilotage et d'exercices TTX.",
+    "feature1": "Gestion des exercices de crise",
+    "feature2": "Coordination en temps réel",
+    "feature3": "Injects & scénarios configurables",
+    "feature4": "Rapports et analyses post-exercice",
     "errorDefault": "Erreur de connexion",
     "errorDevDefault": "Erreur de connexion dev"
   },

@@ -8,6 +8,10 @@
     "submit": "Sign in",
     "connecting": "Signing in...",
     "platformTagline": "TTX management and exercise platform.",
+    "feature1": "Crisis exercise management",
+    "feature2": "Real-time coordination",
+    "feature3": "Configurable injects & scenarios",
+    "feature4": "Post-exercise reports & analytics",
     "errorDefault": "Login error",
     "errorDevDefault": "Dev login error"
   },
