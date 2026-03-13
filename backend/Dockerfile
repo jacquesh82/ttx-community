@@ -1,3 +1,12 @@
+# ── Stage 1 : Build MkDocs documentation ───────────────────────────────────
+FROM python:3.12-slim AS docs-builder
+WORKDIR /tmp
+RUN pip install --no-cache-dir mkdocs-material
+COPY mkdocs.yml .
+COPY docs/ docs/
+RUN mkdocs build --site-dir /docs-site
+
+# ── Stage 2 : Application principale ────────────────────────────────────────
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -27,6 +36,9 @@ COPY . .
 
 # Create directories for media and logs
 RUN mkdir -p /app/media /app/logs
+
+# Copier le site MkDocs depuis le builder (hors /app/ pour éviter le shadow du volume mount)
+COPY --from=docs-builder /docs-site /docs-site
 
 # Expose port
 EXPOSE 3000

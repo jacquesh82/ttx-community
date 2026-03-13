@@ -1,4 +1,5 @@
 """FastAPI main application for CrisisLab."""
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
@@ -7,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from app.config import get_settings
@@ -271,6 +273,11 @@ app.include_router(welcome_kit.router, prefix="/api", tags=["welcome-kits"])
 app.include_router(admin_options.router, prefix="/api/admin", tags=["admin-options"])
 app.include_router(debug.router, prefix="/api", tags=["debug"])
 app.include_router(simulated_channels.router, prefix="/api", tags=["simulated-channels"])
+
+# Documentation statique MkDocs (servie sur /docs)
+_docs_site = "/docs-site"
+if os.path.isdir(_docs_site):
+    app.mount("/docs", StaticFiles(directory=_docs_site, html=True), name="docs")
 
 
 # Root endpoint

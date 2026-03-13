@@ -346,6 +346,16 @@ export default function Layout({ children }: LayoutProps) {
               {docsOpen && (
                 <div className="mt-3 space-y-1">
                   <a
+                    href="/docs/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sidebar-link flex items-center px-4 py-2 rounded-md transition-colors"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <ExternalLink className="mr-3" size={20} />
+                    {t('nav.userDocs')}
+                  </a>
+                  <a
                     href="/api/docs"
                     target="_blank"
                     rel="noopener noreferrer"

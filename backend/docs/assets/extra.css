@@ -1,0 +1,400 @@
+/* ── CrisisLab — ReadTheDocs theme — app design system ────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── Brand tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --cl-crimson:      #8B2D3A;
+  --cl-crimson-dark: #6B1F28;
+  --cl-crimson-soft: #a83848;
+  --cl-olive:        #9B9B6A;
+
+  --app-bg:                   #eef2ff;
+  --sidebar-bg:               #ffffff;
+  --sidebar-border:           rgba(148, 163, 184, 0.35);
+  --sidebar-text:             #0f172a;
+  --sidebar-muted:            #64748b;
+  --sidebar-link:             #334155;
+  --sidebar-link-hover-bg:    rgba(241, 245, 249, 0.95);
+  --sidebar-link-active-bg:   rgba(37, 99, 235, 0.10);
+  --sidebar-link-active-text: #1e40af;
+  --surface-card:             rgba(255, 255, 255, 0.95);
+  --surface-border:           rgba(148, 163, 184, 0.30);
+}
+
+/* ── Base typography ──────────────────────────────────────────────────────── */
+body, .wy-body-for-nav, .rst-content,
+.wy-menu-vertical, .wy-side-nav-search,
+.wy-nav-top, input, button {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Page background ──────────────────────────────────────────────────────── */
+body, .wy-body-for-nav {
+  background: var(--app-bg) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TOP HEADER (mobile)
+   ══════════════════════════════════════════════════════════════════════════ */
+.wy-nav-top {
+  background: var(--cl-crimson-dark) !important;
+  font-weight: 600;
+}
+.wy-nav-top a { color: #fff !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIDEBAR CONTAINER
+   ══════════════════════════════════════════════════════════════════════════ */
+.wy-nav-side {
+  background: var(--sidebar-bg) !important;
+  border-right: 1px solid var(--sidebar-border) !important;
+  /* width et left: laissés aux valeurs readthedocs (300px + media queries) */
+}
+
+/* ── Logo area ────────────────────────────────────────────────────────────── */
+.wy-side-nav-search {
+  background: var(--sidebar-bg) !important;
+  border-bottom: 1px solid var(--sidebar-border) !important;
+  padding: 20px 16px 16px !important;
+  margin: 0 !important;
+}
+.wy-side-nav-search > a {
+  display: block;
+  color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.wy-side-nav-search > a:hover {
+  background: transparent !important;
+}
+.wy-side-nav-search img.logo {
+  width: 82% !important;
+  max-width: 180px !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto 12px !important;
+}
+/* Search input */
+.wy-side-nav-search .wy-form {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.wy-side-nav-search input[type="text"] {
+  border-radius: 6px !important;
+  border: 1px solid var(--sidebar-border) !important;
+  background: rgba(248, 250, 252, 0.9) !important;
+  color: var(--sidebar-text) !important;
+  font-size: 0.81rem !important;
+  padding: 6px 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
+}
+.wy-side-nav-search input[type="text"]:focus {
+  border-color: rgba(37, 99, 235, 0.4) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.10) !important;
+}
+.wy-side-nav-search input[type="text"]::placeholder {
+  color: var(--sidebar-muted) !important;
+}
+
+/* ── Scrollable nav area — garder width:320px natif (readthedocs) ─────────── */
+.wy-side-scroll {
+  padding: 8px 0 24px !important;
+  background: transparent !important;
+  /* NE PAS changer width ici — readthedocs gère overflow-x:hidden sur le parent */
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NAV MENU — reset all readthedocs defaults
+   ══════════════════════════════════════════════════════════════════════════ */
+.wy-menu-vertical {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Remove ALL default list styling + readthedocs borders */
+.wy-menu-vertical ul,
+.wy-menu-vertical li {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Remove ALL borders readthedocs puts on links (left, right, top, bottom) */
+.wy-menu-vertical a,
+.wy-menu-vertical a:hover,
+.wy-menu-vertical li > a,
+.wy-menu-vertical li.current > a,
+.wy-menu-vertical li.on > a {
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove readthedocs default bullet pseudo-elements */
+.wy-menu-vertical li > a::before { display: none !important; }
+
+/* Masquer les boutons expand/collapse FontAwesome */
+.wy-menu-vertical li button.toctree-expand { display: none !important; }
+
+/* Supprimer les borders top/bottom readthedocs sur toctree-l1.current */
+.wy-menu-vertical li.toctree-l1.current > a {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Section caption (top-level title) */
+.wy-menu-vertical p.caption {
+  color: var(--sidebar-muted) !important;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  padding: 16px 16px 4px !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* ── Level 1 links ────────────────────────────────────────────────────────── */
+.wy-menu-vertical li.toctree-l1 > a {
+  display: flex !important;
+  align-items: center !important;
+  color: var(--sidebar-link) !important;
+  font-size: 0.85rem !important;
+  font-weight: 400 !important;
+  padding: 6px 12px !important;
+  margin: 1px 8px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  transition: background 0.12s, color 0.12s !important;
+  line-height: 1.4 !important;
+}
+.wy-menu-vertical li.toctree-l1 > a:hover {
+  background: var(--sidebar-link-hover-bg) !important;
+  color: var(--sidebar-text) !important;
+}
+.wy-menu-vertical li.toctree-l1.current > a,
+.wy-menu-vertical li.toctree-l1.current > a:hover {
+  background: var(--sidebar-link-active-bg) !important;
+  color: var(--sidebar-link-active-text) !important;
+  font-weight: 500 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Expanded section — no background */
+.wy-menu-vertical li.toctree-l1.current,
+.wy-menu-vertical li.toctree-l1.current ul {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ── Level 2 links ────────────────────────────────────────────────────────── */
+.wy-menu-vertical li.toctree-l2 > a {
+  display: flex !important;
+  align-items: center !important;
+  color: var(--sidebar-link) !important;
+  font-size: 0.82rem !important;
+  font-weight: 400 !important;
+  padding: 5px 12px 5px 24px !important;
+  margin: 1px 8px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  transition: background 0.12s, color 0.12s !important;
+  line-height: 1.4 !important;
+}
+.wy-menu-vertical li.toctree-l2 > a:hover {
+  background: var(--sidebar-link-hover-bg) !important;
+  color: var(--sidebar-text) !important;
+}
+.wy-menu-vertical li.toctree-l2.current > a,
+.wy-menu-vertical li.toctree-l2.current > a:hover {
+  background: var(--sidebar-link-active-bg) !important;
+  color: var(--sidebar-link-active-text) !important;
+  font-weight: 500 !important;
+  border: none !important;
+  border-left: none !important;
+  box-shadow: none !important;
+}
+.wy-menu-vertical li.toctree-l2.current,
+.wy-menu-vertical li.toctree-l2.current ul {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ── Level 3+ (sous-titres de page) — masqués comme dans l'app ───────────── */
+.wy-menu-vertical li.toctree-l3,
+.wy-menu-vertical li.toctree-l4,
+.wy-menu-vertical li.toctree-l5 {
+  display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MAIN CONTENT
+   ══════════════════════════════════════════════════════════════════════════ */
+.wy-nav-content-wrap {
+  background: var(--app-bg) !important;
+  /* margin-left: laissé à readthedocs (300px desktop / 0 mobile) */
+}
+.wy-nav-content {
+  background: var(--surface-card) !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--surface-border) !important;
+  margin: 20px !important;
+  padding: 36px 44px !important;
+  max-width: 900px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────────── */
+.rst-content h1 {
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: #0f172a !important;
+  margin-bottom: 0.2em !important;
+  border: none !important;
+}
+.rst-content h2 {
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid var(--surface-border) !important;
+  padding-bottom: 0.35em !important;
+  margin-top: 2em !important;
+}
+.rst-content h3 {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  margin-top: 1.5em !important;
+}
+
+/* ── Body text ────────────────────────────────────────────────────────────── */
+.rst-content p,
+.rst-content li {
+  color: #334155 !important;
+  line-height: 1.75 !important;
+  font-size: 0.91rem !important;
+}
+
+/* ── Links — bleu Tailwind comme dans l'app ───────────────────────────────── */
+.rst-content a { color: #2563eb !important; text-decoration: none !important; }
+.rst-content a:hover { color: #1d4ed8 !important; text-decoration: underline !important; }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.rst-content table.docutils,
+.rst-content table.field-list {
+  border: 1px solid var(--surface-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  font-size: 0.875rem !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+}
+.rst-content table.docutils thead th {
+  background: rgba(241, 245, 249, 0.95) !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  border-bottom: 1px solid var(--surface-border) !important;
+  padding: 10px 14px !important;
+  text-align: left !important;
+  letter-spacing: 0.01em !important;
+}
+.rst-content table.docutils td {
+  border-top: 1px solid rgba(148,163,184,0.18) !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 9px 14px !important;
+  color: #334155 !important;
+  vertical-align: middle !important;
+}
+.rst-content table.docutils tr:hover td {
+  background: rgba(241, 245, 249, 0.55) !important;
+}
+
+/* ── Code inline ──────────────────────────────────────────────────────────── */
+.rst-content code,
+.rst-content tt {
+  background: rgba(241, 245, 249, 0.85) !important;
+  color: var(--cl-crimson) !important;
+  border: 1px solid rgba(148,163,184,0.28) !important;
+  border-radius: 4px !important;
+  padding: 1px 5px !important;
+  font-size: 0.84em !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace !important;
+}
+
+/* ── Code block ───────────────────────────────────────────────────────────── */
+.rst-content pre {
+  background: #f8fafc !important;
+  border: 1px solid var(--surface-border) !important;
+  border-radius: 6px !important;
+  padding: 14px 18px !important;
+}
+.rst-content pre code,
+.rst-content pre tt {
+  background: transparent !important;
+  border: none !important;
+  color: #0f172a !important;
+  font-size: 0.85rem !important;
+  padding: 0 !important;
+}
+
+/* ── Admonitions ──────────────────────────────────────────────────────────── */
+.rst-content .admonition {
+  border-radius: 6px !important;
+  border-left: 3px solid var(--cl-crimson) !important;
+  background: rgba(139, 45, 58, 0.04) !important;
+  padding: 12px 16px !important;
+}
+.rst-content .admonition-title {
+  background: transparent !important;
+  color: var(--cl-crimson-dark) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+}
+.rst-content .note { border-left-color: #3b82f6 !important; background: rgba(59,130,246,0.04) !important; }
+.rst-content .note .admonition-title { color: #1d4ed8 !important; }
+.rst-content .warning { border-left-color: #f59e0b !important; background: rgba(245,158,11,0.04) !important; }
+.rst-content .warning .admonition-title { color: #b45309 !important; }
+
+/* ── Horizontal rule ──────────────────────────────────────────────────────── */
+.rst-content hr {
+  border: none !important;
+  border-top: 1px solid var(--surface-border) !important;
+  margin: 2em 0 !important;
+}
+
+/* ── Footer / breadcrumbs ─────────────────────────────────────────────────── */
+.rst-footer-buttons, footer {
+  font-size: 0.8rem !important;
+  color: var(--sidebar-muted) !important;
+}
+footer {
+  padding: 12px 0 !important;
+}
+.rst-content .wy-breadcrumbs {
+  font-size: 0.78rem !important;
+  color: var(--sidebar-muted) !important;
+  padding: 0 0 12px !important;
+}
+.rst-content .wy-breadcrumbs li { color: var(--sidebar-muted) !important; }
+.rst-content .wy-breadcrumbs a { color: var(--cl-crimson) !important; }

@@ -79,6 +79,11 @@ export default defineConfig(({ mode }) => {
           ws: true,
           xfwd: true,
         },
+        '/docs': {
+          target: 'http://backend:3000',
+          changeOrigin: true,
+          xfwd: true,
+        },
         '/api': {
           target: 'http://backend:3000',
           changeOrigin: true,

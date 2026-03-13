@@ -1,0 +1,38 @@
+site_name: CrisisLab Documentation
+site_url: https://localhost/docs/
+docs_dir: docs
+site_dir: /docs-site
+theme:
+  name: readthedocs
+  logo: assets/logo.png
+  favicon: assets/logo.png
+
+extra_css:
+  - assets/extra.css
+
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - tables
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+plugins:
+  - search:
+      lang: fr
+
+nav:
+  - Accueil: index.md
+  - Guide utilisateur:
+    - Vue d'ensemble: user-guide/index.md
+    - Démarrage rapide: user-guide/getting-started.md
+    - Exercices: user-guide/exercises.md
+    - Injects: user-guide/injects.md
+  - Guide administrateur:
+    - Vue d'ensemble: admin-guide/index.md
+    - Installation: admin-guide/installation.md
+    - Configuration: admin-guide/configuration.md
+    - Gestion des utilisateurs: admin-guide/users.md
+  - Référence API:
+    - Vue d'ensemble: api-reference/index.md
