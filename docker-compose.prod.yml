@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ttx-community-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ttx
+      POSTGRES_USER: ttx
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ttx -d ttx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Pas de port exposé en prod (accès interne uniquement)
+    networks:
+      - ttx-community-prod-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ttx-community-prod-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ttx:${DB_PASSWORD}@postgres:5432/ttx
+      SESSION_SECRET: ${SESSION_SECRET}
+      ENVIRONMENT: production
+      EDITION: community
+      MEDIA_STORAGE_PATH: /app/media
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    volumes:
+      # Pas de bind mount du code source en prod
+      - media-data:/app/media
+      - logs-data:/app/logs
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Pas de port exposé en prod (accès via nginx uniquement)
+    networks:
+      - ttx-community-prod-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_APP_VERSION: ${APP_VERSION:-1.0.0}
+    container_name: ttx-community-prod-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ttx-community-prod-net
+
+volumes:
+  pgdata:
+  media-data:
+  logs-data:
+
+networks:
+  ttx-community-prod-net:
+    driver: bridge

@@ -23,7 +23,7 @@ COMMAND=""
 NEW_PASSWORD="Admin123!"
 
 show_help() {
-    echo "Usage: $0 [show|reset] [--password <new_password>]"
+    echo "Usage: $0 [show|reset] [--password <new_password>] [--prod]"
     echo ""
     echo "Commands:"
     echo "  show             Affiche les infos du compte admin"
@@ -31,6 +31,7 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  --password <pw>  Nouveau mot de passe (avec reset, défaut: Admin123!)"
+    echo "  --prod           Cible le conteneur de production (ttx-community-prod-backend)"
     echo "  --help, -h       Affiche cette aide"
 }
 
@@ -110,6 +111,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         show|reset)     COMMAND="$1"; shift ;;
         --password)     NEW_PASSWORD="$2"; shift 2 ;;
+        --prod)         BACKEND_CONTAINER="ttx-community-prod-backend"; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)
             print_error "Option inconnue: $1"
