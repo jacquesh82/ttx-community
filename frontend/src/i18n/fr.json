@@ -33,7 +33,8 @@
     "organisation": "Organisation",
     "player": "Joueur",
     "logs": "Logs",
-    "comingSoon": "Bientôt disponible"
+    "comingSoon": "Bientôt disponible",
+    "upgradeToEnterprise": "Mise à niveau vers la version Enterprise"
   },
   "common": {
     "loading": "Chargement...",
@@ -48,6 +49,7 @@
     "none": "Aucun",
     "noneF": "Aucune",
     "noDescription": "Aucune description",
+    "refresh": "Actualiser",
     "viewAll": "Voir tout",
     "viewDetails": "Voir détails",
     "actions": "Actions",
@@ -194,6 +196,10 @@
       "top_active_participants": "Participants les plus actifs",
       "pagination": "Affichage de {{from}} à {{to}} sur {{total}} résultats"
     },
+    "logs": {
+      "title": "Logs système",
+      "subtitle": "Journaux techniques de la plateforme"
+    },
     "welcomeKits": {
       "title": "Kits de bienvenue"
     },
@@ -210,7 +216,8 @@
         "security": "Sécurité",
         "email": "Email",
         "inject_types": "Types d'inject",
-        "sources": "Sources"
+        "sources": "Sources",
+        "placeholders": "Placeholders"
       },
       "intros": {
         "general": "Ces paramètres définissent les valeurs proposées par défaut lors de la création d'un exercice. Vous pouvez les ajuster à tout moment sans impacter les exercices déjà créés.",
@@ -220,6 +227,31 @@
         "simulators": "Les simulateurs reproduisent les outils de communication du quotidien pendant l'exercice : messagerie, réseau social, chaîne TV… Activez uniquement ceux dont vous avez besoin et personnalisez leur apparence pour chaque scénario.",
         "security": "Gérez ici les règles d'accès à la plateforme : durée des sessions, nombre de tentatives de connexion autorisées et longueur minimale des mots de passe. Les clés API permettent à des outils externes de se connecter à la plateforme de manière sécurisée, sans passer par un compte utilisateur.",
         "email": "Connectez un serveur d'envoi d'e-mails (SMTP) pour que la plateforme puisse notifier les participants. Si aucun serveur n'est configuré, les notifications par e-mail ne seront pas envoyées."
+      },
+      "placeholders": {
+        "title": "Placeholders",
+        "intro": "Les placeholders permettent d'injecter automatiquement les données de votre organisation dans des prompts ou des modèles de texte. Copiez un placeholder et utilisez-le dans vos contenus — il sera remplacé par la valeur actuelle au moment de l'exécution.",
+        "col_label": "Champ",
+        "col_placeholder": "Placeholder",
+        "col_value": "Valeur actuelle",
+        "copy": "Copier le placeholder",
+        "empty": "Non renseigné",
+        "none": "Aucun placeholder disponible.",
+        "contextual": "Contextuel",
+        "contextual_hint": "Résolu dynamiquement selon l'exercice ou l'inject en cours",
+        "exercise_context": "Contexte exercice :",
+        "no_exercise": "— Aucun exercice sélectionné —",
+        "categories": {
+          "organisation": "Organisation",
+          "it_context": "Contexte technique",
+          "bia": "BIA",
+          "email": "Email",
+          "exercise": "Exercice par défaut",
+          "exercise_ctx": "Exercice (contextuel)",
+          "scenario": "Scénario (contextuel)",
+          "timeline": "Phases / Timeline (contextuel)",
+          "inject": "Inject (contextuel)"
+        }
       }
     }
   },
@@ -437,6 +469,14 @@
     "criteria_description": "Description",
     "criteria_objective_business": "Objectif métier",
     "criteria_objective_technical": "Objectif technique",
+    "criteria_strategic_intent": "Intention stratégique",
+    "criteria_initial_context": "Contexte initial",
+    "criteria_initial_situation": "Situation initiale",
+    "criteria_pedagogical": "Objectifs pédagogiques",
+    "criteria_evaluation": "Critères d'évaluation",
+    "criteria_stress_factors": "Facteurs de stress",
+    "criteria_escalation_axes": "Axes d'escalade",
+    "criteria_phases": "Phases définies",
     "criteria_timeline": "Timeline configurée",
     "criteria_injects": "Injects positionnés",
     "timeline_title": "Timelines",
@@ -465,6 +505,58 @@
     "timeline_go": "Ouvrir le joueur",
     "inject_bank_empty": "La banque d'injects est vide",
     "inject_bank_go": "Gérer la banque",
-    "config_admin_only": "Configuré par l'administrateur"
+    "inject_count_title": "Injects",
+    "inject_count_sub": "{{count}} inject(s) dans l'exercice",
+    "inject_count_empty": "Aucun inject créé",
+    "inject_count_go": "Voir le chronogramme",
+    "inject_status_draft": "Brouillon",
+    "inject_status_scheduled": "Planifié",
+    "inject_status_sent": "Envoyé",
+    "inject_status_cancelled": "Annulé",
+    "config_admin_only": "Configuré par l'administrateur",
+    "participants_title": "Participants",
+    "participants_sub": "{{count}} participant(s) affecté(s)",
+    "participants_empty": "Aucun participant affecté",
+    "participants_go": "Gérer les participants",
+    "participants_role_animateur": "Animateurs",
+    "participants_role_observateur": "Observateurs",
+    "participants_role_joueur": "Joueurs"
+  },
+  "plugins": {
+    "directory": {
+      "name": "Annuaire de Crise",
+      "description": "Gestion des contacts et ressources de crise"
+    },
+    "social_internal": {
+      "name": "Réseau social",
+      "description": "Simulation de fil social interne"
+    },
+    "tv": {
+      "name": "TV / Médias",
+      "description": "Simulation de chaînes TV et segments média"
+    },
+    "mailbox": {
+      "name": "Messagerie",
+      "description": "Simulation de boîte mail"
+    },
+    "chat": {
+      "name": "Chat",
+      "description": "Communication en temps réel"
+    },
+    "press_feed": {
+      "name": "Fil presse",
+      "description": "Simulation de flux actualités média"
+    },
+    "sms": {
+      "name": "SMS simulés",
+      "description": "Simulation de messages SMS"
+    },
+    "phone": {
+      "name": "Téléphone",
+      "description": "Simulation d'appels téléphoniques"
+    },
+    "supportedFormats": "Formats supportés",
+    "preview": "Aperçu",
+    "previewTitle": "Aperçu du simulateur"
   }
 }

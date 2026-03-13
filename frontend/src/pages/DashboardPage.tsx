@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ExternalLink, AlertTriangle } from 'lucide-react'
-import { exercisesApi, injectsApi, injectBankApi, adminApi, crisisManagementApi } from '../services/api'
-import type { Exercise, Inject, ExercisePhase } from '../services/api'
+import { ChevronDown, ExternalLink, AlertTriangle, Users } from 'lucide-react'
+import { exercisesApi, injectsApi, adminApi, crisisManagementApi, exerciseUsersApi } from '../services/api'
+import type { Exercise, Inject, ExercisePhase, ExerciseUser } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import KpiCard from '../components/dashboard/KpiCard'
 import GaugeChart from '../components/dashboard/GaugeChart'
@@ -16,7 +16,6 @@ import {
   computeBiaScore,
   computeScenarioScore,
   computeGlobalScore,
-  parseBiaProcesses,
 } from '../utils/dashboardScores'
 
 const STORAGE_KEY = 'ttx-dashboard-exercise'
@@ -254,51 +253,123 @@ function TimelineKpi({ injects, phases, exercise }: TimelineKpiProps) {
   )
 }
 
-// ─── Inject bank KPI ──────────────────────────────────────────────────────────
+// ─── Inject count KPI ─────────────────────────────────────────────────────────
 
-function InjectBankKpi({ stats }: { stats: { total: number; by_status: Record<string, number>; by_kind: Record<string, number> } }) {
+function InjectCountKpi({ injects, exerciseId }: { injects: Inject[]; exerciseId: number | null }) {
   const { t } = useTranslation()
 
-  const bankReadinessPct = stats.total === 0 ? 0 : Math.round(((stats.by_status.ready ?? 0) / stats.total) * 100)
+  const byStatus = {
+    draft:     injects.filter(i => i.status === 'draft').length,
+    scheduled: injects.filter(i => i.status === 'scheduled').length,
+    sent:      injects.filter(i => i.status === 'sent').length,
+    cancelled: injects.filter(i => i.status === 'cancelled').length,
+  }
 
   const statusSlices = [
-    { label: 'ready',    value: stats.by_status.ready    ?? 0, color: '#22c55e' },
-    { label: 'draft',    value: stats.by_status.draft    ?? 0, color: '#f59e0b' },
-    { label: 'archived', value: stats.by_status.archived ?? 0, color: '#6b7280' },
+    { label: t('dashboard.inject_status_draft'),     value: byStatus.draft,     color: '#6b7280' },
+    { label: t('dashboard.inject_status_scheduled'), value: byStatus.scheduled, color: '#3b82f6' },
+    { label: t('dashboard.inject_status_sent'),      value: byStatus.sent,      color: '#22c55e' },
+    { label: t('dashboard.inject_status_cancelled'), value: byStatus.cancelled, color: '#ef4444' },
   ]
 
-  const kindEntries = Object.entries(stats.by_kind).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
-  const maxKind = Math.max(...kindEntries.map(([, v]) => v), 1)
+  const byType: Record<string, number> = {}
+  for (const inj of injects) byType[inj.type] = (byType[inj.type] || 0) + 1
+  const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1])
+  const maxType = Math.max(...typeEntries.map(([, v]) => v), 1)
 
   return (
     <KpiCard
-      title={t('dashboard.inject_bank_title')}
-      subtitle={t('dashboard.inject_bank_sub', { total: stats.total })}
+      title={t('dashboard.inject_count_title')}
+      subtitle={t('dashboard.inject_count_sub', { count: injects.length })}
+      footer={exerciseId ? (
+        <Link to={`/exercises/${exerciseId}/chronogramme`} className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
+          {t('dashboard.inject_count_go')} <ExternalLink className="w-3 h-3" />
+        </Link>
+      ) : undefined}
     >
-      {stats.total === 0 ? (
+      {injects.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-          <p className="text-xs text-gray-400">{t('dashboard.inject_bank_empty')}</p>
-          <Link to="/exercises/preparation/injects" className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
-            {t('dashboard.inject_bank_go')} <ExternalLink className="w-3 h-3" />
-          </Link>
+          <p className="text-xs text-gray-400">{t('dashboard.inject_count_empty')}</p>
         </div>
       ) : (
         <div className="flex items-start gap-4">
           <DonutChart
             slices={statusSlices}
-            centerLabel={String(stats.total)}
-            centerSub={`${bankReadinessPct}% prêts`}
+            centerLabel={String(injects.length)}
+            centerSub="injects"
             size={90}
             thickness={16}
           />
           <div className="flex-1 space-y-1.5">
-            {kindEntries.slice(0, 6).map(([kind, count]) => (
-              <div key={kind} className="flex items-center gap-2">
-                <span className="text-[10px] w-14 truncate flex-shrink-0 text-gray-400">{kind}</span>
+            {typeEntries.map(([type, count]) => (
+              <div key={type} className="flex items-center gap-2">
+                <span className="text-[10px] w-14 truncate flex-shrink-0 text-gray-400">{type}</span>
                 <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-gray-700">
-                  <div className="h-full rounded-full bg-primary-500" style={{ width: `${(count / maxKind) * 100}%` }} />
+                  <div className="h-full rounded-full bg-primary-500" style={{ width: `${(count / maxType) * 100}%` }} />
                 </div>
                 <span className="text-[10px] tabular-nums w-4 text-right text-white">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </KpiCard>
+  )
+}
+
+// ─── Participants KPI ─────────────────────────────────────────────────────────
+
+function ParticipantsKpi({ users, exerciseId }: { users: ExerciseUser[]; exerciseId: number | null }) {
+  const { t } = useTranslation()
+
+  const byRole = {
+    animateur:   users.filter(u => u.role === 'animateur').length,
+    observateur: users.filter(u => u.role === 'observateur').length,
+    joueur:      users.filter(u => u.role === 'joueur').length,
+  }
+
+  const ROLE_COLORS: Record<string, string> = {
+    animateur:   '#f59e0b',
+    observateur: '#8b5cf6',
+    joueur:      '#3b82f6',
+  }
+
+  const slices = Object.entries(byRole)
+    .filter(([, v]) => v > 0)
+    .map(([k, v]) => ({ label: t(`dashboard.participants_role_${k}`), value: v, color: ROLE_COLORS[k] }))
+
+  return (
+    <KpiCard
+      title={t('dashboard.participants_title')}
+      subtitle={t('dashboard.participants_sub', { count: users.length })}
+      footer={exerciseId ? (
+        <Link to={`/exercises/${exerciseId}`} className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
+          {t('dashboard.participants_go')} <ExternalLink className="w-3 h-3" />
+        </Link>
+      ) : undefined}
+    >
+      {users.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+          <Users className="w-8 h-8 text-gray-600" />
+          <p className="text-xs text-gray-400">{t('dashboard.participants_empty')}</p>
+        </div>
+      ) : (
+        <div className="flex items-start gap-4">
+          <DonutChart
+            slices={slices}
+            centerLabel={String(users.length)}
+            centerSub="total"
+            size={90}
+            thickness={16}
+          />
+          <div className="flex-1 space-y-2">
+            {Object.entries(byRole).map(([role, count]) => (
+              <div key={role} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ROLE_COLORS[role] }} />
+                  <span className="text-gray-400">{t(`dashboard.participants_role_${role}`)}</span>
+                </div>
+                <span className="font-semibold text-white">{count}</span>
               </div>
             ))}
           </div>
@@ -326,10 +397,6 @@ export default function DashboardPage() {
     enabled: isAdmin,
     retry: false,
   })
-  const { data: bankStats, isLoading: bankLoading } = useQuery({
-    queryKey: ['bankStats'],
-    queryFn: injectBankApi.getStats,
-  })
 
   const exercises: Exercise[] = exercisesData?.exercises ?? []
 
@@ -345,15 +412,15 @@ export default function DashboardPage() {
 
   const [selectedId, setSelectedId] = useState<number | null>(defaultId)
 
-  // Sélection automatique du premier exercice non archivé si rien n'est sélectionné
+  // Sélection automatique du dernier exercice créé si rien n'est sélectionné
   useEffect(() => {
     if (selectedId != null || exercises.length === 0) return
-    const first = [...exercises]
+    const latest = [...exercises]
       .filter(e => e.status !== 'archived')
-      .sort((a, b) => statusRank(a.status) - statusRank(b.status))[0]
-    if (first) {
-      setSelectedId(first.id)
-      localStorage.setItem(STORAGE_KEY, String(first.id))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    if (latest) {
+      setSelectedId(latest.id)
+      localStorage.setItem(STORAGE_KEY, String(latest.id))
     }
   }, [exercises, selectedId])
 
@@ -375,34 +442,45 @@ export default function DashboardPage() {
     queryFn: () => crisisManagementApi.listPhases(selectedId!),
     enabled: !!selectedId,
   })
+  const { data: scenario = null } = useQuery({
+    queryKey: ['scenario', selectedId],
+    queryFn: () => crisisManagementApi.getScenario(selectedId!).catch(() => null),
+    enabled: !!selectedId,
+  })
+  const { data: escalationAxes = [] } = useQuery({
+    queryKey: ['escalation-axes', selectedId],
+    queryFn: () => crisisManagementApi.listEscalationAxes(selectedId!),
+    enabled: !!selectedId,
+  })
+  const { data: exerciseUsersData } = useQuery({
+    queryKey: ['exercise-users', selectedId],
+    queryFn: () => exerciseUsersApi.listExerciseUsers(selectedId!, { page_size: 500 }),
+    enabled: !!selectedId,
+  })
 
   const injects: Inject[] = injectsData?.injects ?? []
+  const exerciseUsers: ExerciseUser[] = exerciseUsersData?.users ?? []
   const positionedInjects = injects.filter(i => i.time_offset != null)
 
   // ── Scores
   const orgScore  = useMemo(() => appConfig ? computeOrgScore(appConfig) : null, [appConfig])
   const biaScore  = useMemo(() => computeBiaScore(appConfig?.bia_processes), [appConfig])
   const scenScore = useMemo(() => selectedExercise
-    ? computeScenarioScore(selectedExercise, positionedInjects.length > 0)
-    : null, [selectedExercise, positionedInjects.length])
-
-  const bankReadinessPct = bankStats
-    ? (bankStats.total === 0 ? 0 : Math.round(((bankStats.by_status.ready ?? 0) / bankStats.total) * 100))
-    : 0
+    ? computeScenarioScore({
+        exercise: selectedExercise,
+        scenario,
+        phasesCount: phases.length,
+        escalationAxesCount: escalationAxes.length,
+        hasPositionedInjects: positionedInjects.length > 0,
+      })
+    : null, [selectedExercise, scenario, phases.length, escalationAxes.length, positionedInjects.length])
 
   const globalScore = useMemo(() =>
     computeGlobalScore(
       orgScore?.pct ?? 0,
       biaScore.pct,
       scenScore?.pct ?? 0,
-      bankReadinessPct,
-    ), [orgScore, biaScore, scenScore, bankReadinessPct])
-
-  // ── Exercices récents (non archivés, les 5 premiers)
-  const recentExercises = [...exercises]
-    .filter(e => e.status !== 'archived')
-    .sort((a, b) => statusRank(a.status) - statusRank(b.status))
-    .slice(0, 5)
+    ), [orgScore, biaScore, scenScore])
 
   return (
     <div className="options-theme space-y-5 pb-8">
@@ -439,7 +517,6 @@ export default function DashboardPage() {
               { label: t('dashboard.org_completeness'), pct: orgScore?.pct ?? 0, color: '#3b82f6' },
               { label: t('dashboard.bia_title'),         pct: biaScore.pct,       color: '#8b5cf6' },
               { label: t('dashboard.scenario_title'),    pct: scenScore?.pct ?? 0, color: '#f59e0b' },
-              { label: t('dashboard.inject_bank_title'), pct: bankReadinessPct,   color: '#22c55e' },
             ].map(({ label, pct, color }) => (
               <div key={label} className="flex items-center gap-3">
                 <RadialProgress pct={pct} size={44} thickness={6} color={color} label={`${pct}%`} />
@@ -448,6 +525,14 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-11 h-11 rounded-full border-[6px]" style={{ borderColor: '#22c55e' }}>
+                <span className="text-sm font-bold text-white">{injects.length}</span>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400">{t('dashboard.inject_count_title')}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -497,23 +582,13 @@ export default function DashboardPage() {
         {/* BIA */}
         <BiaKpi raw={appConfig?.bia_processes} />
 
-        {/* Banque d'injects */}
-        {bankLoading ? (
-          <div className="rounded-xl animate-pulse h-40 bg-gray-800" />
-        ) : bankStats ? (
-          <InjectBankKpi stats={bankStats} />
-        ) : (
-          <KpiCard title={t('dashboard.inject_bank_title')}>
-            <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-              <p className="text-xs text-gray-400">{t('dashboard.inject_bank_empty')}</p>
-            </div>
-          </KpiCard>
-        )}
+        {/* Nombre d'injects */}
+        <InjectCountKpi injects={injects} exerciseId={selectedId} />
       </div>
 
       {/* ── KPIs par exercice (2 colonnes) ────────────────── */}
       {selectedExercise ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
           {/* Scénario */}
           <KpiCard
@@ -531,6 +606,9 @@ export default function DashboardPage() {
 
           {/* Timeline */}
           <TimelineKpi injects={injects} phases={phases as ExercisePhase[]} exercise={selectedExercise} />
+
+          {/* Participants */}
+          <ParticipantsKpi users={exerciseUsers} exerciseId={selectedId} />
         </div>
       ) : (
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 text-center text-sm text-gray-400">
@@ -538,63 +616,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Exercices récents ──────────────────────────────── */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-        <div className="px-5 py-3 flex items-center justify-between border-b border-gray-700">
-          <h2 className="text-sm font-semibold text-white">{t('dashboard.recent_exercises')}</h2>
-          <Link to="/exercises" className="text-xs text-primary-400 hover:text-primary-300 font-medium">
-            {t('common.viewAll')}
-          </Link>
-        </div>
-
-        {exLoading ? (
-          <div className="p-6 text-center text-sm text-gray-400">{t('common.loading')}</div>
-        ) : recentExercises.length === 0 ? (
-          <div className="p-6 text-center text-sm text-gray-400">{t('exercises.noneCreated')}</div>
-        ) : (
-          <ul className="divide-y divide-gray-700">
-            {recentExercises.map(ex => {
-              const isSelected = ex.id === selectedId
-              return (
-                <li
-                  key={ex.id}
-                  className={`transition-colors ${isSelected ? 'bg-primary-600/5' : ''}`}
-                >
-                  <button
-                    onClick={() => handleSelect(ex.id)}
-                    className="w-full flex items-center gap-4 px-5 py-3 text-left"
-                  >
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ex.status === 'running' ? 'bg-green-400' : ex.status === 'paused' ? 'bg-amber-400' : 'bg-gray-500'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-white">{ex.name}</p>
-                      {ex.description && (
-                        <p className="text-xs truncate mt-0.5 text-gray-400">{ex.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {ex.timeline_configured && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-500/20 text-primary-400">
-                          timeline ✓
-                        </span>
-                      )}
-                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[ex.status]}`}>
-                        {t(`exercises.status.${ex.status}`)}
-                      </span>
-                      <Link
-                        to={`/exercises/${ex.id}`}
-                        onClick={e => e.stopPropagation()}
-                        className="p-1 rounded hover:bg-primary-600/10 text-gray-400"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
     </div>
   )
 }
