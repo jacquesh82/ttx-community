@@ -947,6 +947,77 @@ function IdeaPreview({ item }: { item: InjectBankItem }) {
   )
 }
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  note_interne: 'NOTE INTERNE',
+  note_de_service: 'NOTE DE SERVICE',
+  communique: 'COMMUNIQUÉ',
+  rapport: 'RAPPORT',
+  procedure: 'PROCÉDURE',
+  compte_rendu: 'COMPTE RENDU',
+  circulaire: 'CIRCULAIRE',
+}
+
+function DocPreview({ payload, fallbackContent }: { payload: Record<string, any>; fallbackContent?: string }) {
+  const docType = payload?.document_type || ''
+  const title = payload?.title || ''
+  const body = payload?.body || fallbackContent || ''
+  const issuedAt = payload?.issued_at || payload?.date || ''
+  const reference = payload?.reference || payload?.ref || ''
+  const author = payload?.author || payload?.from || payload?.expediteur || ''
+
+  const docTypeLabel = DOC_TYPE_LABELS[docType] || (docType ? docType.toUpperCase().replace(/_/g, ' ') : 'DOCUMENT')
+
+  const formattedDate = issuedAt
+    ? (() => { try { return new Date(issuedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) } catch { return issuedAt } })()
+    : ''
+
+  return (
+    <div className="rounded-lg border border-gray-700 bg-gray-900 p-4">
+      {/* A4 paper simulation */}
+      <div className="mx-auto max-w-2xl bg-white text-gray-900 shadow-[0_4px_24px_rgba(0,0,0,0.5)] rounded-sm">
+        {/* Top stripe */}
+        <div className="h-1.5 bg-indigo-600 rounded-t-sm" />
+
+        <div className="px-10 py-8">
+          {/* Header */}
+          <div className="mb-6 flex items-start justify-between border-b border-gray-300 pb-4">
+            <div>
+              <span className="inline-block rounded bg-indigo-100 px-2 py-0.5 text-xs font-bold uppercase tracking-widest text-indigo-700">
+                {docTypeLabel}
+              </span>
+              {reference && (
+                <p className="mt-1 text-xs text-gray-500">Réf. : {reference}</p>
+              )}
+            </div>
+            {formattedDate && (
+              <p className="text-xs text-gray-500 mt-0.5">{formattedDate}</p>
+            )}
+          </div>
+
+          {/* Title */}
+          {title && (
+            <h2 className="mb-4 text-lg font-bold text-gray-900 leading-snug">{title}</h2>
+          )}
+
+          {/* Author */}
+          {author && (
+            <p className="mb-4 text-sm text-gray-600">
+              <span className="font-medium">De :</span> {author}
+            </p>
+          )}
+
+          {/* Body */}
+          {body ? (
+            <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{body}</div>
+          ) : (
+            <p className="text-sm text-gray-400 italic">Aucun contenu disponible.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function GenericPreview({ payload }: { payload: Record<string, any> }) {
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-800">
@@ -965,6 +1036,147 @@ function GenericPreview({ payload }: { payload: Record<string, any> }) {
   )
 }
 
+function StoryPreview({ payload, fallbackContent }: { payload: Record<string, any>; fallbackContent?: string }) {
+  const scenarioTitle = payload?.scenario_title || ''
+  const context = payload?.context || fallbackContent || ''
+  const keyPoints: string[] = Array.isArray(payload?.key_points) ? payload.key_points : []
+
+  return (
+    <div className="rounded-lg border border-gray-700 bg-gray-900 overflow-hidden">
+      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center gap-2">
+        <BookOpen className="h-4 w-4 text-indigo-400 flex-shrink-0" />
+        <span className="text-sm font-semibold text-gray-200">
+          {scenarioTitle || 'Scénario narratif'}
+        </span>
+      </div>
+
+      {context && (
+        <div className="px-4 py-3 border-b border-gray-700/60">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Contexte</p>
+          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{context}</p>
+        </div>
+      )}
+
+      {keyPoints.length > 0 && (
+        <div className="px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Points clés</p>
+          <ul className="space-y-1.5">
+            {keyPoints.map((point, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-indigo-400" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!context && keyPoints.length === 0 && (
+        <div className="px-4 py-3 text-sm text-gray-500 italic">Aucun contenu structuré disponible.</div>
+      )}
+    </div>
+  )
+}
+
+const CALL_PAYLOAD_LABELS: Record<string, string> = {
+  from: 'De',
+  to: 'À',
+  duration_sec: 'Durée (s)',
+  transcript: 'Transcription',
+  timestamp: 'Horodatage',
+}
+
+function CallPreview({ item }: { item: InjectBankItem }) {
+  const payload = item.payload || {}
+  const audioUrl = getPreviewUrlForItem(item)
+
+  const textFields = Object.entries(payload).filter(([k]) => k !== 'attachment')
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {/* Left: audio player */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Audio</p>
+        <div className="rounded-lg border border-gray-700 bg-gray-900 p-4 flex items-center justify-center min-h-[80px]">
+          {audioUrl ? (
+            <audio controls src={audioUrl} className="w-full" />
+          ) : (
+            <p className="text-sm text-gray-500 italic">Aucun audio attaché.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Right: payload text */}
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payload</p>
+        <div className="rounded-lg border border-gray-700 bg-gray-900 divide-y divide-gray-700/60">
+          {textFields.length > 0 ? textFields.map(([key, value]) => (
+            <div key={key} className="px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
+                {CALL_PAYLOAD_LABELS[key] || key}
+              </p>
+              <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                {typeof value === 'string' ? value : JSON.stringify(value)}
+              </p>
+            </div>
+          )) : (
+            <div className="px-3 py-2 text-sm text-gray-500 italic">Payload vide.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const TV_PAYLOAD_LABELS: Record<string, string> = {
+  channel: 'Chaîne',
+  headline: 'Bandeau',
+  body: 'Contenu',
+  timestamp: 'Horodatage',
+}
+
+function TvPreview({ item }: { item: InjectBankItem }) {
+  const payload = item.payload || {}
+  const videoUrl = getPreviewUrlForItem(item)
+
+  const textFields = Object.entries(payload).filter(([k]) => k !== 'attachment')
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {/* Left: video player */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Vidéo</p>
+        <div className="rounded-lg overflow-hidden border border-gray-700 bg-black aspect-video flex items-center justify-center">
+          {videoUrl ? (
+            <video controls src={videoUrl} className="w-full h-full object-contain" />
+          ) : (
+            <p className="text-sm text-gray-500 italic">Aucune vidéo attachée.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Right: payload text */}
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payload</p>
+        <div className="rounded-lg border border-gray-700 bg-gray-900 divide-y divide-gray-700/60">
+          {textFields.length > 0 ? textFields.map(([key, value]) => (
+            <div key={key} className="px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
+                {TV_PAYLOAD_LABELS[key] || key}
+              </p>
+              <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                {typeof value === 'string' ? value : JSON.stringify(value)}
+              </p>
+            </div>
+          )) : (
+            <div className="px-3 py-2 text-sm text-gray-500 italic">Payload vide.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function InjectPreview({ item }: { item: InjectBankItem }) {
   const payload = item.payload || {}
 
@@ -977,6 +1189,14 @@ function InjectPreview({ item }: { item: InjectBankItem }) {
       return <DirectoryPreview payload={payload} />
     case 'socialnet':
       return <SocialPostPreview payload={payload} fallbackText={item.content} />
+    case 'story':
+      return <StoryPreview payload={payload} fallbackContent={item.content} />
+    case 'call':
+      return <CallPreview item={item} />
+    case 'tv':
+      return <TvPreview item={item} />
+    case 'doc':
+      return <DocPreview payload={payload} fallbackContent={item.content} />
     default:
       return <GenericPreview payload={payload} />
   }
@@ -1358,6 +1578,7 @@ export default function InjectBankPage() {
       setMediaPreviewItem(item)
     } else {
       setPreviewItem(item)
+      setIsPreviewContentCollapsed(true)
     }
   }
 
@@ -1368,7 +1589,7 @@ export default function InjectBankPage() {
   }
 
   const openEditModal = (item: InjectBankItem) => {
-    const selectedInjectType = item.category || item.kind
+    const selectedInjectType = item.kind
     setEditingItem(item)
     setAttachmentFile(null)
     setAttachmentPreview(null)
@@ -2426,27 +2647,11 @@ export default function InjectBankPage() {
         isOpen={Boolean(previewItem)}
         onClose={closePreview}
         title={previewItem ? `${kindLabelMap[previewItem.kind] || previewItem.kind}: ${previewItem.title}` : 'Apercu'}
-        maxWidthClassName={(previewItem?.kind === 'mail' || previewItem?.kind === 'sms' || previewItem?.kind === 'socialnet') ? 'max-w-2xl' : 'max-w-md'}
+        maxWidthClassName={previewItem && (previewItem.kind === 'doc' || previewItem.kind === 'socialnet' || previewItem.kind === 'sms') ? 'max-w-2xl' : 'max-w-[90vw]'}
       >
         {previewItem && (
           <div className="space-y-3">
-            {previewItem.summary && previewItem.kind !== 'sms' && (
-              <p className="text-sm text-gray-300">{previewItem.summary}</p>
-            )}
-
-            {previewItem.content && previewItem.kind !== 'sms' && (
-              <div>
-                <p className="mb-1 text-sm font-medium text-gray-300">Description</p>
-                <p className="rounded-lg border border-gray-700 bg-gray-900 p-2 text-sm text-gray-300">
-                  {previewItem.content}
-                </p>
-              </div>
-            )}
-
-            <div>
-              <p className="mb-1 text-sm font-medium text-gray-300">Contenu</p>
-              <InjectPreview item={previewItem} />
-            </div>
+            <InjectPreview item={previewItem} />
 
             {previewItem.tags.length > 0 && (
               <div>
