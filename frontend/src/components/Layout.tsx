@@ -53,7 +53,7 @@ export default function Layout({ children }: LayoutProps) {
       : buildDateIso || '-'
   const { status: autoSaveStatus, errorMessage: autoSaveError } = useAutoSaveStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [adminOpen, setAdminOpen] = useState(true)
+  const [adminOpen, setAdminOpen] = useState(false)
   const [docsOpen, setDocsOpen] = useState(false)
 
   const { data: publicConfig } = useQuery({
