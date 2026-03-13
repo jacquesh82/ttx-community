@@ -393,7 +393,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="sidebar-border flex-shrink-0 p-4 border-t space-y-3">
           <div className="flex flex-col gap-2 px-1">
             <a
-              href={`https://${user?.tenant?.slug ?? 'app'}.crisis-lab.eu`}
+              href="https://crisis-lab.eu/enterprise"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-90"

@@ -1,7 +1,7 @@
 {
   "login": {
     "title": "Connexion",
-    "subtitle": "Table Top Exercise Platform",
+    "subtitle": "Plateforme d'exercices sur table",
     "tenantSpace": "Espace tenant {{name}}",
     "username": "Identifiant ou email",
     "password": "Mot de passe",
