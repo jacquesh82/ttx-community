@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ttx
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata-prod:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ttx -d ttx"]
       interval: 10s
@@ -33,8 +33,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
     volumes:
       # Pas de bind mount du code source en prod
-      - media-data:/app/media
-      - logs-data:/app/logs
+      - media-data-prod:/app/media
+      - logs-data-prod:/app/logs
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
     depends_on:
       postgres:
@@ -60,9 +60,9 @@ services:
       - ttx-community-prod-net
 
 volumes:
-  pgdata:
-  media-data:
-  logs-data:
+  pgdata-prod:
+  media-data-prod:
+  logs-data-prod:
 
 networks:
   ttx-community-prod-net:
