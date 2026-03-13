@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     
     # Environment
     environment: str = "development"
+    edition: str = "community"
+
+    @property
+    def is_community(self) -> bool:
+        return self.edition == "community"
 
     # Media storage
     media_storage_path: str = "/app/media"

@@ -91,13 +91,28 @@ async def resolve_tenant_for_host(host_value: str | None) -> TenantRequestContex
             .where(TenantDomain.domain == host)
         )
         tenant = result.scalar_one_or_none()
-        return TenantRequestContext(
-            tenant=tenant,
-            tenant_id=tenant.id if tenant else None,
-            tenant_slug=tenant.slug if tenant else None,
-            is_platform_host=False,
-            host=host,
-        )
+        if tenant:
+            return TenantRequestContext(
+                tenant=tenant,
+                tenant_id=tenant.id,
+                tenant_slug=tenant.slug,
+                is_platform_host=False,
+                host=host,
+            )
+
+        # Community edition: single-tenant — always resolve to default.
+        if settings.is_community:
+            result = await db.execute(select(Tenant).where(Tenant.slug == settings.default_tenant_slug))
+            tenant = result.scalar_one_or_none()
+            return TenantRequestContext(
+                tenant=tenant,
+                tenant_id=tenant.id if tenant else None,
+                tenant_slug=settings.default_tenant_slug,
+                is_platform_host=False,
+                host=host,
+            )
+
+        return TenantRequestContext(None, None, None, False, host)
 
 
 class TenantContextMiddleware(BaseHTTPMiddleware):
