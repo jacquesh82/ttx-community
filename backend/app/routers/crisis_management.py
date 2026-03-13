@@ -1,4 +1,12 @@
-"""Crisis-management domain endpoints (scenario, phases, live control, evaluation, RETEX)."""
+"""
+CrisisLab crisis-management domain endpoints.
+
+Covers the full exercise lifecycle: scenario authoring, phase definition,
+escalation-axis configuration, inject trigger rules, live dashboard and
+real-time control, post-exercise evaluation KPIs, RETEX report generation
+and export, as well as bulk import of exercise components from JSON files
+or the inject bank.
+"""
 from datetime import datetime, timezone
 from io import BytesIO
 import json
@@ -77,7 +85,7 @@ from app.services.websocket_manager import ws_manager
 from app.utils.security import hash_password
 from app.utils.tenancy import current_tenant_id_var
 
-router = APIRouter(prefix="/exercises", tags=["crisis-management"])
+router = APIRouter(prefix="/exercises", tags=["crisis-management (CrisisLab)"])
 
 
 async def _shift_phase_orders(
@@ -172,64 +180,136 @@ async def _move_phase_to_order(
 
 
 class ScenarioPayload(BaseModel):
-    strategic_intent: Optional[str] = None
-    initial_context: Optional[str] = None
-    initial_situation: Optional[str] = None
-    implicit_hypotheses: Optional[str] = None
-    hidden_brief: Optional[str] = None
-    pedagogical_objectives: list[str] = Field(default_factory=list)
-    evaluation_criteria: list[str] = Field(default_factory=list)
-    stress_factors: list[str] = Field(default_factory=list)
+    """Exercise scenario definition — narrative context and pedagogical framing."""
+
+    strategic_intent: Optional[str] = Field(default=None, description="High-level goal the exercise is designed to test", examples=["Valider la capacit\u00e9 de Duval Industries \u00e0 contenir un ransomware et communiquer sous pression m\u00e9diatique"])
+    initial_context: Optional[str] = Field(default=None, description="Background context shared with all participants at exercise start", examples=["Duval Industries est un groupe industriel de 4 500 salari\u00e9s sp\u00e9cialis\u00e9 dans la fabrication de composants a\u00e9ronautiques."])
+    initial_situation: Optional[str] = Field(default=None, description="Opening situation description that kicks off the exercise", examples=["Lundi 9h12 \u2014 Le SOC d\u00e9tecte un chiffrement massif de fichiers sur le site de Nantes. L\u2019extension .locked appara\u00eet sur plus de 2 000 fichiers en 15 minutes."])
+    implicit_hypotheses: Optional[str] = Field(default=None, description="Unstated assumptions the scenario relies on")
+    hidden_brief: Optional[str] = Field(default=None, description="Confidential brief visible only to animateurs (hidden from players)")
+    pedagogical_objectives: list[str] = Field(default_factory=list, description="Learning objectives for participants", examples=[["Tester l\u2019activation de la cellule de crise", "Valider les proc\u00e9dures de confinement r\u00e9seau", "\u00c9valuer la communication de crise externe"]])
+    evaluation_criteria: list[str] = Field(default_factory=list, description="Criteria used to evaluate participant performance")
+    stress_factors: list[str] = Field(default_factory=list, description="Deliberate stress elements injected into the scenario", examples=[["Pression m\u00e9diatique forte", "D\u00e9lai r\u00e9glementaire ANSSI 72h", "Indisponibilit\u00e9 du DSI"]])
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "strategic_intent": "Valider la capacit\u00e9 de Duval Industries \u00e0 contenir un ransomware et communiquer sous pression m\u00e9diatique",
+                "initial_context": "Duval Industries est un groupe industriel de 4 500 salari\u00e9s sp\u00e9cialis\u00e9 dans la fabrication de composants a\u00e9ronautiques.",
+                "initial_situation": "Lundi 9h12 \u2014 Le SOC d\u00e9tecte un chiffrement massif de fichiers sur le site de Nantes.",
+                "implicit_hypotheses": "Le PCA informatique n\u2019a pas \u00e9t\u00e9 test\u00e9 depuis 18 mois.",
+                "hidden_brief": "L\u2019attaquant dispose d\u2019un acc\u00e8s persistant via le VPN fournisseur depuis 3 semaines.",
+                "pedagogical_objectives": ["Tester l\u2019activation de la cellule de crise", "Valider les proc\u00e9dures de confinement r\u00e9seau"],
+                "evaluation_criteria": ["D\u00e9lai d\u2019activation < 30 min", "Communication ANSSI dans les 72h"],
+                "stress_factors": ["Pression m\u00e9diatique forte", "Indisponibilit\u00e9 du DSI"],
+            }
+        }
+    }
 
 
 class EscalationAxisPayload(BaseModel):
-    axis_type: EscalationAxisType
-    intensity: int = Field(default=1, ge=1, le=10)
-    notes: Optional[str] = None
+    """An escalation axis measuring crisis intensity on a specific dimension."""
+
+    axis_type: EscalationAxisType = Field(description="Axis category (TECHNICAL, COMMUNICATION, LEGAL, POLITICAL, MEDIA, etc.)", examples=["TECHNICAL"])
+    intensity: int = Field(default=1, ge=1, le=10, description="Current intensity level (1 = low, 10 = critical)", examples=[8])
+    notes: Optional[str] = Field(default=None, description="Free-text notes explaining the intensity rating", examples=["Chiffrement actif sur 3 sites, exfiltration confirm\u00e9e"])
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "axis_type": "TECHNICAL",
+                "intensity": 8,
+                "notes": "Chiffrement actif sur 3 sites, exfiltration confirm\u00e9e",
+            }
+        }
+    }
 
 
 class PhasePayload(BaseModel):
-    name: str = Field(..., min_length=1, max_length=150)
-    description: Optional[str] = None
-    phase_order: int = Field(..., ge=0, le=1000)
-    start_offset_min: Optional[int] = None
-    end_offset_min: Optional[int] = None
+    """An exercise phase — a named time window in the crisis timeline."""
+
+    name: str = Field(..., min_length=1, max_length=150, description="Phase display name", examples=["D\u00e9tection & Alerte"])
+    description: Optional[str] = Field(default=None, description="Detailed description of phase objectives", examples=["Identification de l\u2019incident par le SOC et premi\u00e8re qualification"])
+    phase_order: int = Field(..., ge=0, le=1000, description="Sort order (0-based)")
+    start_offset_min: Optional[int] = Field(default=None, description="Phase start time as offset from exercise start (minutes)", examples=[0])
+    end_offset_min: Optional[int] = Field(default=None, description="Phase end time as offset from exercise start (minutes)", examples=[30])
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "D\u00e9tection & Alerte",
+                "description": "Identification de l\u2019incident par le SOC et premi\u00e8re qualification",
+                "phase_order": 0,
+                "start_offset_min": 0,
+                "end_offset_min": 30,
+            }
+        }
+    }
 
 
 class TriggerRulePayload(BaseModel):
-    inject_id: int
-    trigger_mode: TriggerMode = TriggerMode.AUTO
-    expression: Optional[dict] = None
+    """A trigger rule linking an inject to automatic or conditional dispatch."""
+
+    inject_id: int = Field(description="ID of the inject this rule applies to")
+    trigger_mode: TriggerMode = Field(default=TriggerMode.AUTO, description="Dispatch mode — AUTO (time-based) or MANUAL (animateur-triggered)", examples=["auto"])
+    expression: Optional[dict] = Field(default=None, description="Optional conditional expression for rule evaluation (JSON logic)")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "inject_id": 15,
+                "trigger_mode": "auto",
+                "expression": None,
+            }
+        }
+    }
 
 
 class PluginPayload(BaseModel):
-    plugin_type: str  # Plugin type as string
-    enabled: bool
-    configuration: Optional[dict] = None
+    """Configuration for an exercise plugin (e.g. simulated TV channel, press feed)."""
+
+    plugin_type: str = Field(description="Canonical plugin type identifier", examples=["tv_channel"])
+    enabled: bool = Field(description="Whether the plugin is active for this exercise")
+    configuration: Optional[dict] = Field(default=None, description="Plugin-specific configuration (JSON object)")
 
 
 class LiveActionPayload(BaseModel):
-    action: str
-    payload: dict = Field(default_factory=dict)
+    """Payload for a real-time control action on a running exercise."""
+
+    action: str = Field(description="Action name — pause, resume, speed, manual_inject, rewind, broadcast, hot_edit", examples=["pause"])
+    payload: dict = Field(default_factory=dict, description="Action-specific parameters (e.g. {multiplier: 2} for speed)")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "action": "speed",
+                "payload": {"multiplier": 2.0},
+            }
+        }
+    }
 
 
 class LiveSurpriseInjectPayload(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    type: str
-    timeline_type: TimelineType
-    content: dict | str
-    audiences: list[AudienceTarget] = Field(default_factory=list, min_length=1)
-    dispatch_mode: str = Field(..., pattern="^(immediate|planned)$")
-    planned_time_offset: Optional[int] = Field(default=None, ge=0)
-    duration_min: Optional[int] = Field(default=15, ge=1, le=600)
-    channel: Optional[InjectChannel] = None
-    inject_category: Optional[InjectCategory] = None
-    pressure_level: Optional[PressureLevel] = None
+    """Payload for creating a surprise inject during a live exercise."""
+
+    title: str = Field(..., min_length=1, max_length=255, description="Inject title", examples=["Fuite de donn\u00e9es sur le dark web"])
+    description: Optional[str] = Field(default=None, description="Inject description for animateurs")
+    type: str = Field(description="Inject type identifier", examples=["mail"])
+    timeline_type: TimelineType = Field(description="Which timeline the inject belongs to (business or technical)")
+    content: dict | str = Field(description="Inject content — JSON object or plain text")
+    audiences: list[AudienceTarget] = Field(default_factory=list, min_length=1, description="Target audiences for delivery")
+    dispatch_mode: str = Field(..., pattern="^(immediate|planned)$", description="Dispatch mode — 'immediate' or 'planned'", examples=["immediate"])
+    planned_time_offset: Optional[int] = Field(default=None, ge=0, description="Exercise-time offset in minutes (required if planned)")
+    duration_min: Optional[int] = Field(default=15, ge=1, le=600, description="Expected duration in minutes")
+    channel: Optional[InjectChannel] = Field(default=None, description="Communication channel for this inject")
+    inject_category: Optional[InjectCategory] = Field(default=None, description="Inject category")
+    pressure_level: Optional[PressureLevel] = Field(default=None, description="Pressure level applied by this inject")
 
 
 class BankSelectionPayload(BaseModel):
-    item_ids: list[int] = Field(default_factory=list, min_length=1, max_length=500)
+    """Explicit selection of inject-bank items to import into an exercise."""
+
+    item_ids: list[int] = Field(default_factory=list, min_length=1, max_length=500, description="List of inject-bank item IDs to import")
 
 
 SUPPORTED_IMPORT_COMPONENTS = {
@@ -261,6 +341,12 @@ async def get_scenario(
     current_user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Retrieve the scenario definition for a CrisisLab exercise.
+
+    Returns the full narrative context (strategic intent, initial situation,
+    pedagogical objectives, stress factors, etc.).  The `hidden_brief` field
+    is redacted for non-animateur roles.
+    """
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(ExerciseScenario).where(ExerciseScenario.exercise_id == exercise_id))
     scenario = result.scalar_one_or_none()
@@ -289,6 +375,11 @@ async def upsert_scenario(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Create or update the scenario for a CrisisLab exercise.
+
+    Idempotent — creates the scenario record on first call, updates it on
+    subsequent calls.  Requires animateur or admin role.
+    """
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(ExerciseScenario).where(ExerciseScenario.exercise_id == exercise_id))
     scenario = result.scalar_one_or_none()
@@ -314,6 +405,11 @@ async def list_escalation_axes(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """List all escalation axes for an exercise.
+
+    Returns axes such as TECHNICAL, COMMUNICATION, LEGAL, POLITICAL,
+    and MEDIA with their current intensity ratings (1-10).
+    """
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(
         select(ExerciseEscalationAxis).where(ExerciseEscalationAxis.exercise_id == exercise_id).order_by(ExerciseEscalationAxis.id)
@@ -329,6 +425,7 @@ async def create_escalation_axis(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Add a new escalation axis to the exercise (e.g. TECHNICAL at intensity 8)."""
     await _get_exercise_or_404(exercise_id, db)
     axis = ExerciseEscalationAxis(exercise_id=exercise_id, axis_type=data.axis_type, intensity=data.intensity, notes=data.notes)
     db.add(axis)
@@ -345,6 +442,7 @@ async def update_escalation_axis(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Update an escalation axis intensity or notes."""
     result = await db.execute(
         select(ExerciseEscalationAxis).where(
             ExerciseEscalationAxis.id == axis_id,
@@ -368,6 +466,7 @@ async def delete_escalation_axis(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Remove an escalation axis from the exercise."""
     result = await db.execute(
         select(ExerciseEscalationAxis).where(
             ExerciseEscalationAxis.id == axis_id,
@@ -388,6 +487,12 @@ async def list_phases(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """List exercise phases ordered by phase_order.
+
+    Typical phases for CYBER-STORM 2024: *Detection & Alerte*,
+    *Qualification & Activation*, *Confinement & Reponse*, *Remediation*,
+    *Post-incident & RETEX*.
+    """
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(ExercisePhase).where(ExercisePhase.exercise_id == exercise_id).order_by(ExercisePhase.phase_order))
     return result.scalars().all()
@@ -400,6 +505,11 @@ async def create_phase(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Create a new exercise phase at the given order position.
+
+    Existing phases at or after the requested `phase_order` are shifted up
+    automatically.  Returns 409 on concurrent order conflict.
+    """
     await _get_exercise_or_404(exercise_id, db)
     await _shift_phase_orders(db, exercise_id=exercise_id, starting_from=data.phase_order)
     await db.flush()
@@ -430,6 +540,7 @@ async def update_phase(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Update a phase name, description, time offsets, or reorder it."""
     result = await db.execute(select(ExercisePhase).where(ExercisePhase.id == phase_id, ExercisePhase.exercise_id == exercise_id))
     phase = result.scalar_one_or_none()
     if not phase:
@@ -456,6 +567,7 @@ async def delete_phase(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Delete an exercise phase.  Injects referencing this phase are not removed."""
     result = await db.execute(select(ExercisePhase).where(ExercisePhase.id == phase_id, ExercisePhase.exercise_id == exercise_id))
     phase = result.scalar_one_or_none()
     if not phase:
@@ -471,6 +583,11 @@ async def list_inject_triggers(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """List all inject trigger rules for an exercise.
+
+    Trigger rules control how injects are dispatched: automatically at a
+    time offset, or manually by the animateur.
+    """
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(InjectTriggerRule).where(InjectTriggerRule.exercise_id == exercise_id).order_by(InjectTriggerRule.id))
     return result.scalars().all()
@@ -483,6 +600,7 @@ async def create_or_update_trigger(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Create or update a trigger rule for an inject (upsert by inject_id)."""
     inject_result = await db.execute(select(Inject).where(Inject.id == data.inject_id, Inject.exercise_id == exercise_id))
     inject = inject_result.scalar_one_or_none()
     if not inject:
@@ -507,6 +625,7 @@ async def delete_trigger(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Delete an inject trigger rule."""
     result = await db.execute(select(InjectTriggerRule).where(InjectTriggerRule.id == rule_id, InjectTriggerRule.exercise_id == exercise_id))
     rule = result.scalar_one_or_none()
     if not rule:
@@ -594,6 +713,13 @@ async def get_live_dashboard(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Retrieve the live dashboard state for a running CrisisLab exercise.
+
+    Returns the exercise clock, business/technical/realtime inject
+    timelines, team delivery stats, live event log, real-time KPI
+    indicators (stress, saturation, communication, technical mastery),
+    and WebSocket connection count.
+    """
     exercise = await _get_exercise_or_404(exercise_id, db)
 
     timeline_result = await db.execute(
@@ -704,6 +830,13 @@ async def create_live_surprise_inject(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Create and optionally dispatch a surprise inject during a live exercise.
+
+    Surprise injects are unscripted events added by animateurs to test
+    participant reactivity (e.g. a sudden data-leak discovery).  Supports
+    `immediate` dispatch (sent now) or `planned` dispatch (scheduled at a
+    future exercise-time offset).
+    """
     exercise = await _get_exercise_or_404(exercise_id, db)
     virtual_now_min = _compute_virtual_now_min(exercise)
 
@@ -801,6 +934,13 @@ async def execute_live_action(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Execute a real-time control action on a running exercise.
+
+    Supported actions: `pause`, `resume`, `speed` (change time multiplier),
+    `manual_inject` (force-send an inject), `rewind` (shift start time),
+    `broadcast`, `hot_edit`.  Each action is logged as an event and broadcast
+    via WebSocket.
+    """
     exercise = await _get_exercise_or_404(exercise_id, db)
     action = data.action.strip().lower()
 
@@ -923,6 +1063,13 @@ async def get_evaluation(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Compute comprehensive post-exercise evaluation metrics.
+
+    Returns KPIs (activation time, communication quality, treatment rate,
+    reaction times), per-inject delivery statistics, decision log, scoring
+    history, simulator interaction counts (mail, chat, TV), and both ideal
+    and real timelines for side-by-side comparison.
+    """
     exercise = await _get_exercise_or_404(exercise_id, db)
     started_at = exercise.started_at
 
@@ -1159,6 +1306,11 @@ async def generate_retex(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR, UserRole.OBSERVATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Generate a RETEX (post-exercise feedback) report.
+
+    Computes evaluation KPIs and persists a `RetexReport` record.
+    Available to admin, animateur, and observateur roles.
+    """
     exercise = await _get_exercise_or_404(exercise_id, db)
     evaluation = await get_evaluation(exercise_id=exercise_id, _=current_user, db=db)
     summary = (
@@ -1184,6 +1336,7 @@ async def export_retex_json(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Export the most recent RETEX report as a downloadable JSON file."""
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(RetexReport).where(RetexReport.exercise_id == exercise_id).order_by(RetexReport.created_at.desc()))
     report = result.scalars().first()
@@ -1230,6 +1383,7 @@ async def export_retex_pdf(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Export the most recent RETEX report as a downloadable PDF file."""
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(RetexReport).where(RetexReport.exercise_id == exercise_id).order_by(RetexReport.created_at.desc()))
     report = result.scalars().first()
@@ -1255,6 +1409,11 @@ async def export_retex_anssi_json(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Export the RETEX report in ANSSI-compatible JSON format (stub v1).
+
+    Produces a JSON structure aligned with the French ANSSI exercise
+    reporting framework.
+    """
     await _get_exercise_or_404(exercise_id, db)
     result = await db.execute(select(RetexReport).where(RetexReport.exercise_id == exercise_id).order_by(RetexReport.created_at.desc()))
     report = result.scalars().first()
@@ -1676,7 +1835,13 @@ async def import_exercise_component(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import structured JSON for one exercise component without breaking existing APIs."""
+    """Import structured JSON for one exercise component.
+
+    Upload a JSON file to populate a specific component of the exercise:
+    `socle` (base config), `scenario`, `actors` (crisis directory),
+    `timeline`, `injects`, `plugins`, or `full` (all-in-one).
+    Existing data is merged non-destructively.
+    """
     component = component.strip().lower()
     if component not in SUPPORTED_IMPORT_COMPONENTS:
         raise HTTPException(status_code=400, detail=f"Unsupported import component: {component}")
@@ -2015,7 +2180,11 @@ async def import_exercise_component_from_bank(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import a component from inject bank items filtered by kind/category."""
+    """Import a component from inject-bank items filtered by kind and category.
+
+    Queries the inject bank for matching items and converts them into
+    exercise-level resources (injects, scenario elements, etc.).
+    """
     component = component.strip().lower()
     if component not in SUPPORTED_IMPORT_COMPONENTS:
         raise HTTPException(status_code=400, detail=f"Unsupported bank import component: {component}")
@@ -2228,7 +2397,11 @@ async def import_exercise_component_from_bank_selection(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import a component from an explicit selection of inject bank items."""
+    """Import a component from an explicit selection of inject-bank items.
+
+    Unlike the filtered `/from-bank` endpoint, this accepts a list of
+    specific item IDs chosen by the user.
+    """
     component = component.strip().lower()
     if component not in SUPPORTED_IMPORT_COMPONENTS:
         raise HTTPException(status_code=400, detail=f"Unsupported bank import component: {component}")
@@ -2441,6 +2614,12 @@ async def get_orgchart(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Retrieve the organizational chart for exercise participants.
+
+    Returns all exercise users with their role, team assignment,
+    organization, and function — structured as a flat node list suitable
+    for rendering an org chart in the UI.
+    """
     await _get_exercise_or_404(exercise_id, db)
     rows = (
         await db.execute(

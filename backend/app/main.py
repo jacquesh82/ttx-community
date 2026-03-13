@@ -1,4 +1,4 @@
-"""FastAPI main application for TTX Platform."""
+"""FastAPI main application for CrisisLab."""
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
@@ -26,21 +26,114 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
     await seed_initial_data()
-    print(f"[{datetime.now(timezone.utc).isoformat()}] TTX Platform started")
+    print(f"[{datetime.now(timezone.utc).isoformat()}] CrisisLab started")
     yield
     # Shutdown
     await close_db()
-    print(f"[{datetime.now(timezone.utc).isoformat()}] TTX Platform stopped")
+    print(f"[{datetime.now(timezone.utc).isoformat()}] CrisisLab stopped")
 
+
+OPENAPI_TAGS = [
+    {
+        "name": "auth",
+        "description": "Authentification par cookie de session (login, logout, profil, changement de mot de passe, tickets WebSocket).",
+    },
+    {
+        "name": "users",
+        "description": "Gestion des utilisateurs de la plateforme (CRUD, rôles, tags). Réservé aux administrateurs.",
+    },
+    {
+        "name": "teams",
+        "description": "Gestion des équipes et de leurs membres (création, affectation, leaders).",
+    },
+    {
+        "name": "exercises",
+        "description": "Cycle de vie des exercices de crise : création, démarrage, pause, fin, statistiques, plugins.",
+    },
+    {
+        "name": "injects",
+        "description": "Gestion des injects (stimuli) sur la timeline : planification, envoi, livraison, import/export CSV.",
+    },
+    {
+        "name": "inject-bank",
+        "description": "Banque d'injects réutilisables : bibliothèque de stimuli pré-rédigés avec catégories, tags et import/export ZIP.",
+    },
+    {
+        "name": "events",
+        "description": "Journal d'événements de la timeline (création automatique lors des actions).",
+    },
+    {
+        "name": "player",
+        "description": "API joueur : contexte d'exercice, timeline filtrée, notifications, décisions, livraisons.",
+    },
+    {
+        "name": "simulated-channels",
+        "description": "Canaux de communication simulés pour les joueurs : messagerie, SMS, appels, réseau social, presse, TV.",
+    },
+    {
+        "name": "crisis-contacts",
+        "description": "Annuaire de crise : contacts d'urgence, autorités, experts, médias, partenaires.",
+    },
+    {
+        "name": "crisis-management",
+        "description": "Pilotage de crise : phases, scénario, axes d'escalade, règles de déclenchement, métriques, RETEX.",
+    },
+    {
+        "name": "exercise-users",
+        "description": "Affectation des utilisateurs aux exercices avec rôle (animateur, observateur, joueur) et permissions par canal.",
+    },
+    {
+        "name": "media",
+        "description": "Médiathèque : upload, téléchargement et gestion des fichiers média (images, vidéos, documents).",
+    },
+    {
+        "name": "twitter",
+        "description": "Réseau social simulé (type X/Twitter) : comptes, publications, interactions.",
+    },
+    {
+        "name": "tv",
+        "description": "Régie TV simulée : chaînes, playlists, segments live, bandeaux et tickers.",
+    },
+    {
+        "name": "audit",
+        "description": "Journal d'audit : traçabilité des actions utilisateur, statistiques, export CSV.",
+    },
+    {
+        "name": "admin-options",
+        "description": "Configuration de la plateforme : organisation, options d'exercice, SMTP, sécurité, BIA, plugins.",
+    },
+    {
+        "name": "welcome-kits",
+        "description": "Kits d'accueil : modèles Markdown personnalisables, génération PDF pour joueurs et animateurs.",
+    },
+    {
+        "name": "debug",
+        "description": "Endpoints de développement (désactivés en production) : debug exercices, WebSocket temps réel.",
+    },
+]
 
 app = FastAPI(
-    title="TTX Platform",
-    description="Table Top Exercise Platform for Crisis Simulation",
+    title="CrisisLab",
+    description=(
+        "## CrisisLab — Plateforme de simulation de crise\n\n"
+        "CrisisLab est une plateforme multi-tenant permettant d'organiser et d'animer des exercices de crise (Table Top Exercises).\n\n"
+        "### Authentification\n"
+        "L'API utilise des **cookies de session** (`ttx_session`). "
+        "Appelez `POST /api/auth/login` pour obtenir un cookie, puis utilisez-le dans toutes les requêtes suivantes.\n\n"
+        "### Multi-tenancy\n"
+        "Le tenant est résolu depuis le header `Host`. En développement, `localhost` correspond au tenant par défaut.\n\n"
+        "### Démarrage rapide\n"
+        "1. `POST /api/auth/login` → connexion\n"
+        "2. `POST /api/exercises` → créer un exercice\n"
+        "3. `POST /api/exercises/{id}/start` → démarrer\n"
+        "4. `GET /api/player/exercises/{id}/context` → contexte joueur\n"
+    ),
     version="0.1.0",
     lifespan=lifespan,
     docs_url="/api/docs" if not settings.is_production else None,
     redoc_url="/api/redoc" if not settings.is_production else None,
     openapi_url="/api/openapi.json" if not settings.is_production else None,
+    openapi_tags=OPENAPI_TAGS,
 )
 
 # CORS middleware
@@ -185,7 +278,7 @@ app.include_router(simulated_channels.router, prefix="/api", tags=["simulated-ch
 async def root():
     """Root endpoint."""
     return {
-        "name": "TTX Platform API",
+        "name": "CrisisLab API",
         "version": "0.1.0",
         "docs": "/api/docs" if not settings.is_production else None,
     }

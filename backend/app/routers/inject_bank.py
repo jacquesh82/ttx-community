@@ -1,4 +1,10 @@
-"""Inject bank router."""
+"""Inject bank router.
+
+Manages the reusable library of inject templates (the "inject bank") in CrisisLab.
+Injects are pre-authored crisis events (emails, SMS, social-media posts, TV segments,
+phone calls, documents, system alerts) that animateurs drag into exercise timelines.
+This router provides CRUD, search, statistics, import/export, and schema endpoints.
+"""
 import io
 import json
 import zipfile
@@ -190,19 +196,80 @@ def _bank_item_to_schema_instance(item: InjectBankItem) -> dict:
 
 
 class InjectBankBase(BaseModel):
-    """Base schema for inject bank item."""
+    """Base schema for an inject bank item in CrisisLab.
 
-    custom_id: Optional[str] = Field(default=None, max_length=100)
-    title: str = Field(min_length=3, max_length=255)
-    kind: InjectBankKind
-    status: InjectBankStatus = InjectBankStatus.DRAFT
-    category: Optional[str] = Field(default=None, max_length=100)
-    data_format: str = Field(default="text", max_length=16)
-    summary: Optional[str] = None
-    content: Optional[str] = None
-    source_url: Optional[str] = Field(default=None, max_length=500)
-    payload: dict = Field(default_factory=dict)
-    tags: list[str] = Field(default_factory=list)
+    An inject bank item is a reusable crisis-event template that can be inserted
+    into any exercise timeline. It carries the content (email body, SMS text,
+    TV script, etc.) along with metadata for filtering and categorisation.
+    """
+
+    custom_id: Optional[str] = Field(
+        default=None, max_length=100,
+        description="Optional external identifier for deduplication during imports.",
+        examples=["CYBER-STORM-INJ-001"],
+    )
+    title: str = Field(
+        min_length=3, max_length=255,
+        description="Short descriptive title of the inject.",
+        examples=["Alerte SIEM — Activité suspecte"],
+    )
+    kind: InjectBankKind = Field(
+        description="Communication channel: mail, sms, socialnet, tv, call, doc, system, etc.",
+        examples=["mail"],
+    )
+    status: InjectBankStatus = Field(
+        default=InjectBankStatus.DRAFT,
+        description="Lifecycle status: draft, ready, or archived.",
+        examples=["ready"],
+    )
+    category: Optional[str] = Field(
+        default=None, max_length=100,
+        description="Thematic category for grouping injects.",
+        examples=["Alerte SOC"],
+    )
+    data_format: str = Field(
+        default="text", max_length=16,
+        description="Content format: text, audio, image, or video.",
+        examples=["text"],
+    )
+    summary: Optional[str] = Field(
+        default=None,
+        description="Brief summary displayed in list views.",
+        examples=["Le SIEM détecte une exfiltration de données anormale vers une IP externe."],
+    )
+    content: Optional[str] = Field(
+        default=None,
+        description="Full content body (email HTML, SMS text, script, etc.).",
+    )
+    source_url: Optional[str] = Field(
+        default=None, max_length=500,
+        description="URL to an attached media asset or external resource.",
+    )
+    payload: dict = Field(
+        default_factory=dict,
+        description="Arbitrary JSON payload specific to the inject kind (email headers, phone metadata, etc.).",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Free-form tags for search and filtering.",
+        examples=[["ransomware", "soc"]],
+    )
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "custom_id": "CYBER-STORM-INJ-001",
+            "title": "Alerte SIEM — Activité suspecte",
+            "kind": "mail",
+            "status": "ready",
+            "category": "Alerte SOC",
+            "data_format": "text",
+            "summary": "Le SIEM détecte une exfiltration de données anormale vers une IP externe.",
+            "content": "Bonjour,\n\nNotre SIEM a détecté une activité suspecte sur le segment réseau 10.0.3.0/24...",
+            "source_url": None,
+            "payload": {},
+            "tags": ["ransomware", "soc"],
+        }
+    }}
 
     @classmethod
     def _normalize_kind(cls, value: any) -> InjectBankKind:
@@ -271,22 +338,47 @@ class InjectBankBase(BaseModel):
 
 
 class InjectBankCreate(InjectBankBase):
-    """Create schema for inject bank item."""
+    """Schema for creating a new inject bank item in CrisisLab.
+
+    Inherits all fields from InjectBankBase. The `kind` and `title` fields are
+    required; everything else has sensible defaults.
+    """
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "title": "Demande de rançon 150 BTC",
+            "kind": "mail",
+            "status": "draft",
+            "category": "Communication externe",
+            "data_format": "text",
+            "summary": "Les attaquants envoient une demande de rançon de 150 BTC au COMEX.",
+            "content": "Nous avons chiffré l'ensemble de vos serveurs de production. Transférez 150 BTC à l'adresse suivante dans les 48h...",
+            "tags": ["ransomware", "communication", "crise"],
+        }
+    }}
 
 
 class InjectBankUpdate(BaseModel):
-    """Update schema for inject bank item."""
+    """Schema for partially updating an inject bank item. Only provided fields are modified."""
 
-    title: Optional[str] = Field(default=None, min_length=3, max_length=255)
-    kind: Optional[InjectBankKind] = None
-    status: Optional[InjectBankStatus] = None
-    category: Optional[str] = Field(default=None, max_length=100)
-    data_format: Optional[str] = Field(default=None, max_length=16)
-    summary: Optional[str] = None
-    content: Optional[str] = None
-    source_url: Optional[str] = Field(default=None, max_length=500)
-    payload: Optional[dict] = None
-    tags: Optional[list[str]] = None
+    title: Optional[str] = Field(default=None, min_length=3, max_length=255, description="Updated title.")
+    kind: Optional[InjectBankKind] = Field(default=None, description="Change the inject channel type.")
+    status: Optional[InjectBankStatus] = Field(default=None, description="Transition to a new status.", examples=["ready"])
+    category: Optional[str] = Field(default=None, max_length=100, description="Updated category.", examples=["Pression médiatique"])
+    data_format: Optional[str] = Field(default=None, max_length=16, description="Updated data format.")
+    summary: Optional[str] = Field(default=None, description="Updated summary.")
+    content: Optional[str] = Field(default=None, description="Updated content body.")
+    source_url: Optional[str] = Field(default=None, max_length=500, description="Updated source URL.")
+    payload: Optional[dict] = Field(default=None, description="Updated JSON payload.")
+    tags: Optional[list[str]] = Field(default=None, description="Replacement tag list.", examples=[["communication", "crise"]])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "status": "ready",
+            "category": "Pression médiatique",
+            "tags": ["communication", "crise"],
+        }
+    }}
 
     @field_validator("data_format", mode="before")
     @classmethod
@@ -297,50 +389,107 @@ class InjectBankUpdate(BaseModel):
 
 
 class InjectBankResponse(InjectBankBase):
-    """Response schema for inject bank item."""
+    """Full representation of an inject bank item returned by the CrisisLab API."""
 
-    id: int
-    owner_tenant_id: int | None = None
-    visibility_scope: str | None = None
-    shareable: bool | None = None
-    source_type: str | None = None
-    origin_listing_id: int | None = None
-    created_by: Optional[int]
-    created_at: datetime
-    updated_at: datetime
+    id: int = Field(description="Unique database identifier.", examples=[1])
+    owner_tenant_id: int | None = Field(default=None, description="Owning tenant ID.")
+    visibility_scope: str | None = Field(default=None, description="Visibility scope: tenant or global.")
+    shareable: bool | None = Field(default=None, description="Whether the item can be shared across tenants.")
+    source_type: str | None = Field(default=None, description="Origin source: manual, import, marketplace.")
+    origin_listing_id: int | None = Field(default=None, description="Marketplace listing ID if sourced externally.")
+    created_by: Optional[int] = Field(description="User ID of the creator.")
+    created_at: datetime = Field(description="Record creation timestamp.")
+    updated_at: datetime = Field(description="Last modification timestamp.")
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 1,
+            "custom_id": "CYBER-STORM-INJ-001",
+            "title": "Alerte SIEM — Activité suspecte",
+            "kind": "mail",
+            "status": "ready",
+            "category": "Alerte SOC",
+            "data_format": "text",
+            "summary": "Le SIEM détecte une exfiltration de données anormale vers une IP externe.",
+            "content": "Bonjour,\n\nNotre SIEM a détecté une activité suspecte...",
+            "source_url": None,
+            "payload": {},
+            "tags": ["ransomware", "soc"],
+            "owner_tenant_id": 1,
+            "visibility_scope": "tenant",
+            "shareable": False,
+            "source_type": "manual",
+            "origin_listing_id": None,
+            "created_by": 3,
+            "created_at": "2026-03-10T14:30:00Z",
+            "updated_at": "2026-03-11T09:15:00Z",
+        }
+    }}
 
 
 class InjectBankListResponse(BaseModel):
-    """Paginated list response for inject bank items."""
+    """Paginated list of inject bank items returned by the CrisisLab API."""
 
-    items: list[InjectBankResponse]
-    total: int
-    page: int
-    page_size: int
+    items: list[InjectBankResponse] = Field(description="Inject bank records for the current page.")
+    total: int = Field(description="Total number of items matching the filters.", examples=[42])
+    page: int = Field(description="Current page number (1-based).", examples=[1])
+    page_size: int = Field(description="Number of items per page.", examples=[20])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "items": [],
+            "total": 42,
+            "page": 1,
+            "page_size": 20,
+        }
+    }}
 
 
 class InjectBankStats(BaseModel):
-    """Stats grouped by kind and status."""
+    """Aggregate statistics for the inject bank, grouped by kind and status."""
 
-    by_kind: dict[str, int]
-    by_status: dict[str, int]
-    total: int
+    by_kind: dict[str, int] = Field(
+        description="Item count per inject kind.",
+        examples=[{"mail": 15, "sms": 8, "socialnet": 12, "tv": 4, "call": 3}],
+    )
+    by_status: dict[str, int] = Field(
+        description="Item count per lifecycle status.",
+        examples=[{"draft": 10, "ready": 28, "archived": 4}],
+    )
+    total: int = Field(description="Total number of inject bank items.", examples=[42])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "by_kind": {"mail": 15, "sms": 8, "socialnet": 12, "tv": 4, "call": 3},
+            "by_status": {"draft": 10, "ready": 28, "archived": 4},
+            "total": 42,
+        }
+    }}
 
 
 class InjectBankImportResponse(BaseModel):
-    """Import response summary."""
+    """Summary returned after a ZIP bulk-import of inject bank items into CrisisLab."""
 
-    imported: int
-    skipped: int
-    total_in_zip: int
+    imported: int = Field(description="Number of items successfully imported.", examples=[35])
+    skipped: int = Field(description="Number of items skipped (e.g. duplicate custom_id).", examples=[3])
+    total_in_zip: int = Field(description="Total number of items found in the ZIP archive.", examples=[38])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "imported": 35,
+            "skipped": 3,
+            "total_in_zip": 38,
+        }
+    }}
 
 
 class InjectBankSchemaResponse(BaseModel):
-    """Inject bank import schema payload."""
+    """JSON Schema used to validate inject bank payloads during import."""
 
-    json_schema: dict = Field(serialization_alias="schema")
+    json_schema: dict = Field(
+        serialization_alias="schema",
+        description="The full JSON Schema definition for inject bank items.",
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -390,7 +539,11 @@ async def list_inject_bank_items(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List inject bank items with filters and pagination."""
+    """List inject bank items with filters, search, sorting, and pagination.
+
+    Supports filtering by kind, status, category, and tag. Free-text search
+    matches against title, summary, content, category, and tags.
+    """
     query = select(InjectBankItem).where(InjectBankItem.owner_tenant_id == tenant_ctx.tenant.id)
     count_query = select(func.count(InjectBankItem.id)).where(InjectBankItem.owner_tenant_id == tenant_ctx.tenant.id)
 
@@ -455,7 +608,11 @@ async def get_inject_bank_stats(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get simple stats for inject bank dashboard."""
+    """Get aggregate statistics for the inject bank dashboard.
+
+    Returns item counts grouped by kind (mail, sms, tv, etc.) and by status
+    (draft, ready, archived), plus the total item count.
+    """
     kind_rows = await db.execute(
         select(InjectBankItem.kind, func.count(InjectBankItem.id))
         .where(InjectBankItem.owner_tenant_id == tenant_ctx.tenant.id)
@@ -482,7 +639,10 @@ async def get_inject_bank_categories(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get list of all unique categories from inject bank items."""
+    """Get all unique category values currently used across inject bank items.
+
+    Useful for populating filter dropdowns in the CrisisLab UI.
+    """
     result = await db.execute(
         select(InjectBankItem.category)
         .where(
@@ -500,7 +660,11 @@ async def get_inject_bank_categories(
 async def get_inject_bank_import_schema(
     _: any = Depends(require_auth),
 ):
-    """Return JSON schema used to validate inject-bank text imports."""
+    """Return the JSON Schema used to validate inject bank payloads during import.
+
+    Clients can use this schema for client-side validation before submitting
+    a ZIP import.
+    """
     return InjectBankSchemaResponse(json_schema=get_inject_bank_schema())
 
 
@@ -510,7 +674,12 @@ async def export_inject_bank_zip(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Export all inject bank items as a ZIP archive (admin only)."""
+    """Export all inject bank items as a ZIP archive (admin only).
+
+    The archive contains a JSON manifest (`inject_bank_export.json`) with all
+    item metadata and a `media/` directory with referenced media files.
+    Compatible with the `/import/zip` endpoint for backup and restore.
+    """
     result = await db.execute(
         select(InjectBankItem)
         .where(InjectBankItem.owner_tenant_id == tenant_ctx.tenant.id)
@@ -602,7 +771,10 @@ async def clear_all_inject_bank_items(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Clear all inject bank items (admin only)."""
+    """Delete all inject bank items for the current tenant (admin only).
+
+    This is a destructive operation. Use with caution.
+    """
     # Delete all items
     result = await db.execute(select(InjectBankItem).where(InjectBankItem.owner_tenant_id == tenant_ctx.tenant.id))
     items = result.scalars().all()
@@ -622,10 +794,13 @@ async def import_inject_bank_zip(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Import inject bank items from a ZIP archive (admin only).
-    
-    Args:
-        file: ZIP file containing JSON files with inject bank items
-        clear_before: If True, delete all existing items before import
+
+    The ZIP must contain at least one JSON file with an array of inject bank items
+    (or a `{"items": [...]}` wrapper). Referenced media files should be placed in a
+    `media/` directory within the archive, matching the `media_manifest` entries.
+
+    Items with a `custom_id` that already exists in the tenant are skipped (unless
+    `clear_before=true` is used to wipe existing items first).
     """
     if not file.filename or not file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Le fichier doit etre un ZIP")
@@ -845,7 +1020,10 @@ async def create_inject_bank_item(
     current_user=Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a new inject bank item (admin only)."""
+    """Create a new inject bank item (admin only).
+
+    The payload is validated against the inject bank JSON Schema before persistence.
+    """
     create_payload = _normalize_legacy_bank_entry(item_data.model_dump(mode="json"), for_update=False)
     _validate_bank_payload_or_400(create_payload)
 
@@ -871,13 +1049,13 @@ async def create_inject_bank_item(
 
 @router.get("/kinds")
 async def get_inject_bank_kinds():
-    """Get all available inject bank kinds from the database enum."""
+    """List all valid inject kind values (mail, sms, socialnet, tv, call, doc, system, etc.)."""
     return {"kinds": [kind.value for kind in InjectBankKind]}
 
 
 @router.get("/statuses")
 async def get_inject_bank_statuses():
-    """Get all available inject bank statuses from the database enum."""
+    """List all valid inject status values (draft, ready, archived)."""
     return {"statuses": [status.value for status in InjectBankStatus]}
 
 
@@ -888,7 +1066,7 @@ async def get_inject_bank_item(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get a single inject bank item."""
+    """Retrieve a single inject bank item by its database ID."""
     result = await db.execute(
         select(InjectBankItem).where(
             InjectBankItem.id == item_id,
@@ -909,7 +1087,11 @@ async def update_inject_bank_item(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update an inject bank item (admin only)."""
+    """Partially update an inject bank item (admin only).
+
+    Only the provided fields are modified. The merged result is validated against
+    the inject bank JSON Schema before persistence.
+    """
     result = await db.execute(
         select(InjectBankItem).where(
             InjectBankItem.id == item_id,
@@ -943,7 +1125,7 @@ async def delete_inject_bank_item(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete an inject bank item (admin only)."""
+    """Permanently delete an inject bank item (admin only). Returns 204 on success."""
     result = await db.execute(
         select(InjectBankItem).where(
             InjectBankItem.id == item_id,

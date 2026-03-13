@@ -1,4 +1,8 @@
-"""Authentication router."""
+"""Authentication router for the CrisisLab platform.
+
+Handles cookie-based session authentication, password management,
+WebSocket ticket issuance, and development-only login shortcuts.
+"""
 from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Optional
@@ -459,7 +463,19 @@ async def login(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Login with username/email and password."""
+    """Authenticate a user with username or email and password.
+
+    Creates a new server-side session and sets an ``httponly`` session cookie
+    (``ttx_session`` in dev, ``__Host-ttx_session`` in production).
+
+    The account is locked after ``login_max_attempts`` consecutive failures
+    for ``login_lockout_minutes``.
+
+    **Auth required:** No (public endpoint, tenant-scoped).
+
+    Returns the authenticated user profile, a CSRF token (also in the
+    ``X-CSRF-Token`` response header), and the resolved tenant info.
+    """
     # Find user by username or email
     result = await db.execute(
         select(User).where(
@@ -534,7 +550,14 @@ async def logout(
     session_token: Optional[str] = Cookie(None, alias=SESSION_COOKIE_NAME),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Logout and clear session."""
+    """Terminate the current session and clear the session cookie.
+
+    Deletes the session row from the database so the token can no longer be
+    reused, then removes the cookie from the browser.
+
+    **Auth required:** No (best-effort; works even if the session is already
+    expired or missing).
+    """
     if session_token and user:
         # Delete session from database
         token_hash = hash_token(session_token)
@@ -557,7 +580,13 @@ async def get_current_session(
     user: User = Depends(require_auth),
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
 ):
-    """Get current session info."""
+    """Return the current authenticated user's session information.
+
+    Used by the frontend on page load to restore the session context
+    (user profile, CSRF token, and tenant metadata).
+
+    **Auth required:** Yes (any authenticated role).
+    """
     csrf_token = generate_csrf_token()
     return SessionResponse(
         user=SessionUser.model_validate(user),
@@ -573,7 +602,15 @@ async def update_profile(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update the current user's own profile (display_name, avatar_url, username)."""
+    """Update the current user's own profile fields.
+
+    Accepts partial updates for ``display_name``, ``avatar_url``, and
+    ``username``. A username change is rejected with **409** if the new
+    value is already taken within the same tenant.
+
+    **Auth required:** Yes (any authenticated role -- users can only edit
+    their own profile).
+    """
     if body.display_name is not None:
         user.display_name = body.display_name.strip() or None
     if body.avatar_url is not None:
@@ -610,7 +647,20 @@ async def create_ws_ticket(
     session_token: Optional[str] = Cookie(None, alias=SESSION_COOKIE_NAME),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Issue a short-lived one-time ticket for WebSocket authentication."""
+    """Issue a short-lived, single-use ticket for WebSocket authentication.
+
+    The ticket binds to the current session and user and expires after
+    ``ws_ticket_ttl_seconds`` (minimum 10 s). Supported scopes:
+
+    * ``DEBUG_EVENTS`` -- platform-admin or tenant-admin debug stream.
+    * Exercise-bound scopes (``EXERCISE_EVENTS``, ``PLAYER_EVENTS``, etc.)
+      require ``exercise_id`` and verify the user has access to that exercise.
+
+    The returned ``ticket`` value must be passed as a query parameter when
+    opening the WebSocket connection.
+
+    **Auth required:** Yes (role depends on requested scope).
+    """
     session, _ = await _get_session_and_user_by_session_token(
         session_token=session_token,
         db=db,
@@ -684,7 +734,15 @@ async def change_password(
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Change user password."""
+    """Change the authenticated user's password.
+
+    Requires the current password for verification. The new password is
+    hashed with Argon2 before storage.
+
+    **Auth required:** Yes (any authenticated role).
+
+    Raises **400** if the current password is incorrect.
+    """
     # Verify current password
     if not verify_password(password_data.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
@@ -704,7 +762,15 @@ async def dev_login(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Development-only login without password. Creates user if not exists."""
+    """Development-only login that bypasses password verification.
+
+    Accepts a role path parameter (``admin``, ``animateur``, ``observateur``,
+    ``participant``) and logs in as the corresponding ``dev_<role>`` user,
+    creating the user on-the-fly if it does not exist yet.
+
+    **Auth required:** No.
+    **Environment:** Development only -- returns **403** in production.
+    """
     # Only allow in development environment
     if settings.is_production:
         raise HTTPException(status_code=403, detail="Dev login is disabled in production")

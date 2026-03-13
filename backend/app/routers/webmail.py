@@ -1,5 +1,12 @@
-"""Webmail router: conversations and messages API."""
-from typing import Annotated, Optional
+"""
+Webmail router — CrisisLab simulated email system.
+
+Provides a full webmail experience within a crisis exercise: threaded
+conversations, per-user read receipts, and inject-driven messages sent by
+the animation team.  Every message belongs to one conversation which is
+scoped to a single exercise.
+"""
+from typing import Annotated
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, and_, or_
@@ -15,7 +22,7 @@ from app.models.event import Event, EventType, EventActorType
 from app.routers.auth import get_current_user, require_role
 from app.utils.tenancy import current_tenant_id_var
 
-router = APIRouter(prefix="/webmail", tags=["webmail"])
+router = APIRouter(prefix="/webmail", tags=["webmail (CrisisLab simulated email)"])
 
 
 async def _get_exercise_or_404(db: AsyncSession, exercise_id: int) -> Exercise:
@@ -62,80 +69,170 @@ async def _get_message_or_404(db: AsyncSession, message_id: int) -> Message:
 
 
 # === Schemas ===
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 
 class ParticipantSchema(BaseModel):
-    id: int | None = None
-    type: str
-    label: str | None = None
-    role: str  # to, cc, bcc, from
+    """A participant in a webmail conversation (sender, recipient, or CC)."""
 
-    class Config:
-        from_attributes = True
+    id: int | None = Field(default=None, description="Internal participant ID (null for external actors)")
+    type: str = Field(description="Participant type — 'user', 'actor', or 'team'", examples=["actor"])
+    label: str | None = Field(default=None, description="Human-readable display name", examples=["soc@duval-industries.fr"])
+    role: str = Field(description="Participant role in this conversation", examples=["to", "cc", "bcc", "from"])
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 12,
+                "type": "actor",
+                "label": "rssi@duval-industries.fr",
+                "role": "to",
+            }
+        },
+    }
 
 
 class MessageSchema(BaseModel):
-    id: int
-    conversation_id: int
-    author_type: str
-    author_id: int | None
-    author_label: str | None
-    subject: str | None
-    body_text: str
-    body_html: str | None
-    created_at: datetime
-    is_read: bool = False
+    """A single email message within a threaded conversation."""
 
-    class Config:
-        from_attributes = True
+    id: int = Field(description="Unique message identifier")
+    conversation_id: int = Field(description="Parent conversation ID")
+    author_type: str = Field(description="Type of author — 'user', 'actor', or 'system'", examples=["user"])
+    author_id: int | None = Field(default=None, description="User ID of the author (null for actors/system)")
+    author_label: str | None = Field(default=None, description="Display name of the author", examples=["soc@duval-industries.fr"])
+    subject: str | None = Field(default=None, description="Message subject line", examples=["URGENT \u2014 Rapport SOC : chiffrement de fichiers en cours"])
+    body_text: str = Field(description="Plain-text message body")
+    body_html: str | None = Field(default=None, description="HTML-formatted message body (optional)")
+    created_at: datetime = Field(description="Timestamp when the message was created")
+    is_read: bool = Field(default=False, description="Whether the current user has read this message")
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 42,
+                "conversation_id": 7,
+                "author_type": "actor",
+                "author_id": None,
+                "author_label": "soc@duval-industries.fr",
+                "subject": "URGENT \u2014 Rapport SOC : chiffrement de fichiers en cours",
+                "body_text": (
+                    "Bonjour,\n\n"
+                    "Le SOC a d\u00e9tect\u00e9 une activit\u00e9 de chiffrement anormale sur les serveurs de fichiers "
+                    "du site de Nantes. Plus de 2 000 fichiers ont \u00e9t\u00e9 renomm\u00e9s avec l\u2019extension .locked "
+                    "en moins de 15 minutes. Le processus responsable est svchost_update.exe, "
+                    "lanc\u00e9 depuis le compte de service srv-backup.\n\n"
+                    "Actions imm\u00e9diates recommand\u00e9es :\n"
+                    "1. Isoler le VLAN 10 (serveurs de fichiers)\n"
+                    "2. D\u00e9sactiver le compte srv-backup\n"
+                    "3. Capturer la m\u00e9moire du serveur NAS-01\n\n"
+                    "Cordialement,\n\u00c9quipe SOC Duval Industries"
+                ),
+                "body_html": None,
+                "created_at": "2024-11-15T09:32:00Z",
+                "is_read": False,
+            }
+        }
+    }
 
 
 class ConversationSchema(BaseModel):
-    id: int
-    exercise_id: int
-    subject: str
-    inject_id: int | None
-    created_at: datetime
-    updated_at: datetime
-    message_count: int = 0
-    unread_count: int = 0
-    last_message_at: datetime | None = None
+    """Summary view of a webmail conversation (used in inbox listing)."""
 
-    class Config:
-        from_attributes = True
+    id: int = Field(description="Unique conversation identifier")
+    exercise_id: int = Field(description="Exercise this conversation belongs to")
+    subject: str = Field(description="Conversation subject line", examples=["URGENT \u2014 Rapport SOC : chiffrement de fichiers en cours"])
+    inject_id: int | None = Field(default=None, description="ID of the inject that triggered this conversation (null if user-initiated)")
+    created_at: datetime = Field(description="Conversation creation timestamp")
+    updated_at: datetime = Field(description="Last activity timestamp")
+    message_count: int = Field(default=0, description="Total number of messages in the thread")
+    unread_count: int = Field(default=0, description="Number of unread messages for the current user")
+    last_message_at: datetime | None = Field(default=None, description="Timestamp of the most recent message")
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 7,
+                "exercise_id": 1,
+                "subject": "URGENT \u2014 Rapport SOC : chiffrement de fichiers en cours",
+                "inject_id": 15,
+                "created_at": "2024-11-15T09:30:00Z",
+                "updated_at": "2024-11-15T09:45:00Z",
+                "message_count": 3,
+                "unread_count": 1,
+                "last_message_at": "2024-11-15T09:45:00Z",
+            }
+        }
+    }
 
 
 class ConversationDetailSchema(BaseModel):
-    id: int
-    exercise_id: int
-    subject: str
-    inject_id: int | None
-    created_at: datetime
-    updated_at: datetime
-    participants: List[ParticipantSchema]
-    messages: List[MessageSchema]
+    """Full conversation view including participants and all messages."""
 
-    class Config:
-        from_attributes = True
+    id: int = Field(description="Unique conversation identifier")
+    exercise_id: int = Field(description="Exercise this conversation belongs to")
+    subject: str = Field(description="Conversation subject line")
+    inject_id: int | None = Field(default=None, description="ID of the triggering inject (null if user-initiated)")
+    created_at: datetime = Field(description="Conversation creation timestamp")
+    updated_at: datetime = Field(description="Last activity timestamp")
+    participants: List[ParticipantSchema] = Field(description="All participants (to, cc, bcc, from)")
+    messages: List[MessageSchema] = Field(description="Ordered list of messages in the thread")
+
+    model_config = {"from_attributes": True}
 
 
 class SendMessageSchema(BaseModel):
-    conversation_id: int | None = None  # None = new conversation
-    exercise_id: int | None = None  # Required if new conversation
-    subject: str | None = None  # Required if new conversation
-    to_participants: List[str] = []  # List of "type:label" e.g. ["actor:Président", "team:Cellule Crise"]
-    body_text: str
-    parent_message_id: int | None = None
+    """Payload for sending a message — either a reply to an existing conversation or a brand-new thread."""
+
+    conversation_id: int | None = Field(default=None, description="Target conversation ID (omit to start a new thread)")
+    exercise_id: int | None = Field(default=None, description="Required when creating a new conversation")
+    subject: str | None = Field(default=None, description="Subject line (required for new conversations)", examples=["RE: Rapport SOC \u2014 mesures de confinement activ\u00e9es"])
+    to_participants: List[str] = Field(default=[], description='Recipient list as "type:label" strings', examples=[["actor:rssi@duval-industries.fr", "team:Cellule Crise"]])
+    body_text: str = Field(description="Plain-text message body", examples=["Le VLAN 10 a \u00e9t\u00e9 isol\u00e9. Compte srv-backup d\u00e9sactiv\u00e9. Capture m\u00e9moire en cours."])
+    parent_message_id: int | None = Field(default=None, description="ID of the message being replied to (for threading)")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "conversation_id": 7,
+                "exercise_id": None,
+                "subject": None,
+                "to_participants": [],
+                "body_text": "Le VLAN 10 a \u00e9t\u00e9 isol\u00e9. Compte srv-backup d\u00e9sactiv\u00e9. Capture m\u00e9moire en cours sur NAS-01.",
+                "parent_message_id": 42,
+            }
+        }
+    }
 
 
 class ConversationCreateSchema(BaseModel):
-    exercise_id: int
-    subject: str
-    to_participants: List[str] = []
-    cc_participants: List[str] = []
-    body_text: str
+    """Payload for creating a new webmail conversation with an initial message."""
+
+    exercise_id: int = Field(description="Exercise to create the conversation in")
+    subject: str = Field(description="Conversation subject line", examples=["URGENT \u2014 Rapport SOC : chiffrement de fichiers en cours"])
+    to_participants: List[str] = Field(default=[], description='Primary recipients as "type:label"', examples=[["actor:rssi@duval-industries.fr", "actor:dg@duval-industries.fr"]])
+    cc_participants: List[str] = Field(default=[], description='CC recipients as "type:label"', examples=[["actor:dsi@duval-industries.fr"]])
+    body_text: str = Field(description="Initial message body")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "exercise_id": 1,
+                "subject": "URGENT \u2014 Rapport SOC : chiffrement de fichiers en cours",
+                "to_participants": ["actor:rssi@duval-industries.fr", "actor:dg@duval-industries.fr"],
+                "cc_participants": ["actor:dsi@duval-industries.fr"],
+                "body_text": (
+                    "Bonjour,\n\n"
+                    "Le SOC a d\u00e9tect\u00e9 une activit\u00e9 de chiffrement anormale sur le site de Nantes. "
+                    "Merci de rejoindre la cellule de crise imm\u00e9diatement.\n\n"
+                    "Cordialement,\nsoc@duval-industries.fr"
+                ),
+            }
+        }
+    }
 
 
 # === Routes ===
@@ -149,7 +246,13 @@ async def list_conversations(
     page_size: int = Query(20, ge=1, le=100),
     unread_only: bool = False,
 ):
-    """List conversations for an exercise."""
+    """List webmail conversations for a CrisisLab exercise.
+
+    Returns a paginated list of conversation summaries ordered by most recent
+    activity.  Each summary includes unread count for the authenticated user.
+    Use `unread_only=true` to filter conversations that have at least one
+    unread message.
+    """
     # Verify exercise exists and user has access
     await _get_exercise_or_404(db, exercise_id)
     
@@ -225,7 +328,11 @@ async def get_conversation(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get a conversation with all messages."""
+    """Retrieve a full conversation thread with all participants and messages.
+
+    Returns the complete conversation including every message in chronological
+    order and per-message read status for the authenticated user.
+    """
     tenant_id = current_tenant_id_var.get()
     query = (
         select(Conversation)
@@ -289,7 +396,12 @@ async def create_conversation(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Create a new conversation with initial message."""
+    """Create a new webmail conversation with an initial message.
+
+    Starts a new email thread within the exercise.  Participants are specified
+    as `type:label` strings (e.g. `actor:rssi@duval-industries.fr`).  The
+    authenticated user is automatically added as the sender.
+    """
     # Verify exercise exists
     await _get_exercise_or_404(db, data.exercise_id)
     
@@ -345,7 +457,13 @@ async def send_message(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Send a message (either new conversation or reply)."""
+    """Send a message — reply to an existing thread or start a new one.
+
+    When `conversation_id` is provided the message is appended to the existing
+    thread.  When omitted, a new conversation is created (requires
+    `exercise_id` and `subject`).  If `parent_message_id` is set, a
+    `MAIL_REPLIED` event is emitted for exercise tracking.
+    """
     if data.conversation_id:
         # Reply to existing conversation
         conversation = await _get_conversation_or_404(db, data.conversation_id)
@@ -412,7 +530,12 @@ async def mark_message_read(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Mark a message as read."""
+    """Mark a single message as read by the authenticated user.
+
+    Creates a read receipt and emits a `MAIL_OPENED` event for the exercise
+    timeline.  Idempotent — calling twice returns success without duplicating
+    the receipt.
+    """
     message = await _get_message_or_404(db, message_id)
 
     # Check if already read
@@ -459,7 +582,11 @@ async def mark_conversation_read(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Mark all messages in a conversation as read."""
+    """Mark every message in a conversation as read for the authenticated user.
+
+    Bulk operation that creates read receipts for all messages that the user
+    has not yet opened.  Useful when a player opens a conversation thread.
+    """
     conversation = await _get_conversation_or_404(db, conversation_id)
     
     # Get all messages
@@ -497,7 +624,12 @@ async def send_inject_message(
     current_user: Annotated[User, Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Send a prepared inject message (animateur only)."""
+    """Deliver a pre-authored inject message into a conversation (animateur only).
+
+    Used by the animation team to release a scripted email at the desired
+    moment during the exercise.  Resets the message timestamp to simulate
+    real-time delivery.
+    """
     conversation = await _get_conversation_or_404(db, conversation_id)
     
     message = await _get_message_or_404(db, message_id)

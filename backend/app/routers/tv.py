@@ -1,9 +1,15 @@
-"""TV router for live streaming, playlist, and segment management."""
+"""TV live-broadcast simulation router.
+
+Provides a simulated TV news channel experience within a CrisisLab exercise.
+Animateurs manage channels, segments (flash info, breaking news, interviews),
+playlists, banners, and scrolling tickers that participants see in real time
+on the TV Live player view.
+"""
 from datetime import datetime, timezone
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -24,127 +30,288 @@ router = APIRouter()
 
 # Schemas
 class TickerItem(BaseModel):
-    """Ticker item schema."""
-    text: str
-    priority: str = "normal"  # low, normal, high, urgent
+    """A single scrolling ticker line displayed at the bottom of the simulated TV screen."""
+    text: str = Field(
+        description="Ticker text displayed in the crawl.",
+        examples=["Duval Industries — production à l'arrêt suite à une cyberattaque"],
+    )
+    priority: str = Field(
+        default="normal",
+        description="Visual priority: low, normal, high, urgent.",
+        examples=["urgent"],
+    )
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "text": "ANSSI saisie de l'incident Duval Industries",
+            "priority": "high",
+        }
+    }}
 
 
 class TVLiveStateResponse(BaseModel):
-    """Schema for TV live state response."""
-    channel_id: int
-    status: TVLiveStatus
-    on_air_type: Optional[str]
-    on_air_id: Optional[int]
-    on_air_media_id: Optional[int]
-    started_at: Optional[datetime]
-    banner_text: Optional[str]
-    ticker_items: List[TickerItem]
-    version: int
-    
-    model_config = {"from_attributes": True}
+    """Current on-air state of a simulated TV channel in CrisisLab."""
+    channel_id: int = Field(description="Channel this state belongs to.", examples=[1])
+    status: TVLiveStatus = Field(description="Current broadcast status (idle, playing, paused).")
+    on_air_type: Optional[str] = Field(description="Type of content currently on air (segment, video_inject, flash).", examples=["segment"])
+    on_air_id: Optional[int] = Field(description="Database ID of the on-air playlist item or segment.", examples=[5])
+    on_air_media_id: Optional[int] = Field(description="Media asset ID currently being played.")
+    started_at: Optional[datetime] = Field(description="Timestamp when the current content started playing.")
+    banner_text: Optional[str] = Field(
+        description="Breaking-news banner overlaid on the broadcast.",
+        examples=["URGENT — Cyberattaque massive chez Duval Industries"],
+    )
+    ticker_items: List[TickerItem] = Field(description="Scrolling ticker items currently displayed.")
+    version: int = Field(description="Optimistic-lock version counter.", examples=[7])
+
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "channel_id": 1,
+            "status": "playing",
+            "on_air_type": "segment",
+            "on_air_id": 5,
+            "on_air_media_id": None,
+            "started_at": "2026-03-12T09:00:00Z",
+            "banner_text": "URGENT — Cyberattaque massive chez Duval Industries",
+            "ticker_items": [
+                {"text": "Duval Industries — production à l'arrêt", "priority": "urgent"},
+                {"text": "ANSSI saisie de l'incident", "priority": "high"},
+            ],
+            "version": 7,
+        }
+    }}
 
 
 class TVSegmentBase(BaseModel):
-    """Base TV segment schema."""
-    segment_type: TVSegmentType
-    title: Optional[str] = None
-    banner_text: Optional[str] = None
-    ticker_text: Optional[str] = None
-    script: Optional[str] = None
-    scheduled_start: Optional[datetime] = None
-    scheduled_end: Optional[datetime] = None
+    """Base fields for a TV broadcast segment in CrisisLab."""
+    segment_type: TVSegmentType = Field(description="Segment format: flash, interview, report, etc.")
+    title: Optional[str] = Field(
+        default=None,
+        description="Editorial title of the segment.",
+        examples=["Flash info — Cyberattaque industrielle majeure"],
+    )
+    banner_text: Optional[str] = Field(
+        default=None,
+        description="Banner to display when this segment goes live.",
+        examples=["URGENT — Cyberattaque massive chez Duval Industries"],
+    )
+    ticker_text: Optional[str] = Field(
+        default=None,
+        description="Ticker text to add when this segment goes live.",
+        examples=["Duval Industries — production à l'arrêt suite à une cyberattaque ransomware"],
+    )
+    script: Optional[str] = Field(
+        default=None,
+        description="Full presenter script / teleprompter text.",
+    )
+    scheduled_start: Optional[datetime] = Field(default=None, description="Planned start time.")
+    scheduled_end: Optional[datetime] = Field(default=None, description="Planned end time.")
 
 
 class TVSegmentCreate(TVSegmentBase):
-    """Schema for creating a TV segment."""
-    channel_id: int
-    media_ids: Optional[List[int]] = None
+    """Schema for creating a new TV segment in a CrisisLab exercise."""
+    channel_id: int = Field(description="Target channel ID.", examples=[1])
+    media_ids: Optional[List[int]] = Field(default=None, description="Media assets to attach (videos, images).")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "channel_id": 1,
+            "segment_type": "flash",
+            "title": "Flash info — Cyberattaque industrielle majeure",
+            "banner_text": "URGENT — Cyberattaque massive chez Duval Industries",
+            "ticker_text": "Duval Industries — production à l'arrêt",
+            "script": "Mesdames, messieurs, bonsoir. Nous interrompons nos programmes pour un flash spécial...",
+            "scheduled_start": "2026-03-12T09:00:00Z",
+            "scheduled_end": "2026-03-12T09:05:00Z",
+        }
+    }}
 
 
 class TVSegmentUpdate(BaseModel):
-    """Schema for updating a TV segment."""
-    title: Optional[str] = None
-    banner_text: Optional[str] = None
-    ticker_text: Optional[str] = None
-    script: Optional[str] = None
-    scheduled_start: Optional[datetime] = None
-    scheduled_end: Optional[datetime] = None
-    status: Optional[TVSegmentStatus] = None
+    """Schema for partially updating a TV segment."""
+    title: Optional[str] = Field(default=None, description="Updated segment title.")
+    banner_text: Optional[str] = Field(default=None, description="Updated banner text.")
+    ticker_text: Optional[str] = Field(default=None, description="Updated ticker text.")
+    script: Optional[str] = Field(default=None, description="Updated presenter script.")
+    scheduled_start: Optional[datetime] = Field(default=None, description="New scheduled start.")
+    scheduled_end: Optional[datetime] = Field(default=None, description="New scheduled end.")
+    status: Optional[TVSegmentStatus] = Field(default=None, description="Force a status transition.")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "title": "Flash info MAJ — Rançon de 150 BTC exigée",
+            "banner_text": "ALERTE — Demande de rançon de 150 BTC chez Duval Industries",
+        }
+    }}
 
 
 class TVSegmentResponse(TVSegmentBase):
-    """Schema for TV segment response."""
-    id: int
-    channel_id: int
-    status: TVSegmentStatus
-    inject_id: Optional[int]
-    created_by: Optional[int]
-    created_at: datetime
-    actual_start: Optional[datetime]
-    actual_end: Optional[datetime]
-    
-    model_config = {"from_attributes": True}
+    """Full representation of a TV segment returned by the CrisisLab API."""
+    id: int = Field(description="Unique database identifier.", examples=[5])
+    channel_id: int = Field(description="Parent channel ID.", examples=[1])
+    status: TVSegmentStatus = Field(description="Current segment status (draft, ready, live, ended).")
+    inject_id: Optional[int] = Field(description="Linked inject ID, if the segment was created from an inject.")
+    created_by: Optional[int] = Field(description="User ID who created the segment.")
+    created_at: datetime = Field(description="Record creation timestamp.")
+    actual_start: Optional[datetime] = Field(description="Actual on-air start time.")
+    actual_end: Optional[datetime] = Field(description="Actual on-air end time.")
+
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 5,
+            "channel_id": 1,
+            "segment_type": "flash",
+            "title": "Flash info — Cyberattaque industrielle majeure",
+            "banner_text": "URGENT — Cyberattaque massive chez Duval Industries",
+            "ticker_text": "Duval Industries — production à l'arrêt",
+            "script": "Mesdames, messieurs, bonsoir...",
+            "scheduled_start": "2026-03-12T09:00:00Z",
+            "scheduled_end": "2026-03-12T09:05:00Z",
+            "status": "live",
+            "inject_id": None,
+            "created_by": 3,
+            "created_at": "2026-03-12T08:45:00Z",
+            "actual_start": "2026-03-12T09:00:12Z",
+            "actual_end": None,
+        }
+    }}
 
 
 class TVPlaylistItemBase(BaseModel):
-    """Base playlist item schema."""
-    item_type: str  # segment, video_inject, flash
-    title: Optional[str] = None
-    media_id: Optional[int] = None
-    ref_id: Optional[int] = None
-    banner_text: Optional[str] = None
-    ticker_items: Optional[List[TickerItem]] = None
-    play_mode: str = "once"
-    takeover: bool = False
-    planned_at: Optional[datetime] = None
+    """Base fields for a TV playlist entry in CrisisLab."""
+    item_type: str = Field(
+        description="Content type: segment, video_inject, or flash.",
+        examples=["segment"],
+    )
+    title: Optional[str] = Field(
+        default=None,
+        description="Display title in the playlist queue.",
+        examples=["Flash info — Cyberattaque industrielle majeure"],
+    )
+    media_id: Optional[int] = Field(default=None, description="Pre-recorded media asset to play.")
+    ref_id: Optional[int] = Field(default=None, description="Reference ID of the linked segment or inject.")
+    banner_text: Optional[str] = Field(
+        default=None,
+        description="Banner to display when this item plays.",
+        examples=["URGENT — Cyberattaque massive chez Duval Industries"],
+    )
+    ticker_items: Optional[List[TickerItem]] = Field(default=None, description="Ticker items to display when this item plays.")
+    play_mode: str = Field(default="once", description="Playback mode: once or loop.", examples=["once"])
+    takeover: bool = Field(default=False, description="If true, interrupts current playback immediately.")
+    planned_at: Optional[datetime] = Field(default=None, description="Scheduled playback time.")
 
 
 class TVPlaylistItemCreate(TVPlaylistItemBase):
-    """Schema for creating a playlist item."""
-    channel_id: int
+    """Schema for adding a new item to the TV playlist."""
+    channel_id: int = Field(description="Target channel ID.", examples=[1])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "channel_id": 1,
+            "item_type": "flash",
+            "title": "Flash info — Cyberattaque industrielle majeure",
+            "banner_text": "URGENT — Cyberattaque massive chez Duval Industries",
+            "ticker_items": [
+                {"text": "Duval Industries — production à l'arrêt", "priority": "urgent"},
+            ],
+            "play_mode": "once",
+            "takeover": True,
+            "planned_at": "2026-03-12T09:00:00Z",
+        }
+    }}
 
 
 class TVPlaylistItemResponse(TVPlaylistItemBase):
-    """Schema for playlist item response."""
-    id: int
-    channel_id: int
-    exercise_id: int
-    position: int
-    status: PlaylistItemStatus
-    created_at: datetime
-    updated_at: datetime
-    
+    """Full representation of a TV playlist item returned by the CrisisLab API."""
+    id: int = Field(description="Unique database identifier.", examples=[10])
+    channel_id: int = Field(description="Parent channel ID.", examples=[1])
+    exercise_id: int = Field(description="Parent exercise ID.", examples=[1])
+    position: int = Field(description="Order in the playlist (0-based).", examples=[0])
+    status: PlaylistItemStatus = Field(description="Item status: queued, on_air, done, skipped.")
+    created_at: datetime = Field(description="Record creation timestamp.")
+    updated_at: datetime = Field(description="Last modification timestamp.")
+
     model_config = {"from_attributes": True}
 
 
 class TVChannelResponse(BaseModel):
-    """Schema for TV channel response."""
-    id: int
-    exercise_id: int
-    name: str
-    logo_url: Optional[str]
-    is_active: bool
-    created_at: datetime
-    
-    model_config = {"from_attributes": True}
+    """Full representation of a simulated TV channel in CrisisLab."""
+    id: int = Field(description="Unique database identifier.", examples=[1])
+    exercise_id: int = Field(description="Parent exercise ID.", examples=[1])
+    name: str = Field(description="Channel display name.", examples=["BFM Business"])
+    logo_url: Optional[str] = Field(description="URL to the channel logo.", examples=["https://example.com/logos/bfm.png"])
+    is_active: bool = Field(description="Whether this channel is the active broadcast channel.", examples=[True])
+    created_at: datetime = Field(description="Record creation timestamp.")
+
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 1,
+            "exercise_id": 1,
+            "name": "BFM Business",
+            "logo_url": "https://example.com/logos/bfm.png",
+            "is_active": True,
+            "created_at": "2026-03-12T07:00:00Z",
+        }
+    }}
 
 
 class BannerUpdate(BaseModel):
-    """Schema for updating banner."""
-    text: Optional[str] = None
+    """Payload for updating the breaking-news banner on the simulated TV broadcast."""
+    text: Optional[str] = Field(
+        default=None,
+        description="Banner text to display. Set to null to clear the banner.",
+        examples=["URGENT — Cyberattaque massive chez Duval Industries"],
+    )
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "text": "URGENT — Cyberattaque massive chez Duval Industries",
+        }
+    }}
 
 
 class TickerUpdate(BaseModel):
-    """Schema for updating ticker."""
-    op: str  # add, remove, clear
-    item: Optional[TickerItem] = None
-    index: Optional[int] = None
+    """Payload for modifying the scrolling ticker on the simulated TV broadcast."""
+    op: str = Field(
+        description="Operation: add (append item), remove (by index), or clear (remove all).",
+        examples=["add"],
+    )
+    item: Optional[TickerItem] = Field(
+        default=None,
+        description="Ticker item to add (required when op='add').",
+    )
+    index: Optional[int] = Field(
+        default=None,
+        description="Index of the item to remove (required when op='remove').",
+        examples=[0],
+    )
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "op": "add",
+            "item": {"text": "ANSSI saisie de l'incident Duval Industries", "priority": "high"},
+        }
+    }}
 
 
 class ControlCommand(BaseModel):
-    """Schema for control commands."""
-    action: str  # start, stop, pause, resume, skip
-    target_id: Optional[int] = None  # segment_id or playlist_item_id
+    """Command payload for controlling the live TV broadcast in CrisisLab."""
+    action: str = Field(
+        description="Broadcast action: start, stop, pause, resume, or skip.",
+        examples=["start"],
+    )
+    target_id: Optional[int] = Field(
+        default=None,
+        description="ID of a specific playlist item or segment to start (optional for start, ignored for other actions).",
+        examples=[10],
+    )
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "action": "start",
+            "target_id": 10,
+        }
+    }}
 
 
 # Helper functions
@@ -287,7 +454,7 @@ async def list_channels(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List TV channels for an exercise."""
+    """List all simulated TV channels configured for a CrisisLab exercise."""
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     result = await db.execute(
         select(TVChannel).where(TVChannel.exercise_id == exercise_id)
@@ -305,7 +472,10 @@ async def create_channel(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a TV channel for an exercise."""
+    """Create a new simulated TV channel (e.g. BFM Business, CNEWS) for a CrisisLab exercise.
+
+    A live-state record is automatically initialised for the new channel.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     channel = TVChannel(
         exercise_id=exercise_id,
@@ -334,7 +504,12 @@ async def get_live_state(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get current live state for TV channel(s)."""
+    """Get the current on-air state of a simulated TV channel.
+
+    If no `channel_id` is provided, the first active channel for the exercise
+    is used. The response includes the current banner, ticker items, and
+    what content is currently playing.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     # Get first active channel if not specified
     if not channel_id:
@@ -376,7 +551,11 @@ async def update_banner(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update the banner text on live TV."""
+    """Update the breaking-news banner displayed on the simulated TV broadcast.
+
+    Set `text` to null to clear the banner. The live-state version counter is
+    incremented so connected clients can detect changes via polling or WebSocket.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     if not channel_id:
         channel = await _get_active_channel_for_exercise_or_404(db, exercise_id, tenant_ctx.tenant.id)
@@ -403,7 +582,13 @@ async def update_ticker(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update the ticker items on live TV."""
+    """Modify the scrolling ticker on the simulated TV broadcast.
+
+    Supports three operations:
+    - **add**: append a new ticker item
+    - **remove**: remove the item at the given index
+    - **clear**: remove all ticker items
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     if not channel_id:
         channel = await _get_active_channel_for_exercise_or_404(db, exercise_id, tenant_ctx.tenant.id)
@@ -441,7 +626,14 @@ async def control_live(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Control the live TV stream (start, stop, pause, resume, skip)."""
+    """Send a control command to the live TV broadcast.
+
+    Supported actions:
+    - **start**: begin playing a specific playlist item (by `target_id`) or the next queued item
+    - **stop**: end the current broadcast and return to idle
+    - **pause** / **resume**: toggle playback
+    - **skip**: skip the current item and advance to the next queued item
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     if not channel_id:
         channel = await _get_active_channel_for_exercise_or_404(db, exercise_id, tenant_ctx.tenant.id)
@@ -559,7 +751,7 @@ async def list_segments(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List TV segments for an exercise."""
+    """List TV segments for a CrisisLab exercise, optionally filtered by channel and/or status."""
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     if channel_id is not None:
         await _get_channel_in_tenant_or_404(db, channel_id, tenant_ctx.tenant.id, exercise_id=exercise_id)
@@ -585,7 +777,7 @@ async def create_segment(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a TV segment."""
+    """Create a new TV segment (flash info, interview, report, etc.) for a CrisisLab channel."""
     channel = await _get_channel_in_tenant_or_404(db, segment_data.channel_id, tenant_ctx.tenant.id)
     segment = TVSegment(
         channel_id=segment_data.channel_id,
@@ -626,7 +818,11 @@ async def start_segment(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Start a TV segment (go live)."""
+    """Take a TV segment live on its channel.
+
+    Sets the segment status to LIVE, updates the channel live-state, and applies
+    the segment's banner text if present. Returns 400 if the segment is already live.
+    """
     segment = await _get_segment_in_tenant_or_404(db, segment_id, tenant_ctx.tenant.id)
     
     if segment.status == TVSegmentStatus.LIVE:
@@ -659,7 +855,10 @@ async def end_segment(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """End a TV segment."""
+    """End a live TV segment and return the channel to idle.
+
+    Records the actual end timestamp. Returns 400 if the segment is not currently live.
+    """
     segment = await _get_segment_in_tenant_or_404(db, segment_id, tenant_ctx.tenant.id)
     
     if segment.status != TVSegmentStatus.LIVE:
@@ -690,7 +889,11 @@ async def get_playlist(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get playlist for a channel."""
+    """Get the ordered playlist for a CrisisLab TV channel.
+
+    If no `channel_id` is provided, the first active channel for the exercise is used.
+    Returns an empty list if no active channel exists.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     if not channel_id:
         try:
@@ -720,7 +923,11 @@ async def add_to_playlist(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Add item to playlist."""
+    """Append a new item to the end of a CrisisLab TV channel playlist.
+
+    The item is automatically assigned the next position. Use the `takeover` flag
+    to interrupt current playback when this item is started.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     await _get_channel_in_tenant_or_404(db, item_data.channel_id, tenant_ctx.tenant.id, exercise_id=exercise_id)
     if item_data.media_id is not None:
@@ -764,7 +971,7 @@ async def reorder_playlist(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Reorder playlist items."""
+    """Reorder playlist items by providing the full list of item IDs in the desired order."""
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     await _get_channel_in_tenant_or_404(db, channel_id, tenant_ctx.tenant.id, exercise_id=exercise_id)
     for position, item_id in enumerate(item_ids):
@@ -791,7 +998,7 @@ async def remove_from_playlist(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Remove item from playlist."""
+    """Remove an item from the TV playlist permanently."""
     item = await _get_playlist_item_in_tenant_or_404(db, item_id, tenant_ctx.tenant.id)
     
     await db.delete(item)

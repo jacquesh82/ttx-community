@@ -1,10 +1,15 @@
-"""Exercises router."""
+"""CrisisLab Exercises router.
+
+Provides CRUD operations and lifecycle management (start, pause, end, restart)
+for crisis-simulation exercises such as ransomware, cyber-attack, or IT-outage
+scenarios.
+"""
 import json
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import String, delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -317,34 +322,90 @@ async def _get_exercise_in_tenant_or_404(
 
 
 class ExerciseTeamResponse(BaseModel):
-    """Team attached to an exercise."""
-    id: int
-    name: str
-    description: Optional[str] = None
-    color: str
+    """Team attached to a CrisisLab exercise.
 
-    model_config = {"from_attributes": True}
+    Represents a crisis-cell team participating in the exercise (e.g. IT,
+    Communication, Direction Generale).
+    """
+    id: int = Field(description="Unique team identifier", examples=[1])
+    name: str = Field(description="Display name of the team", examples=["Cellule IT"])
+    description: Optional[str] = Field(default=None, description="Optional team description", examples=["Equipe technique en charge de la remediation"])
+    color: str = Field(description="Hex colour used in the UI for this team", examples=["#3B82F6"])
+
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 1,
+            "name": "Cellule IT",
+            "description": "Equipe technique en charge de la remediation",
+            "color": "#3B82F6",
+        }
+    }}
 
 
 class ExerciseTeamListResponse(BaseModel):
-    """List of teams attached to an exercise."""
-    teams: list[ExerciseTeamResponse]
+    """Paginated list of teams attached to a CrisisLab exercise."""
+    teams: list[ExerciseTeamResponse] = Field(description="Teams currently attached to the exercise")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "teams": [
+                {"id": 1, "name": "Cellule IT", "description": "Equipe technique en charge de la remediation", "color": "#3B82F6"},
+                {"id": 2, "name": "Cellule Communication", "description": "Gestion de la communication de crise", "color": "#EF4444"},
+            ]
+        }
+    }}
 
 
 class ExerciseSelectOption(BaseModel):
-    value: str
-    label: str
+    """Key/label pair used in CrisisLab exercise creation drop-downs."""
+    value: str = Field(description="Machine-readable option key", examples=["ransomware"])
+    label: str = Field(description="Human-readable label shown in the UI", examples=["Ransomware"])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "value": "ransomware",
+            "label": "Ransomware",
+        }
+    }}
 
 
 class ExerciseCreationOptionsResponse(BaseModel):
-    exercise_type_options: list[ExerciseSelectOption]
-    exercise_duration_options: list[int]
-    exercise_maturity_options: list[ExerciseSelectOption]
-    exercise_mode_options: list[ExerciseSelectOption]
-    default_exercise_type: str
-    default_exercise_duration_hours: int
-    default_maturity_level: str
-    default_exercise_mode: str
+    """Available options and defaults for the CrisisLab exercise creation form.
+
+    Returned to the frontend so it can populate drop-downs, radio buttons, and
+    default values when an administrator creates a new exercise.
+    """
+    exercise_type_options: list[ExerciseSelectOption] = Field(description="Allowed exercise types (e.g. cyber, ransomware)")
+    exercise_duration_options: list[int] = Field(description="Allowed target durations in hours", examples=[[4, 8, 24]])
+    exercise_maturity_options: list[ExerciseSelectOption] = Field(description="Maturity-level choices for the exercised organisation")
+    exercise_mode_options: list[ExerciseSelectOption] = Field(description="Execution mode choices (real-time, compressed, simulated)")
+    default_exercise_type: str = Field(description="Pre-selected exercise type", examples=["ransomware"])
+    default_exercise_duration_hours: int = Field(description="Pre-selected duration in hours", examples=[4])
+    default_maturity_level: str = Field(description="Pre-selected maturity level", examples=["intermediate"])
+    default_exercise_mode: str = Field(description="Pre-selected execution mode", examples=["real_time"])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "exercise_type_options": [
+                {"value": "cyber", "label": "Cyber"},
+                {"value": "ransomware", "label": "Ransomware"},
+            ],
+            "exercise_duration_options": [4, 8, 24],
+            "exercise_maturity_options": [
+                {"value": "beginner", "label": "Debutant"},
+                {"value": "intermediate", "label": "Intermediaire"},
+                {"value": "expert", "label": "Expert"},
+            ],
+            "exercise_mode_options": [
+                {"value": "real_time", "label": "Temps reel"},
+                {"value": "compressed", "label": "Compresse"},
+            ],
+            "default_exercise_type": "ransomware",
+            "default_exercise_duration_hours": 4,
+            "default_maturity_level": "intermediate",
+            "default_exercise_mode": "real_time",
+        }
+    }}
 
 
 def _build_plugin_response(
@@ -435,7 +496,13 @@ async def list_exercises(
     current_user = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List exercises."""
+    """List all CrisisLab exercises visible to the current user.
+
+    Returns a paginated list of exercises for the current tenant.
+    Supports optional filtering by status (draft, running, paused, completed,
+    archived) and free-text search on the exercise name.
+    Non-admin users only see exercises they participate in.
+    """
     query = select(Exercise).where(Exercise.tenant_id == tenant_ctx.tenant.id)
     count_query = select(func.count(Exercise.id)).where(Exercise.tenant_id == tenant_ctx.tenant.id)
     
@@ -480,7 +547,14 @@ async def create_exercise(
     current_user = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a new exercise (admin/animateur only)."""
+    """Create a new CrisisLab exercise (admin / animateur only).
+
+    Initialises the exercise with the provided metadata (name, type, duration,
+    maturity level, mode), seeds default timeline phases from the tenant
+    configuration, and creates plugin entries for all registered channels.
+    Values for type, duration, maturity, and mode are validated against the
+    tenant-level options configured in *Options > Exercices*.
+    """
     tenant_config = await get_or_create_tenant_configuration(
         db,
         tenant_id=tenant_ctx.tenant.id,
@@ -594,7 +668,12 @@ async def get_exercise(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get an exercise by ID."""
+    """Retrieve a single CrisisLab exercise by its ID.
+
+    Returns the full exercise object including its enabled/disabled plugin
+    configuration. Raises 404 if the exercise does not exist or does not
+    belong to the current tenant.
+    """
     result = await db.execute(
         select(Exercise)
         .options(selectinload(Exercise.plugins))
@@ -616,7 +695,12 @@ async def list_exercise_teams(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List teams attached to an exercise."""
+    """List all crisis-cell teams attached to a CrisisLab exercise.
+
+    Returns every team currently linked to the exercise, ordered
+    alphabetically by name. Useful for populating participant-assignment
+    drop-downs.
+    """
     exercise_result = await db.execute(
         select(Exercise.id).where(Exercise.id == exercise_id, Exercise.tenant_id == tenant_ctx.tenant.id)
     )
@@ -641,7 +725,12 @@ async def attach_team_to_exercise(
     _: any = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Attach an existing team to an exercise."""
+    """Attach an existing team to a CrisisLab exercise.
+
+    Links a previously-created team (e.g. *Cellule IT*, *Direction Generale*)
+    to the exercise so that participants can be assigned to it.
+    Returns 409 if the team is already attached.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
 
     team_result = await db.execute(
@@ -673,7 +762,12 @@ async def detach_team_from_exercise(
     _: any = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Detach a team from an exercise when no participant is assigned to it."""
+    """Detach a team from a CrisisLab exercise.
+
+    Removes the link between the team and the exercise. Fails with 400 if
+    any participants are still assigned to the team -- reassign or remove
+    them first.
+    """
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     team_result = await db.execute(
         select(Team.id).where(Team.id == team_id, Team.tenant_id == tenant_ctx.tenant.id)
@@ -717,7 +811,12 @@ async def update_exercise(
     _: any = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update an exercise (admin/animateur only)."""
+    """Update a CrisisLab exercise (admin / animateur only).
+
+    Accepts a partial payload -- only the fields present in the request body
+    are modified. Socle values (type, duration, maturity, mode) are validated
+    against the tenant-level configuration before being persisted.
+    """
     exercise = await _get_exercise_in_tenant_or_404(
         db,
         exercise_id,
@@ -792,7 +891,13 @@ async def start_exercise(
     current_user=Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Start or resume an exercise."""
+    """Start or resume a CrisisLab exercise.
+
+    Transitions the exercise from *draft* to *running* (first start) or from
+    *paused* to *running* (resume). Starts the inject scheduler so that
+    timed injects are dispatched according to the timeline, and broadcasts a
+    WebSocket event to all connected clients.
+    """
     exercise = await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
 
     if exercise.status == ExerciseStatus.DRAFT:
@@ -833,7 +938,13 @@ async def restart_exercise(
     current_user=Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Restart a completed or archived exercise."""
+    """Restart a completed or archived CrisisLab exercise.
+
+    Resets the exercise clock, clears the ended_at timestamp, and transitions
+    the exercise back to *running*. A new EXERCISE_STARTED event is recorded
+    with the ``restarted`` flag. The inject scheduler is re-started and a
+    WebSocket notification is broadcast.
+    """
     exercise = await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
 
     if exercise.status not in (ExerciseStatus.COMPLETED, ExerciseStatus.ARCHIVED):
@@ -872,7 +983,12 @@ async def pause_exercise(
     current_user=Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Pause an exercise."""
+    """Pause a running CrisisLab exercise.
+
+    Transitions the exercise from *running* to *paused*. The inject scheduler
+    is stopped so no further timed injects fire until the exercise is resumed.
+    A WebSocket notification is broadcast to all connected clients.
+    """
     exercise = await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
 
     if exercise.status != ExerciseStatus.RUNNING:
@@ -905,7 +1021,12 @@ async def end_exercise(
     current_user=Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """End an exercise."""
+    """End a CrisisLab exercise (running or paused).
+
+    Marks the exercise as *completed*, records the ended_at timestamp, and
+    logs the total elapsed duration in minutes. The inject scheduler is
+    stopped and a WebSocket notification is broadcast.
+    """
     exercise = await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
 
     if exercise.status not in (ExerciseStatus.RUNNING, ExerciseStatus.PAUSED):
@@ -948,7 +1069,12 @@ async def get_exercise_stats(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get exercise statistics."""
+    """Retrieve real-time statistics for a CrisisLab exercise.
+
+    Returns inject counts (total, sent, pending), message/tweet/decision
+    counters, and the average participant score. Useful for animateur
+    dashboards and post-exercise debriefing.
+    """
     exercise = await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
     
     # Count injects
@@ -986,7 +1112,11 @@ async def delete_exercise(
     _: any = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete an exercise (admin only)."""
+    """Permanently delete a CrisisLab exercise (admin only).
+
+    Cascade-deletes all related data (injects, events, participant
+    assignments, plugins). This action is irreversible.
+    """
     exercise = await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
 
     await db.delete(exercise)
@@ -1000,7 +1130,13 @@ async def get_available_plugins(
     _: any = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get list of all available plugins."""
+    """List all available CrisisLab simulation plugins.
+
+    Returns every registered communication-channel plugin (e.g. mail, SMS,
+    social media, TV live, press) with its metadata, icon, colour, and
+    whether it is enabled by default. Used by the exercise-creation form to
+    let the organiser pick which channels to activate.
+    """
     plugins = []
     canonical_plugin_types = await get_canonical_plugin_types(db)
     config_map = await ensure_plugin_configurations(db)
@@ -1033,7 +1169,12 @@ async def toggle_plugin(
     _: any = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Enable or disable a plugin for an exercise."""
+    """Enable or disable a simulation plugin for a CrisisLab exercise.
+
+    Toggles the given plugin (identified by its canonical type, e.g. ``mail``,
+    ``sms``, ``social``) on or off for the specified exercise. Plugins can
+    only be modified while the exercise is still in *draft* status.
+    """
     # Validate and normalize plugin_type from DB enum values.
     plugin_type = await validate_plugin_type(db, plugin_type)
     

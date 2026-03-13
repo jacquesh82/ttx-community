@@ -1,11 +1,17 @@
-"""Twitter/X router for social network simulation."""
+"""Twitter/X social network simulation router.
+
+Manages simulated Twitter/X accounts and posts within a CrisisLab exercise.
+Animateurs create fictitious accounts (journalists, officials, citizens, etc.)
+and publish tweets that appear in the participant social-media feed, adding
+media pressure to the crisis scenario.
+"""
 import csv
 import io
 from datetime import datetime, timezone
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -82,92 +88,198 @@ async def _get_post_in_tenant(
 
 # Schemas
 class TwitterAccountBase(BaseModel):
-    """Base Twitter account schema."""
-    handle: str
-    display_name: str
-    account_type: TwitterAccountType
-    verified: bool = False
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
-    controlled_by_team_id: Optional[int] = None
+    """Base fields shared by all Twitter/X account schemas in CrisisLab."""
+    handle: str = Field(
+        description="Unique @handle for the simulated account (without the leading @).",
+        examples=["P_Martin_Cyber"],
+    )
+    display_name: str = Field(
+        description="Public display name shown on the profile.",
+        examples=["Pierre Martin"],
+    )
+    account_type: TwitterAccountType = Field(
+        description="Archetype used to categorise the account in the simulation.",
+        examples=["journalist"],
+    )
+    verified: bool = Field(
+        default=False,
+        description="Whether the account displays a verified badge.",
+    )
+    bio: Optional[str] = Field(
+        default=None,
+        description="Short biography displayed on the profile.",
+        examples=["Journaliste cybersécurité @LeMondeTech"],
+    )
+    avatar_url: Optional[str] = Field(
+        default=None,
+        description="URL to the avatar image.",
+        examples=["https://example.com/avatars/p_martin.png"],
+    )
+    controlled_by_team_id: Optional[int] = Field(
+        default=None,
+        description="ID of the participant team that controls this account (None = animateur-controlled).",
+    )
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "handle": "P_Martin_Cyber",
+            "display_name": "Pierre Martin",
+            "account_type": "journalist",
+            "verified": True,
+            "bio": "Journaliste cybersécurité @LeMondeTech",
+            "avatar_url": "https://example.com/avatars/p_martin.png",
+            "controlled_by_team_id": None,
+        }
+    }}
 
 
 class TwitterAccountCreate(TwitterAccountBase):
-    """Schema for creating a Twitter account."""
-    exercise_id: int
+    """Schema for creating a new simulated Twitter/X account within a CrisisLab exercise."""
+    exercise_id: int = Field(description="ID of the exercise this account belongs to.", examples=[1])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "exercise_id": 1,
+            "handle": "P_Martin_Cyber",
+            "display_name": "Pierre Martin",
+            "account_type": "journalist",
+            "verified": True,
+            "bio": "Journaliste cybersécurité @LeMondeTech",
+        }
+    }}
 
 
 class TwitterAccountUpdate(BaseModel):
-    """Schema for updating a Twitter account."""
-    display_name: Optional[str] = None
-    account_type: Optional[TwitterAccountType] = None
-    verified: Optional[bool] = None
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
-    controlled_by_team_id: Optional[int] = None
+    """Schema for partially updating a simulated Twitter/X account."""
+    display_name: Optional[str] = Field(default=None, description="New display name.", examples=["Pierre Martin — EXCLU"])
+    account_type: Optional[TwitterAccountType] = Field(default=None, description="New account archetype.")
+    verified: Optional[bool] = Field(default=None, description="Toggle verified badge.")
+    bio: Optional[str] = Field(default=None, description="Updated biography.")
+    avatar_url: Optional[str] = Field(default=None, description="Updated avatar URL.")
+    controlled_by_team_id: Optional[int] = Field(default=None, description="Reassign to another team.")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "display_name": "Pierre Martin — EXCLU",
+            "verified": True,
+        }
+    }}
 
 
 class TwitterAccountResponse(TwitterAccountBase):
-    """Schema for Twitter account response."""
-    id: int
-    exercise_id: int
-    follower_count: int
-    following_count: int
-    created_at: datetime
+    """Full representation of a simulated Twitter/X account returned by the CrisisLab API."""
+    id: int = Field(description="Unique database identifier.")
+    exercise_id: int = Field(description="Parent exercise ID.")
+    follower_count: int = Field(description="Simulated follower count.", examples=[48200])
+    following_count: int = Field(description="Simulated following count.", examples=[312])
+    created_at: datetime = Field(description="Timestamp when the account was created.")
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 42,
+            "exercise_id": 1,
+            "handle": "P_Martin_Cyber",
+            "display_name": "Pierre Martin",
+            "account_type": "journalist",
+            "verified": True,
+            "bio": "Journaliste cybersécurité @LeMondeTech",
+            "avatar_url": "https://example.com/avatars/p_martin.png",
+            "controlled_by_team_id": None,
+            "follower_count": 48200,
+            "following_count": 312,
+            "created_at": "2026-03-12T08:00:00Z",
+        }
+    }}
 
 
 class TwitterPostBase(BaseModel):
-    """Base Twitter post schema."""
-    content: str
-    post_type: TwitterPostType = TwitterPostType.TWEET
+    """Base fields shared by all Twitter/X post schemas in CrisisLab."""
+    content: str = Field(
+        description="Text body of the tweet (may include emojis and hashtags).",
+        examples=["🚨 EXCLU — Duval Industries victime d'une cyberattaque ransomware. Données employés exfiltrées. #cybersécurité"],
+    )
+    post_type: TwitterPostType = Field(
+        default=TwitterPostType.TWEET,
+        description="Type of post: tweet, reply, quote, or retweet.",
+    )
 
 
 class TwitterPostCreate(TwitterPostBase):
-    """Schema for creating a Twitter post."""
-    account_id: int
-    reply_to_id: Optional[int] = None
-    quote_of_id: Optional[int] = None
-    scheduled_at: Optional[datetime] = None
-    media_ids: Optional[List[int]] = None
+    """Schema for publishing a new simulated tweet in a CrisisLab exercise."""
+    account_id: int = Field(description="ID of the simulated account that authors this post.", examples=[42])
+    reply_to_id: Optional[int] = Field(default=None, description="Post ID this tweet replies to.")
+    quote_of_id: Optional[int] = Field(default=None, description="Post ID this tweet quotes.")
+    scheduled_at: Optional[datetime] = Field(default=None, description="ISO-8601 datetime for deferred publication.")
+    media_ids: Optional[List[int]] = Field(default=None, description="List of media asset IDs to attach.")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "account_id": 42,
+            "content": "🚨 EXCLU — Duval Industries victime d'une cyberattaque ransomware. Données employés exfiltrées. #cybersécurité",
+            "post_type": "tweet",
+            "scheduled_at": "2026-03-12T09:15:00Z",
+        }
+    }}
 
 
 class TwitterPostUpdate(BaseModel):
-    """Schema for updating a Twitter post."""
-    content: Optional[str] = None
-    scheduled_at: Optional[datetime] = None
+    """Schema for editing a draft/scheduled tweet before publication."""
+    content: Optional[str] = Field(default=None, description="Updated tweet text.")
+    scheduled_at: Optional[datetime] = Field(default=None, description="New scheduled publication time.")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "content": "🚨 MAJ — Duval Industries confirme une cyberattaque ransomware. 12 000 employés impactés. #cybersécurité #DuvalIndustries",
+        }
+    }}
 
 
 class TwitterPostResponse(TwitterPostBase):
-    """Schema for Twitter post response."""
-    id: int
-    account_id: int
-    reply_to_id: Optional[int]
-    quote_of_id: Optional[int]
-    like_count: int
-    retweet_count: int
-    reply_count: int
-    quote_count: int
-    view_count: int
-    scheduled_at: Optional[datetime]
-    posted_at: Optional[datetime]
-    created_at: datetime
-    account: Optional[TwitterAccountResponse] = None
+    """Full representation of a simulated tweet returned by the CrisisLab API."""
+    id: int = Field(description="Unique database identifier.")
+    account_id: int = Field(description="Author account ID.")
+    reply_to_id: Optional[int] = Field(description="Parent post ID if this is a reply.")
+    quote_of_id: Optional[int] = Field(description="Quoted post ID if this is a quote-tweet.")
+    like_count: int = Field(description="Simulated like count.", examples=[247])
+    retweet_count: int = Field(description="Simulated retweet count.", examples=[89])
+    reply_count: int = Field(description="Number of replies.", examples=[34])
+    quote_count: int = Field(description="Number of quote-tweets.", examples=[12])
+    view_count: int = Field(description="Simulated view/impression count.", examples=[185400])
+    scheduled_at: Optional[datetime] = Field(description="Scheduled publication time, if any.")
+    posted_at: Optional[datetime] = Field(description="Actual publication timestamp.")
+    created_at: datetime = Field(description="Record creation timestamp.")
+    account: Optional[TwitterAccountResponse] = Field(default=None, description="Embedded account details (included in list endpoints).")
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 101,
+            "account_id": 42,
+            "content": "🚨 EXCLU — Duval Industries victime d'une cyberattaque ransomware. Données employés exfiltrées. #cybersécurité",
+            "post_type": "tweet",
+            "reply_to_id": None,
+            "quote_of_id": None,
+            "like_count": 247,
+            "retweet_count": 89,
+            "reply_count": 34,
+            "quote_count": 12,
+            "view_count": 185400,
+            "scheduled_at": None,
+            "posted_at": "2026-03-12T09:15:00Z",
+            "created_at": "2026-03-12T09:10:00Z",
+        }
+    }}
 
 
 class TwitterAccountListResponse(BaseModel):
-    """Schema for list of Twitter accounts."""
-    accounts: list[TwitterAccountResponse]
-    total: int
+    """Paginated list of simulated Twitter/X accounts."""
+    accounts: list[TwitterAccountResponse] = Field(description="Account records for the current page.")
+    total: int = Field(description="Total number of accounts matching the filters.", examples=[15])
 
 
 class TwitterPostListResponse(BaseModel):
-    """Schema for list of Twitter posts."""
-    posts: list[TwitterPostResponse]
-    total: int
+    """Paginated list of simulated tweets."""
+    posts: list[TwitterPostResponse] = Field(description="Post records for the current page.")
+    total: int = Field(description="Total number of posts matching the filters.", examples=[87])
 
 
 # === Twitter Accounts ===
@@ -183,7 +295,11 @@ async def list_accounts(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List Twitter accounts for an exercise."""
+    """List simulated Twitter/X accounts for a CrisisLab exercise.
+
+    Returns a paginated list of accounts, optionally filtered by account type
+    or a free-text search on handle / display name.
+    """
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     query = select(TwitterAccount).where(TwitterAccount.exercise_id == exercise_id)
     count_query = select(func.count(TwitterAccount.id)).where(TwitterAccount.exercise_id == exercise_id)
@@ -218,7 +334,11 @@ async def create_account(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a Twitter account."""
+    """Create a new simulated Twitter/X account for a CrisisLab exercise.
+
+    The handle must be unique within the exercise. Optionally assign the account
+    to a participant team so they can post from it during the simulation.
+    """
     # Verify exercise exists
     await _ensure_exercise_in_tenant(db, account_data.exercise_id, tenant_ctx.tenant.id)
     if account_data.controlled_by_team_id is not None:
@@ -265,7 +385,7 @@ async def get_account(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get a Twitter account by ID."""
+    """Retrieve a single simulated Twitter/X account by its database ID."""
     account = await _get_account_in_tenant(db, account_id, tenant_ctx.tenant.id)
     return TwitterAccountResponse.model_validate(account)
 
@@ -278,7 +398,7 @@ async def update_account(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update a Twitter account."""
+    """Partially update a simulated Twitter/X account (display name, bio, type, etc.)."""
     account = await _get_account_in_tenant(db, account_id, tenant_ctx.tenant.id)
     
     if account_data.display_name is not None:
@@ -315,7 +435,7 @@ async def delete_account(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete a Twitter account."""
+    """Delete a simulated Twitter/X account and all its associated posts."""
     account = await _get_account_in_tenant(db, account_id, tenant_ctx.tenant.id)
     await db.delete(account)
     await db.commit()
@@ -336,7 +456,11 @@ async def list_posts(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List Twitter posts for an exercise."""
+    """List simulated tweets for a CrisisLab exercise.
+
+    Returns a paginated, reverse-chronological list of posts. Optionally filter
+    by originating account or post type (tweet, reply, quote, retweet).
+    """
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     query = select(TwitterPost).join(TwitterAccount).where(TwitterAccount.exercise_id == exercise_id)
     count_query = select(func.count(TwitterPost.id)).join(TwitterAccount).where(TwitterAccount.exercise_id == exercise_id)
@@ -370,7 +494,11 @@ async def create_post(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a Twitter post."""
+    """Create a new simulated tweet.
+
+    The tweet can be published immediately or scheduled for a future time.
+    Media assets can be attached by providing their IDs.
+    """
     # Verify account exists
     account = await _get_account_in_tenant(db, post_data.account_id, tenant_ctx.tenant.id)
     if post_data.media_ids:
@@ -423,7 +551,7 @@ async def get_post(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get a Twitter post by ID."""
+    """Retrieve a single simulated tweet by its database ID, including embedded account details."""
     post = await _get_post_in_tenant(db, post_id, tenant_ctx.tenant.id, with_account=True)
     return TwitterPostResponse.model_validate(post)
 
@@ -436,7 +564,10 @@ async def update_post(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update a Twitter post."""
+    """Edit a draft or scheduled tweet before it is published.
+
+    Already-published tweets cannot be modified (returns 400).
+    """
     post = await _get_post_in_tenant(db, post_id, tenant_ctx.tenant.id)
     
     if post.posted_at:
@@ -460,7 +591,11 @@ async def publish_post(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Publish a scheduled tweet immediately."""
+    """Publish a scheduled or draft tweet immediately.
+
+    Sets `posted_at` to the current UTC time. Returns 400 if the tweet has
+    already been published.
+    """
     post = await _get_post_in_tenant(db, post_id, tenant_ctx.tenant.id)
     
     if post.posted_at:
@@ -479,7 +614,7 @@ async def delete_post(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete a Twitter post."""
+    """Delete a simulated tweet permanently."""
     post = await _get_post_in_tenant(db, post_id, tenant_ctx.tenant.id)
     await db.delete(post)
     await db.commit()
@@ -490,9 +625,9 @@ async def delete_post(
 # === CSV Import ===
 
 class CSVImportResult(BaseModel):
-    """Result of CSV import."""
-    success: int
-    errors: list[dict]
+    """Summary returned after a CSV bulk-import of accounts or posts."""
+    success: int = Field(description="Number of records successfully imported.", examples=[12])
+    errors: list[dict] = Field(description="Per-row error details for rows that could not be imported.")
 
 
 @router.post("/accounts/import-csv", response_model=CSVImportResult, status_code=201)
@@ -503,16 +638,21 @@ async def import_accounts_csv(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import Twitter accounts from CSV file.
-    
-    Expected CSV columns:
-    - handle: @handle (required)
-    - display_name: Account name (required)
-    - account_type: journalist, official, influencer, citizen, fake_news, organization
-    - verified: true/false
-    - bio: Account bio
-    - avatar_url: URL to avatar image
-    - follower_count: Number of followers
+    """Bulk-import simulated Twitter/X accounts from a CSV file.
+
+    Upload a UTF-8 (or Latin-1 fallback) CSV with the following columns:
+
+    | Column | Required | Description |
+    |---|---|---|
+    | `handle` | yes | @handle (the leading @ is stripped automatically) |
+    | `display_name` | yes | Public display name |
+    | `account_type` | no | journalist, official, influencer, citizen, fake_news, organization, anonymous |
+    | `verified` | no | `true` / `false` (default false) |
+    | `bio` | no | Account biography |
+    | `avatar_url` | no | URL to avatar image |
+    | `follower_count` | no | Initial follower count (default 0) |
+
+    Duplicate handles within the same exercise are reported as errors and skipped.
     """
     # Verify exercise exists
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
@@ -600,15 +740,20 @@ async def import_posts_csv(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import Twitter posts from CSV file.
-    
-    Expected CSV columns:
-    - account_handle: @handle of the account (required)
-    - content: Tweet content (required)
-    - post_type: tweet, reply, quote, retweet
-    - scheduled_at: ISO datetime for scheduled posts
-    - like_count: Initial like count
-    - retweet_count: Initial retweet count
+    """Bulk-import simulated tweets from a CSV file.
+
+    Upload a UTF-8 (or Latin-1 fallback) CSV with the following columns:
+
+    | Column | Required | Description |
+    |---|---|---|
+    | `account_handle` | yes | @handle of the authoring account (must already exist) |
+    | `content` | yes | Tweet text body |
+    | `post_type` | no | tweet, reply, quote, retweet (default tweet) |
+    | `scheduled_at` | no | ISO-8601 datetime for deferred publication |
+    | `like_count` | no | Initial simulated like count (default 0) |
+    | `retweet_count` | no | Initial simulated retweet count (default 0) |
+
+    Accounts referenced by `account_handle` must already exist in the exercise.
     """
     # Verify exercise exists
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
@@ -690,7 +835,7 @@ async def import_posts_csv(
 
 @router.get("/template/accounts/csv")
 async def download_accounts_template():
-    """Download CSV template for Twitter accounts."""
+    """Download a sample CSV template for bulk-importing Twitter/X accounts into CrisisLab."""
     template = """handle,display_name,account_type,verified,bio,avatar_url,follower_count
 @news24,News 24,journalist,true,"Breaking news from around the world",https://example.com/avatar1.png,150000
 @officialgov,Government Official,official,true,"Official government account",https://example.com/avatar2.png,500000
@@ -706,7 +851,7 @@ async def download_accounts_template():
 
 @router.get("/template/posts/csv")
 async def download_posts_template():
-    """Download CSV template for Twitter posts."""
+    """Download a sample CSV template for bulk-importing simulated tweets into CrisisLab."""
     template = """account_handle,content,post_type,scheduled_at,like_count,retweet_count
 @news24,"Breaking: Major incident reported in downtown area. More details to follow.",tweet,2026-03-12T09:00:00,150,45
 @officialgov,"We are aware of the situation and coordinating with local authorities.",tweet,2026-03-12T09:30:00,89,23

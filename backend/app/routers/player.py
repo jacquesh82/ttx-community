@@ -1,4 +1,9 @@
-"""Player router - API endpoints for participant/joueur role."""
+"""Player router -- API endpoints for the CrisisLab participant (joueur) view.
+
+Provides the player-facing interface during a live crisis simulation exercise:
+timeline events, inject delivery tracking, decision logging, in-exercise chat,
+and real-time notifications.
+"""
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import uuid
@@ -119,7 +124,26 @@ async def get_player_context(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get player context for an exercise."""
+    """Return the full player context for a given exercise.
+
+    Includes the exercise metadata (name, status, time multiplier), the
+    player's assigned team, their exercise role, the current exercise clock
+    (``T+HH:MM``), and aggregated statistics (pending / in-progress / treated
+    injects, unread messages, decisions count).
+
+    **Auth required:** Yes -- the user must have player-level access to the
+    exercise (admin and animateur roles have implicit access).
+
+    Example response extract::
+
+        {
+            "exercise": {"id": 1, "name": "CYBER-STORM 2024", "status": "running"},
+            "team": {"id": 3, "name": "Cellule de crise", "code": "CELL"},
+            "role": "joueur",
+            "exercise_time": "T+01:37",
+            "stats": {"injects_pending": 4, "decisions_count": 2}
+        }
+    """
     user, exercise_user, exercise = auth
     
     # Get team info
@@ -298,7 +322,23 @@ async def get_player_timeline(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get timeline events for player (RBAC filtered)."""
+    """Return paginated timeline events for the player, filtered by RBAC rules.
+
+    Events are scoped to what the player is allowed to see based on their
+    team membership, role, and capability profile. Public events (TV segments,
+    social-media posts, exercise lifecycle) are always visible; team-scoped
+    events (injects, mail, decisions) require matching team or user audiences.
+
+    **Query parameters:**
+
+    * ``channel`` -- filter by event channel: ``inject``, ``mail``, ``tv``,
+      ``social``, or ``decision``.
+    * ``scope`` -- visibility scope: ``public``, ``team``, or ``me``.
+    * ``criticity`` -- reserved for future criticality filtering.
+    * ``page`` / ``page_size`` -- pagination (default 50, max 100).
+
+    **Auth required:** Yes (player access to the exercise).
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     user_id = user.id
@@ -435,7 +475,14 @@ async def get_player_injects(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get injects for player (filtered by team/user)."""
+    """List injects delivered to the player's team or directly to the player.
+
+    Only injects with status ``SENT`` are returned. Results can be further
+    narrowed with the ``status`` query parameter (delivery status value,
+    e.g. ``delivered``, ``opened``, ``acknowledged``, ``treated``).
+
+    **Auth required:** Yes (player access to the exercise).
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     capability = exercise_user.capability
@@ -502,7 +549,19 @@ async def update_delivery(
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update delivery status (acknowledge, mark as treated, etc.)."""
+    """Update a delivery's status (acknowledge, mark as treated, change state).
+
+    Use this endpoint to progress an inject delivery through its lifecycle:
+    ``delivered`` -> ``opened`` -> ``acknowledged`` -> ``in_progress`` -> ``treated``.
+
+    **Request body flags:**
+
+    * ``acknowledge`` -- sets status to ``ACKNOWLEDGED`` and records the timestamp.
+    * ``treat`` -- sets status to ``TREATED``, records timestamp and treating user.
+    * ``status`` -- explicit status override (e.g. ``opened``, ``in_progress``).
+
+    **Auth required:** Yes (any authenticated user with access to the delivery).
+    """
     result = await db.execute(
         select(Delivery).where(Delivery.id == delivery_id)
     )
@@ -553,7 +612,18 @@ async def create_player_decision(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a decision as a player."""
+    """Log a new decision taken by a player during the exercise.
+
+    The decision is linked to the player's team and optionally to a
+    source event or inject that triggered it (via ``source_event_id`` /
+    ``source_inject_id``). A ``DECISION_LOGGED`` event is created and
+    broadcast to all connected clients.
+
+    **Auth required:** Yes (player access to the exercise).
+
+    Example: *"Isoler le segment reseau compromis"* after receiving
+    the ransomware propagation inject in scenario CYBER-STORM 2024.
+    """
     user, exercise_user, exercise = auth
     
     decision = Decision(
@@ -609,7 +679,13 @@ async def get_player_decisions(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get decisions for player's team."""
+    """List all decisions logged by the player's team, newest first.
+
+    Returns the full decision history for the team within the exercise,
+    ordered by ``decided_at`` descending.
+
+    **Auth required:** Yes (player access to the exercise).
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     
@@ -645,7 +721,16 @@ async def get_player_notifications(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get notifications for player."""
+    """Return recent notifications for the player.
+
+    Aggregates unread injects delivered to the player's team (or directly to
+    the player) and recent TV segment events into a unified notification list.
+    Each notification includes a read/unread flag and a criticality level.
+
+    The response also includes an ``unread_count`` summary.
+
+    **Auth required:** Yes (player access to the exercise).
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     
@@ -809,7 +894,14 @@ async def get_chat_rooms(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get available chat rooms for player."""
+    """List chat rooms accessible to the player within the exercise.
+
+    Returns public rooms (e.g. ``#general``) and the player's team room
+    (e.g. ``#team-cell``). Default rooms are auto-created on first access.
+    Each room includes an ``unread_count`` and a preview of the last message.
+
+    **Auth required:** Yes (player access to the exercise).
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     
@@ -900,7 +992,18 @@ async def get_chat_messages(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get messages for a chat room."""
+    """Retrieve messages from a chat room with cursor-based pagination.
+
+    Returns messages in chronological order (oldest first). Use ``before_id``
+    to paginate backwards and ``limit`` to control page size (1--200,
+    default 50). Reading messages automatically updates the user's read
+    receipt for the room.
+
+    **Auth required:** Yes (player access to the exercise; team rooms
+    require matching team membership).
+
+    Raises **403** if the user does not belong to the room's team.
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     
@@ -989,7 +1092,15 @@ async def send_chat_message(
     auth: tuple = Depends(require_player_access),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Send a message to a chat room."""
+    """Send a new message to a chat room.
+
+    The message is attributed to the authenticated user. Optionally, a
+    ``parent_message_id`` can be specified to create a threaded reply.
+    Team rooms require the sender to be a member of the team.
+
+    **Auth required:** Yes (player access to the exercise; team rooms
+    require matching team membership).
+    """
     user, exercise_user, exercise = auth
     team_id = exercise_user.team_id
     

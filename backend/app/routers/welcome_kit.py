@@ -1,4 +1,11 @@
-"""Welcome kit template management and PDF generation endpoints."""
+"""CrisisLab Welcome Kit router.
+
+Manages welcome kit templates (Markdown-based) and generates personalized
+PDF documents for exercise participants. Templates use ``{{variable}}``
+placeholders that are resolved at render time with exercise and user data
+(e.g. credentials, role, team). Supports per-user preview/download and
+batch PDF generation for all participants of an exercise.
+"""
 import io
 import json
 import re
@@ -139,18 +146,48 @@ DEFAULT_FACILITATOR_TEMPLATE = """# Kit de Bienvenue - Animateur
 
 
 class WelcomeKitTemplateCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=200)
-    kind: WelcomeKitKind
-    template_markdown: str = Field(..., min_length=1)
-    variables: Optional[dict] = None
-    is_default: bool = False
+    """Schema for creating a new welcome kit template."""
+
+    name: str = Field(..., min_length=1, max_length=200, description="Template display name", examples=["Kit joueur standard"])
+    kind: WelcomeKitKind = Field(description="Template kind: 'player' for participants, 'facilitator' for animateurs", examples=["player"])
+    template_markdown: str = Field(..., min_length=1, description="Markdown content with {{variable}} placeholders. Available variables: exercise_name, exercise_date, exercise_location, player_name, player_login, player_password, player_role, player_function, player_team, organization_name, platform_url")
+    variables: Optional[dict] = Field(None, description="Optional metadata describing which variables this template uses")
+    is_default: bool = Field(False, description="If true, this template becomes the default for its kind")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "Kit joueur standard",
+                "kind": "player",
+                "template_markdown": "# Bienvenue {{player_name}}\n\n## Exercice : {{exercise_name}}\n\n**Date :** {{exercise_date}}  \n**Lieu :** {{exercise_location}}\n\n---\n\n### Vos identifiants\n\n| Champ | Valeur |\n|-------|--------|\n| **Login** | `{{player_login}}` |\n| **Mot de passe** | `{{player_password}}` |\n\n### Votre role\n\n- **Role :** {{player_role}}\n- **Equipe :** {{player_team}}\n- **Organisation :** {{organization_name}}\n\n---\n\n*Document confidentiel - {{player_name}}*",
+                "variables": {
+                    "exercise_name": "Nom de l'exercice",
+                    "player_name": "Nom complet du participant",
+                    "player_login": "Identifiant de connexion",
+                    "player_password": "Mot de passe",
+                },
+                "is_default": False,
+            }
+        }
+    }
 
 
 class WelcomeKitTemplateUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    template_markdown: Optional[str] = Field(None, min_length=1)
-    variables: Optional[dict] = None
-    is_default: Optional[bool] = None
+    """Schema for partially updating a welcome kit template. Only provided fields are modified."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=200, description="Updated template name", examples=["Kit animateur"])
+    template_markdown: Optional[str] = Field(None, min_length=1, description="Updated Markdown content with {{variable}} placeholders")
+    variables: Optional[dict] = Field(None, description="Updated variable metadata")
+    is_default: Optional[bool] = Field(None, description="Set or unset as the default template for its kind")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "Kit animateur",
+                "is_default": True,
+            }
+        }
+    }
 
 
 AVAILABLE_VARIABLES = {
@@ -389,7 +426,11 @@ async def list_templates(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List all welcome kit templates."""
+    """List all welcome kit templates, optionally filtered by kind.
+
+    Returns available templates along with the dictionary of supported
+    placeholder variables and their descriptions.
+    """
     query = select(WelcomeKitTemplate).order_by(WelcomeKitTemplate.kind, WelcomeKitTemplate.name)
     if kind:
         query = query.where(WelcomeKitTemplate.kind == kind)
@@ -409,7 +450,7 @@ async def get_template(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get a specific template."""
+    """Retrieve a single welcome kit template by ID, including its full Markdown content."""
     result = await db.execute(select(WelcomeKitTemplate).where(WelcomeKitTemplate.id == template_id))
     template = result.scalar_one_or_none()
     if not template:
@@ -423,7 +464,13 @@ async def create_template(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a new welcome kit template."""
+    """Create a new welcome kit template.
+
+    The template_markdown field supports Markdown with ``{{variable}}``
+    placeholders that will be resolved at render time. Use the
+    ``/templates`` GET endpoint to see all available variables.
+    Requires admin or animateur role.
+    """
     template = WelcomeKitTemplate(
         name=data.name,
         kind=data.kind,
@@ -445,7 +492,10 @@ async def update_template(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update a welcome kit template."""
+    """Partially update a welcome kit template.
+
+    Only provided fields are modified. Requires admin or animateur role.
+    """
     result = await db.execute(select(WelcomeKitTemplate).where(WelcomeKitTemplate.id == template_id))
     template = result.scalar_one_or_none()
     if not template:
@@ -471,7 +521,10 @@ async def delete_template(
     _: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete a welcome kit template."""
+    """Permanently delete a welcome kit template.
+
+    Default templates cannot be deleted. Requires admin role.
+    """
     result = await db.execute(select(WelcomeKitTemplate).where(WelcomeKitTemplate.id == template_id))
     template = result.scalar_one_or_none()
     if not template:
@@ -494,7 +547,13 @@ async def preview_welcome_kit(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Preview welcome kit as HTML for a specific user."""
+    """Preview a welcome kit as rendered HTML for a specific exercise participant.
+
+    Resolves all ``{{variable}}`` placeholders using the exercise and user
+    context (credentials, role, team, etc.) and returns both the rendered
+    Markdown and the final HTML. Useful for reviewing the kit before
+    generating the PDF.
+    """
     # Get exercise
     exercise = await _get_exercise_or_404(db, exercise_id)
     
@@ -580,7 +639,11 @@ async def generate_user_welcome_kit_pdf(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Generate and download a welcome kit PDF for a specific user."""
+    """Generate and download a personalized welcome kit PDF for a single participant.
+
+    Renders the template with user-specific data and returns a styled A4 PDF
+    document as a file download.
+    """
     # Get preview data
     preview_data = await preview_welcome_kit(exercise_id, user_id, kind, template_id, _, db)
     
@@ -635,7 +698,12 @@ async def generate_all_welcome_kits(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Generate welcome kits for all participants of an exercise."""
+    """Prepare welcome kit generation for all matching participants of an exercise.
+
+    Filters participants by role based on the requested kind (player or
+    facilitator), ensures each has stored credentials, and returns a summary
+    of who will receive a kit. Requires admin or animateur role.
+    """
     # Get exercise
     exercise = await _get_exercise_or_404(db, exercise_id)
     
@@ -706,7 +774,12 @@ async def download_all_welcome_kits(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Download all welcome kits as a single PDF with one page per user."""
+    """Download all welcome kits as a single multi-page PDF (one page per participant).
+
+    Generates a combined PDF document with page breaks between each
+    participant's kit. The file is named with the exercise ID, kind, and
+    a timestamp. Requires admin or animateur role.
+    """
     # Get list of participants
     participants_data = await generate_all_welcome_kits(exercise_id, kind, template_id, current_user, db)
     
@@ -790,7 +863,13 @@ async def ensure_passwords_for_exercise(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Ensure all exercise users have stored passwords for welcome kit generation."""
+    """Ensure all exercise participants have stored credentials for welcome kit generation.
+
+    Iterates over all exercise users and generates a temporary password for
+    any participant that does not already have one stored. Existing passwords
+    are preserved. Returns counts of created vs. existing credentials.
+    Requires admin or animateur role.
+    """
     # Get all exercise users
     eu_result = await db.execute(
         select(ExerciseUser).where(ExerciseUser.exercise_id == exercise_id)

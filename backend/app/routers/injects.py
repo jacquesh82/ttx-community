@@ -1,4 +1,9 @@
-"""Injects router."""
+"""Injects router for the CrisisLab platform.
+
+CRUD operations for timeline injects (mail, TV, social, decision, score,
+system), delivery tracking, CSV import/export, media attachments, and
+real-time broadcast via WebSocket.
+"""
 from __future__ import annotations
 import csv
 import io
@@ -424,7 +429,10 @@ async def _send_inject_now(db: AsyncSession, inject: Inject):
 
 @router.get("/types")
 async def get_inject_types():
-    """Get all available inject types from the enum."""
+    """Return every supported inject type code (e.g. ``mail``, ``tv``, ``twitter``, ``decision``).
+
+    **Auth required:** No.
+    """
     return {"types": [t.value for t in InjectType]}
 
 
@@ -439,19 +447,27 @@ class TimelineInjectSchemaResponse(BaseModel):
 async def get_timeline_inject_import_schema(
     _: any = Depends(require_auth),
 ):
-    """Return JSON schema used to validate timeline inject payloads."""
+    """Return the JSON Schema used to validate timeline inject payloads.
+
+    Clients can use this schema for client-side validation before creating
+    or importing injects. The schema covers all required and optional
+    fields including ``type``, ``title``, ``content``, ``audiences``,
+    ``time_offset``, and ``phase_id``.
+
+    **Auth required:** Yes (any authenticated role).
+    """
     return TimelineInjectSchemaResponse(json_schema=get_timeline_inject_schema())
 
 
 # Schemas
 class InjectBase(BaseModel):
-    """Base inject schema."""
-    title: str
-    description: Optional[str] = None
-    type: InjectType
-    data_format: InjectDataFormat = InjectDataFormat.TEXT
-    content: dict
-    scheduled_at: Optional[datetime] = None
+    """Base inject schema shared by create, update, and response models."""
+    title: str = Field(..., description="Short title displayed in the timeline", examples=["Alerte ransomware - propagation reseau"])
+    description: Optional[str] = Field(None, description="Longer description or briefing text", examples=["Le SOC detecte un chiffrement massif sur le segment serveurs de Duval Industries."])
+    type: InjectType = Field(..., description="Inject channel type", examples=["mail"])
+    data_format: InjectDataFormat = Field(InjectDataFormat.TEXT, description="Content format", examples=["text"])
+    content: dict = Field(..., description="Channel-specific content payload", examples=[{"subject": "URGENT - Ransomware detecte", "body": "Nos systemes de detection ont identifie une activite de chiffrement suspecte..."}])
+    scheduled_at: Optional[datetime] = Field(None, description="ISO-8601 scheduled send time (null = manual send)")
 
     @field_validator("type", mode="before")
     @classmethod
@@ -462,9 +478,9 @@ class InjectBase(BaseModel):
         return parse_inject_type(value)
 
 class AudienceTarget(BaseModel):
-    """Audience target for an inject/event."""
-    kind: AudienceKind
-    value: str | int
+    """Audience target specifying who receives an inject or sees an event."""
+    kind: AudienceKind = Field(..., description="Audience kind: team, user, role, or tag", examples=["team"])
+    value: str | int = Field(..., description="Target identifier (team ID, user ID, role name, or tag)", examples=["3"])
 
     @field_validator("value", mode="before")
     @classmethod
@@ -475,11 +491,11 @@ class AudienceTarget(BaseModel):
 
 
 class InjectCreate(InjectBase):
-    """Schema for creating an inject."""
-    exercise_id: int
-    custom_id: Optional[str] = None
-    timeline_type: Optional[TimelineType] = TimelineType.BUSINESS
-    is_surprise: Optional[bool] = False
+    """Schema for creating a new inject on an exercise timeline."""
+    exercise_id: int = Field(..., description="ID of the exercise this inject belongs to", examples=[1])
+    custom_id: Optional[str] = Field(None, description="Optional custom reference code", examples=["CS2024-INJ-007"])
+    timeline_type: Optional[TimelineType] = Field(TimelineType.BUSINESS, description="Timeline lane: business or technical", examples=["business"])
+    is_surprise: Optional[bool] = Field(False, description="If true, inject is hidden from participants until sent")
     inject_category: Optional[InjectCategory] = None
     channel: Optional[InjectChannel] = None
     target_audience: Optional[TargetAudience] = None
@@ -496,7 +512,7 @@ class InjectCreate(InjectBase):
 
 
 class InjectUpdate(BaseModel):
-    """Schema for updating an inject."""
+    """Partial update schema for an existing inject. All fields are optional."""
     title: Optional[str] = None
     description: Optional[str] = None
     content: Optional[dict] = None
@@ -520,7 +536,7 @@ class InjectUpdate(BaseModel):
 
 
 class InjectResponse(InjectBase):
-    """Schema for inject response."""
+    """Full inject representation returned by list and detail endpoints."""
     id: int
     exercise_id: int
     custom_id: Optional[str] = None
@@ -558,7 +574,7 @@ class InjectResponse(InjectBase):
 
 
 class InjectListResponse(BaseModel):
-    """Schema for list of injects."""
+    """Paginated list of injects with total count."""
     injects: list[InjectResponse]
     total: int
     page: int
@@ -566,7 +582,7 @@ class InjectListResponse(BaseModel):
 
 
 class DeliveryResponse(BaseModel):
-    """Schema for delivery response."""
+    """Delivery tracking record for a single inject-to-team or inject-to-user pair."""
     id: int
     inject_id: int
     target_user_id: Optional[int]
@@ -590,7 +606,21 @@ async def list_injects(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List injects."""
+    """List injects for the current tenant with optional filtering.
+
+    Returns a paginated list of injects ordered by ``scheduled_at`` ascending
+    (nulls last). Supports filtering by ``exercise_id``, ``type``
+    (e.g. ``mail``, ``tv``), and ``status`` (e.g. ``draft``, ``sent``).
+
+    **Query parameters:**
+
+    * ``exercise_id`` -- restrict to a single exercise.
+    * ``type`` -- filter by inject type.
+    * ``status`` -- filter by inject status.
+    * ``page`` / ``page_size`` -- pagination (default page=1, size=20, max 1000).
+
+    **Auth required:** Yes (any authenticated role).
+    """
     query = (
         select(Inject)
         .options(selectinload(Inject.audiences))
@@ -638,7 +668,18 @@ async def create_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a new inject (admin/animateur only)."""
+    """Create a new inject on an exercise timeline.
+
+    The inject is created in ``draft`` status. Deliveries are pre-computed
+    from the ``audiences``, ``target_team_ids``, and ``target_user_ids``
+    fields. An ``INJECT_CREATED`` event is broadcast to connected WebSocket
+    clients.
+
+    The payload is validated against the timeline inject JSON schema before
+    persistence.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     _validate_timeline_payload_or_400(_inject_create_to_timeline_schema_payload(inject_data))
 
     # Verify exercise exists and is in correct state
@@ -707,7 +748,13 @@ async def get_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get an inject by ID."""
+    """Retrieve a single inject by its database ID.
+
+    Returns the full inject record including audiences. The inject must
+    belong to an exercise within the current tenant.
+
+    **Auth required:** Yes (any authenticated role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id, with_audiences=True)
     return InjectResponse.model_validate(inject)
 
@@ -720,7 +767,17 @@ async def update_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update an inject (admin/animateur only)."""
+    """Update an existing inject (partial update).
+
+    Only fields included in the request body are modified. Sent injects
+    cannot be updated (returns **400**). If ``audiences`` is changed,
+    existing deliveries are recalculated.
+
+    The merged payload is re-validated against the timeline inject JSON
+    schema before persistence.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id, with_audiences=True)
     
     if inject.status == InjectStatus.SENT:
@@ -794,7 +851,16 @@ async def send_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Send an inject immediately."""
+    """Send an inject immediately to all its delivery targets.
+
+    Transitions the inject to ``sent`` status, marks all deliveries as
+    ``delivered``, creates an ``INJECT_SENT`` event, and broadcasts the
+    inject via WebSocket to all connected exercise participants.
+
+    Returns **400** if the inject has already been sent.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id, with_audiences=True)
     return await _send_inject_now(db, inject)
 
@@ -807,7 +873,14 @@ async def schedule_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Schedule an inject for later."""
+    """Schedule an inject for automatic sending at a future time.
+
+    Sets the inject status to ``scheduled`` and records the target
+    ``scheduled_at`` timestamp. Returns **400** if the inject has already
+    been sent.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
     if inject.status == InjectStatus.SENT:
@@ -828,7 +901,13 @@ async def cancel_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Cancel an inject."""
+    """Cancel a draft or scheduled inject.
+
+    Sets the inject status to ``cancelled``. Returns **400** if the inject
+    has already been sent.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
     if inject.status == InjectStatus.SENT:
@@ -848,7 +927,13 @@ async def delete_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete an inject (admin/animateur only)."""
+    """Permanently delete an inject and its associated deliveries.
+
+    This action is irreversible. The inject must belong to an exercise
+    within the current tenant.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
     await db.delete(inject)
@@ -864,7 +949,14 @@ async def get_inject_deliveries(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get deliveries for an inject."""
+    """List all delivery records for a specific inject.
+
+    Each delivery represents a target (team or user) and tracks its
+    lifecycle status: ``pending`` -> ``delivered`` -> ``opened`` ->
+    ``acknowledged`` -> ``treated``.
+
+    **Auth required:** Yes (any authenticated role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
     deliveries_result = await db.execute(
@@ -877,21 +969,21 @@ async def get_inject_deliveries(
 # === CSV Import ===
 
 class CSVImportResult(BaseModel):
-    """Result of CSV import."""
-    success: int
+    """Result summary of a CSV inject import operation."""
+    success: int = Field(..., description="Number of injects successfully created", examples=[12])
     errors: list[dict]
     injects: list[InjectResponse]
 
 
 class InjectCreateWithOffset(BaseModel):
-    """Schema for creating an inject with time_offset."""
-    title: str
+    """Simplified inject schema used internally during CSV import."""
+    title: str = Field(..., examples=["Alerte ransomware"])
     description: Optional[str] = None
     type: InjectType
     content: dict
-    time_offset: Optional[int] = None  # Minutes from T+0
+    time_offset: Optional[int] = Field(None, description="Minutes from T+0", examples=[30])
     scheduled_at: Optional[datetime] = None
-    target_team_names: Optional[list[str]] = None  # Team names instead of IDs
+    target_team_names: Optional[list[str]] = Field(None, description="Team names (resolved to IDs)", examples=[["Cellule de crise"]])
 
     @field_validator("type", mode="before")
     @classmethod
@@ -907,20 +999,35 @@ async def import_injects_csv(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Import injects from CSV file.
-    
-    Expected CSV columns:
-    - type: inject type or inject-bank kind (e.g. mail, twitter, tv, decision, score, system, message, social_post, video, document)
-    - title: Inject title (required)
-    - description: Optional description
-    - content: JSON content or plain text
-    - time_offset: Minutes from exercise start (T+0), e.g., 0, 30, 60, 120
-    - target_teams: Comma-separated team names
-    
-    Example CSV:
-    type,title,description,content,time_offset,target_teams
-    mail,Urgent Communication,Crisis alert,"{""body"": ""Crisis situation..."", ""subject"": ""Alert""}",0,Team Alpha
-    tv,News Flash,Breaking news,Breaking: Major incident reported,30,
+    """Bulk-import injects from a CSV file into the exercise timeline.
+
+    All rows are validated before any are persisted (atomic: either all
+    succeed or the entire import is rejected with a **400** detailing
+    the first error).
+
+    **Expected CSV columns:**
+
+    * ``type`` -- inject type (``mail``, ``twitter``, ``tv``, ``decision``,
+      ``score``, ``system``).
+    * ``title`` -- inject title (**required**).
+    * ``description`` -- optional description text.
+    * ``content`` -- JSON object or plain text. Plain text is stored as
+      ``{"text": "..."}``.
+    * ``time_offset`` -- minutes from exercise start (T+0).
+    * ``target_teams`` -- comma-separated team names (resolved against
+      exercise team roster).
+
+    **Query parameters:**
+
+    * ``exercise_id`` (**required**) -- target exercise.
+
+    **Auth required:** Yes (admin or animateur role).
+
+    Example CSV for CYBER-STORM 2024 at Duval Industries::
+
+        type,title,description,content,time_offset,target_teams
+        mail,Alerte SOC,Ransomware detecte,"{""subject"":""URGENT"",""body"":""Chiffrement en cours...""}",0,Cellule de crise
+        tv,Flash Info,Attaque sur Duval Industries,Les systemes de Duval Industries sont paralyses,30,
     """
     # Verify exercise exists
     await _get_exercise_in_tenant_or_404(db, exercise_id, tenant_ctx.tenant.id)
@@ -1098,7 +1205,14 @@ async def import_injects_csv(
 
 @router.get("/template/csv")
 async def get_csv_template():
-    """Download CSV template for inject import."""
+    """Download an empty CSV template for inject bulk import.
+
+    Returns a ``text/csv`` file with headers and example rows illustrating
+    every supported inject type. Use this as a starting point for building
+    your CYBER-STORM 2024 inject timeline.
+
+    **Auth required:** No.
+    """
     template = """type,title,description,content,time_offset,target_teams
 mail,Urgent Communication,Crisis alert message,"{""subject"": ""Alert"", ""body"": ""Crisis situation developing...""}",0,Team Alpha
 tv,News Flash,Breaking news segment,Breaking: Major incident reported at downtown location,30,
@@ -1118,7 +1232,7 @@ decision,Critical Decision Required,Choose response strategy,"{""options"": [""O
 # === Inject Media Management ===
 
 class InjectMediaResponse(BaseModel):
-    """Schema for inject-media association."""
+    """Association record linking a media asset to an inject at a given position."""
     id: int
     inject_id: int
     media_id: int
@@ -1129,9 +1243,9 @@ class InjectMediaResponse(BaseModel):
 
 
 class AddMediaRequest(BaseModel):
-    """Request to add media to inject."""
-    media_id: int
-    position: Optional[int] = 0
+    """Request to attach a media asset to an inject."""
+    media_id: int = Field(..., description="ID of the media asset to attach", examples=[42])
+    position: Optional[int] = Field(0, description="Display order (0 = auto-append at end)", examples=[0])
 
 
 @router.get("/{inject_id}/media", response_model=list[InjectMediaResponse])
@@ -1141,7 +1255,10 @@ async def get_inject_media(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get media attached to an inject."""
+    """List all media assets attached to an inject, ordered by position.
+
+    **Auth required:** Yes (any authenticated role).
+    """
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
     media_result = await db.execute(
@@ -1161,7 +1278,13 @@ async def add_media_to_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Attach a media to an inject."""
+    """Attach a media asset to an inject.
+
+    Cannot attach media to a sent inject (returns **400**). Duplicate
+    attachments are rejected with **400**.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     # Verify inject exists and is not sent
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
@@ -1212,7 +1335,13 @@ async def remove_media_from_inject(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Remove a media from an inject."""
+    """Detach a media asset from an inject.
+
+    Cannot modify media on a sent inject (returns **400**). Returns **404**
+    if the media is not currently attached.
+
+    **Auth required:** Yes (admin or animateur role).
+    """
     # Verify inject exists and is not sent
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)
     
@@ -1245,9 +1374,13 @@ async def reorder_inject_media(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Reorder media attached to an inject.
-    
-    Provide a list of media IDs in the desired order.
+    """Reorder media assets attached to an inject.
+
+    Provide a list of media IDs in the desired display order. Each ID's
+    position is set to its index in the list (0-based). Cannot modify
+    media on a sent inject (returns **400**).
+
+    **Auth required:** Yes (admin or animateur role).
     """
     # Verify inject exists and is not sent
     inject = await _get_inject_in_tenant_or_404(db, inject_id, tenant_ctx.tenant.id)

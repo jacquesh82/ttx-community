@@ -1,10 +1,10 @@
-"""Teams router."""
+"""Teams router – manage crisis simulation teams within a CrisisLab tenant."""
 import random
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func, outerjoin
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -44,57 +44,128 @@ router = APIRouter()
 
 # Schemas
 class TeamBase(BaseModel):
-    """Base team schema."""
-    name: str
-    description: Optional[str] = None
-    color: Optional[str] = None
+    """Base fields shared by team creation and update schemas."""
+    name: str = Field(
+        description="Display name of the team",
+        examples=["Équipe Alpha"],
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Free-text description of the team's mission during the exercise",
+        examples=["Équipe de réponse principale – direction opérationnelle"],
+    )
+    color: Optional[str] = Field(
+        default=None,
+        description="Hex colour code used in the UI. If omitted a random colour is assigned.",
+        examples=["#ef4444"],
+    )
 
 
 class TeamCreate(TeamBase):
-    """Schema for creating a team."""
-    member_ids: Optional[list[int]] = None
+    """Payload to create a new team, optionally with initial members."""
+    member_ids: Optional[list[int]] = Field(
+        default=None,
+        description="User IDs to add as members on creation",
+        examples=[[1, 2, 3]],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "Cellule de Crise",
+                "description": "Équipe de support technique – infrastructure et sécurité",
+                "color": "#8b5cf6",
+                "member_ids": [1, 4, 5],
+            }
+        }
+    }
 
 
 class TeamUpdate(BaseModel):
-    """Schema for updating a team."""
-    name: Optional[str] = None
-    description: Optional[str] = None
-    color: Optional[str] = None
+    """Partial update payload – only supplied fields are changed."""
+    name: Optional[str] = Field(
+        default=None,
+        description="New display name for the team",
+        examples=["Équipe Beta"],
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Updated description",
+        examples=["Équipe de support technique – infrastructure et sécurité"],
+    )
+    color: Optional[str] = Field(
+        default=None,
+        description="New hex colour code",
+        examples=["#3b82f6"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "Équipe Beta",
+                "color": "#3b82f6",
+            }
+        }
+    }
 
 
 class TeamMember(BaseModel):
-    """Schema for team member."""
-    id: int
-    username: str
-    email: str
-    is_leader: bool
-    joined_at: datetime
+    """A user belonging to a team, with their leadership flag."""
+    id: int = Field(description="User ID", examples=[2])
+    username: str = Field(description="Login username", examples=["j.duval"])
+    email: str = Field(description="User email", examples=["j.duval@duval-industries.fr"])
+    is_leader: bool = Field(description="Whether this member leads the team", examples=[True])
+    joined_at: datetime = Field(description="Timestamp when the user joined the team")
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 2,
+                "username": "j.duval",
+                "email": "j.duval@duval-industries.fr",
+                "is_leader": True,
+                "joined_at": "2024-11-14T08:30:00Z",
+            }
+        },
+    }
 
 
 class TeamResponse(TeamBase):
-    """Schema for team response."""
-    id: int
-    color: str
-    member_count: int = 0
-    created_at: datetime
-    updated_at: datetime
+    """Read-only representation of a team returned by list and CRUD endpoints."""
+    id: int = Field(description="Unique team identifier", examples=[1])
+    color: str = Field(description="Hex colour code", examples=["#ef4444"])
+    member_count: int = Field(default=0, description="Number of members in the team", examples=[4])
+    created_at: datetime = Field(description="Creation timestamp")
+    updated_at: datetime = Field(description="Last modification timestamp")
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 1,
+                "name": "Équipe Alpha",
+                "description": "Équipe de réponse principale – direction opérationnelle",
+                "color": "#ef4444",
+                "member_count": 4,
+                "created_at": "2024-11-14T08:00:00Z",
+                "updated_at": "2024-11-14T09:15:00Z",
+            }
+        },
+    }
 
 
 class TeamDetailResponse(TeamResponse):
-    """Schema for detailed team response with members."""
+    """Full team representation including the member list."""
     members: list[TeamMember]
 
 
 class TeamListResponse(BaseModel):
-    """Schema for list of teams."""
+    """Paginated collection of teams."""
     teams: list[TeamResponse]
-    total: int
-    page: int
-    page_size: int
+    total: int = Field(description="Total number of teams matching the query", examples=[3])
+    page: int = Field(description="Current page number (1-based)", examples=[1])
+    page_size: int = Field(description="Maximum items per page", examples=[20])
 
 
 @router.get("", response_model=TeamListResponse)
@@ -106,7 +177,13 @@ async def list_teams(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List all teams with member count."""
+    """List all teams in the current tenant with their member count.
+
+    Returns a paginated list of teams. Optionally filter by name using the
+    `search` query parameter (case-insensitive partial match).
+
+    **Auth:** any authenticated user.
+    """
     # Subquery : nombre de membres par équipe
     member_count_sq = (
         select(UserTeam.team_id, func.count(UserTeam.user_id).label("member_count"))
@@ -158,7 +235,13 @@ async def create_team(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Create a new team (admin/animateur only)."""
+    """Create a new team within the current tenant.
+
+    Optionally attach initial members by supplying `member_ids`. A random
+    colour from the CrisisLab palette is assigned when `color` is omitted.
+
+    **Auth:** admin or animateur role required.
+    """
     team = Team(
         tenant_id=tenant_ctx.tenant.id,
         name=team_data.name,
@@ -192,7 +275,13 @@ async def get_team(
     _: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get a team by ID with members."""
+    """Retrieve a single team by ID, including the full member list.
+
+    Each member entry includes username, email, leadership status, and join
+    timestamp.
+
+    **Auth:** any authenticated user.
+    """
     result = await db.execute(
         select(Team)
         .options(selectinload(Team.members).selectinload(UserTeam.user))
@@ -232,7 +321,13 @@ async def update_team(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update a team (admin/animateur only)."""
+    """Update a team's name, description, or colour.
+
+    Only the fields present in the request body are modified; omitted fields
+    remain unchanged.
+
+    **Auth:** admin or animateur role required.
+    """
     result = await db.execute(select(Team).where(Team.id == team_id, Team.tenant_id == tenant_ctx.tenant.id))
     team = result.scalar_one_or_none()
     
@@ -259,7 +354,10 @@ async def delete_team(
     _: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Delete a team (admin only)."""
+    """Permanently delete a team and all its membership associations.
+
+    **Auth:** admin role required.
+    """
     result = await db.execute(select(Team).where(Team.id == team_id, Team.tenant_id == tenant_ctx.tenant.id))
     team = result.scalar_one_or_none()
     
@@ -281,7 +379,13 @@ async def add_team_member(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Add a member to a team."""
+    """Add an existing user to a team.
+
+    Set `is_leader=true` to designate the user as team leader. A user cannot
+    be added twice to the same team.
+
+    **Auth:** admin or animateur role required.
+    """
     # Check team exists
     team_result = await db.execute(select(Team).where(Team.id == team_id, Team.tenant_id == tenant_ctx.tenant.id))
     if not team_result.scalar_one_or_none():
@@ -314,7 +418,12 @@ async def remove_team_member(
     _: User = Depends(require_role(UserRole.ADMIN, UserRole.ANIMATEUR)),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Remove a member from a team."""
+    """Remove a user from a team.
+
+    The user account is not deleted, only the team membership association.
+
+    **Auth:** admin or animateur role required.
+    """
     result = await db.execute(
         select(UserTeam)
         .join(Team, Team.id == UserTeam.team_id)

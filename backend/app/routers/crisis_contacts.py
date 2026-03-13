@@ -1,4 +1,10 @@
-"""Crisis Contacts router: directory API with search and import."""
+"""CrisisLab Crisis Contacts router.
+
+Manages the crisis contact directory for exercises: CRUD operations,
+search with filters, and bulk import from CSV/JSON files.
+Contacts represent key stakeholders (authorities, experts, internal staff)
+that participants may need to reach during a crisis simulation.
+"""
 import csv
 import io
 import json
@@ -42,61 +48,133 @@ from pydantic import BaseModel, Field
 
 
 class CrisisContactSchema(BaseModel):
-    id: int
-    exercise_id: int
-    name: str
-    function: str | None
-    organization: str | None
-    email: str | None
-    phone: str | None
-    mobile: str | None
-    category: str
-    priority: str
-    notes: str | None
-    availability: str | None
-    display_name: str
+    """Full representation of a crisis contact returned by the API."""
+
+    id: int = Field(description="Unique contact identifier")
+    exercise_id: int = Field(description="ID of the exercise this contact belongs to")
+    name: str = Field(description="Full name of the contact person")
+    function: str | None = Field(description="Professional title or role, e.g. 'Prefet', 'RSSI'")
+    organization: str | None = Field(description="Organization the contact belongs to")
+    email: str | None = Field(description="Professional email address")
+    phone: str | None = Field(description="Landline phone number")
+    mobile: str | None = Field(description="Mobile phone number")
+    category: str = Field(description="Contact category: autorite, expert, media, interne, externe, urgence, autre")
+    priority: str = Field(description="Contact priority: critical, high, normal, low")
+    notes: str | None = Field(description="Free-text notes about the contact")
+    availability: str | None = Field(description="Availability window, e.g. '24/7' or '9h-18h'")
+    display_name: str = Field(description="Computed display name (name + function)")
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 1,
+                "exercise_id": 42,
+                "name": "Jean-Pierre Lemaire",
+                "function": "Préfet de Région",
+                "organization": "Préfecture de Région",
+                "email": "jp.lemaire@prefet.gouv.fr",
+                "phone": "01 23 45 67 89",
+                "mobile": "06 12 34 56 78",
+                "category": "autorite",
+                "priority": "critical",
+                "notes": "Contact principal pour la gestion de crise CYBER-STORM 2024",
+                "availability": "24/7",
+                "display_name": "Jean-Pierre Lemaire (Préfet de Région)",
+                "created_at": "2024-06-15T09:00:00",
+                "updated_at": "2024-06-15T09:00:00",
+            }
+        }
+    }
 
 
 class CrisisContactCreate(BaseModel):
-    exercise_id: int
-    name: str = Field(..., min_length=1, max_length=200)
-    function: str | None = Field(None, max_length=200)
-    organization: str | None = Field(None, max_length=200)
-    email: str | None = Field(None, max_length=255)
-    phone: str | None = Field(None, max_length=50)
-    mobile: str | None = Field(None, max_length=50)
-    category: str = Field("autre")
-    priority: str = Field("normal")
-    notes: str | None = None
-    availability: str | None = Field(None, max_length=100)
+    """Schema for creating a new crisis contact in an exercise directory."""
+
+    exercise_id: int = Field(..., description="ID of the exercise to attach this contact to")
+    name: str = Field(..., min_length=1, max_length=200, description="Full name of the contact", examples=["Dr. Sophie Bernard"])
+    function: str | None = Field(None, max_length=200, description="Professional title or role", examples=["Médecin-Chef ARS"])
+    organization: str | None = Field(None, max_length=200, description="Organization name", examples=["ARS"])
+    email: str | None = Field(None, max_length=255, description="Professional email", examples=["s.bernard@ars.sante.fr"])
+    phone: str | None = Field(None, max_length=50, description="Landline phone number", examples=["01 23 45 67 89"])
+    mobile: str | None = Field(None, max_length=50, description="Mobile phone number", examples=["06 12 34 56 78"])
+    category: str = Field("autre", description="Contact category: autorite, expert, media, interne, externe, urgence, autre", examples=["expert"])
+    priority: str = Field("normal", description="Contact priority: critical, high, normal, low", examples=["high"])
+    notes: str | None = Field(None, description="Free-text notes", examples=["Experte sanitaire pour le scenario CYBER-STORM 2024"])
+    availability: str | None = Field(None, max_length=100, description="Availability window", examples=["9h-18h"])
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "exercise_id": 42,
+                "name": "Dr. Sophie Bernard",
+                "function": "Médecin-Chef ARS",
+                "organization": "ARS",
+                "email": "s.bernard@ars.sante.fr",
+                "phone": "01 23 45 67 89",
+                "mobile": "06 12 34 56 78",
+                "category": "expert",
+                "priority": "high",
+                "notes": "Experte sanitaire pour le scenario CYBER-STORM 2024",
+                "availability": "9h-18h",
+            }
+        }
+    }
 
 
 class CrisisContactUpdate(BaseModel):
-    name: str | None = Field(None, min_length=1, max_length=200)
-    function: str | None = Field(None, max_length=200)
-    organization: str | None = Field(None, max_length=200)
-    email: str | None = Field(None, max_length=255)
-    phone: str | None = Field(None, max_length=50)
-    mobile: str | None = Field(None, max_length=50)
-    category: str | None = None
-    priority: str | None = None
-    notes: str | None = None
-    availability: str | None = Field(None, max_length=100)
+    """Schema for partially updating an existing crisis contact. Only provided fields are updated."""
+
+    name: str | None = Field(None, min_length=1, max_length=200, description="Full name of the contact", examples=["Isabelle Petit"])
+    function: str | None = Field(None, max_length=200, description="Professional title or role", examples=["Analyste CERT"])
+    organization: str | None = Field(None, max_length=200, description="Organization name", examples=["ANSSI"])
+    email: str | None = Field(None, max_length=255, description="Professional email", examples=["i.petit@ssi.gouv.fr"])
+    phone: str | None = Field(None, max_length=50, description="Landline phone number", examples=["01 71 75 84 68"])
+    mobile: str | None = Field(None, max_length=50, description="Mobile phone number", examples=["06 98 76 54 32"])
+    category: str | None = Field(None, description="Contact category", examples=["expert"])
+    priority: str | None = Field(None, description="Contact priority", examples=["critical"])
+    notes: str | None = Field(None, description="Free-text notes", examples=["Point de contact ANSSI pour la cellule CYBER-STORM 2024"])
+    availability: str | None = Field(None, max_length=100, description="Availability window", examples=["24/7"])
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "Isabelle Petit",
+                "function": "Analyste CERT",
+                "organization": "ANSSI",
+                "priority": "critical",
+                "availability": "24/7",
+            }
+        }
+    }
 
 
 class ImportResult(BaseModel):
-    success: int
-    errors: List[dict]
-    total: int
-    users_created: int = 0
-    users_assigned: int = 0
-    users_updated: int = 0
-    users_skipped: int = 0
+    """Result summary returned after a CSV/JSON bulk import of crisis contacts."""
+
+    success: int = Field(description="Number of contacts successfully imported")
+    errors: List[dict] = Field(description="List of row-level errors encountered during import")
+    total: int = Field(description="Total rows processed (success + errors)")
+    users_created: int = Field(0, description="Number of new platform users created from import data")
+    users_assigned: int = Field(0, description="Number of users newly assigned to the exercise")
+    users_updated: int = Field(0, description="Number of existing exercise assignments updated")
+    users_skipped: int = Field(0, description="Number of rows skipped (no identifiable user data)")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "success": 12,
+                "errors": [{"row": 5, "error": "Name is required"}],
+                "total": 13,
+                "users_created": 8,
+                "users_assigned": 10,
+                "users_updated": 2,
+                "users_skipped": 0,
+            }
+        }
+    }
 
 
 def _clean_str(value) -> Optional[str]:
@@ -166,7 +244,14 @@ async def list_contacts(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
 ):
-    """List crisis contacts for an exercise with search and filters."""
+    """List crisis contacts for a CrisisLab exercise with search and filters.
+
+    Returns a paginated list of contacts from the exercise's crisis directory.
+    Supports full-text search across name, function, organization and email,
+    as well as filtering by category (autorite, expert, media, interne, externe,
+    urgence, autre) and priority (critical, high, normal, low).
+    Results are ordered by priority (critical first) then alphabetically by name.
+    """
     # Verify exercise exists
     await _get_exercise_or_404(db, exercise_id)
     
@@ -274,7 +359,11 @@ async def get_contact(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get a specific contact."""
+    """Retrieve a single crisis contact by its ID.
+
+    Returns the full contact details including category, priority,
+    availability, and computed display name.
+    """
     contact = await db.get(CrisisContact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -304,7 +393,12 @@ async def create_contact(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Create a new contact."""
+    """Create a new crisis contact in the exercise's directory.
+
+    Adds a stakeholder (authority, expert, internal staff, etc.) to the
+    crisis contact directory for the specified exercise. Invalid category
+    or priority values fall back to 'autre' and 'normal' respectively.
+    """
     # Verify exercise exists
     await _get_exercise_or_404(db, data.exercise_id)
     
@@ -346,7 +440,11 @@ async def update_contact(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Update a contact."""
+    """Partially update an existing crisis contact.
+
+    Only the fields provided in the request body are modified.
+    Omitted fields remain unchanged.
+    """
     contact = await db.get(CrisisContact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -390,7 +488,7 @@ async def delete_contact(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Delete a contact."""
+    """Permanently delete a crisis contact from the exercise directory."""
     contact = await db.get(CrisisContact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -408,7 +506,16 @@ async def import_contacts(
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
 ):
-    """Import contacts from CSV or JSON file."""
+    """Bulk-import crisis contacts from a CSV or JSON file.
+
+    Accepts a `.csv` or `.json` file and creates contacts in the exercise
+    directory. For CSV, expects a header row with columns: name, function,
+    organization, email, phone, mobile, category, priority, notes, availability.
+    For JSON, expects either a list of contact objects or an object with a
+    'contacts' key. The import also supports creating or assigning platform
+    users (via username, email, role, team_name columns) for participant
+    provisioning. Returns a detailed ImportResult with success/error counts.
+    """
     # Verify exercise exists
     await _get_exercise_or_404(db, exercise_id)
     
@@ -698,7 +805,11 @@ async def import_contacts(
 
 @router.get("/template/csv")
 async def download_template():
-    """Download CSV template for import."""
+    """Download a pre-filled CSV template for bulk contact import.
+
+    Returns a sample CSV file with header row and example data rows
+    illustrating the expected format for the import endpoint.
+    """
     csv_content = """name,function,organization,email,phone,mobile,category,priority,notes,availability,username,role,team_id,team_name,create_user
 Jean Dupont,Directeur,Préfecture,j.dupont@pref.gouv.fr,01 02 03 04 05,06 07 08 09 10,autorite,critical,Contact principal crise,24/7,jdupont,observateur,,,true
 Marie Martin,Experte chimie,INERIS,m.martin@ineris.fr,,,expert,high,Intervenant technique risques chimiques,9h-18h,mmartin,joueur,,,true

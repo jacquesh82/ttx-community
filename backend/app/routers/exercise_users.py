@@ -1,8 +1,14 @@
-"""Exercise Users router for managing exercise-scoped roles."""
+"""CrisisLab Exercise Users router.
+
+Manages participant assignments within a crisis-simulation exercise: assigning
+users to exercises with a specific role (animateur, observateur, joueur),
+linking them to a crisis-cell team, and configuring their channel capabilities
+(social, TV, mail).
+"""
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -38,67 +44,163 @@ async def _ensure_exercise_in_tenant(
 
 # Schemas
 class ExerciseUserCreate(BaseModel):
-    """Schema for assigning a user to an exercise."""
-    user_id: int
-    role: ExerciseRole = ExerciseRole.JOUEUR
-    team_id: Optional[int] = None
-    organization: Optional[str] = None
-    real_function: Optional[str] = None
-    can_social: Optional[bool] = None
-    can_tv: Optional[bool] = None
-    can_mail: Optional[bool] = None
-    visibility_scope: Optional[InjectVisibilityScope] = None
+    """Assign a user to a CrisisLab exercise with a specific role.
+
+    The caller must provide the platform ``user_id`` and an exercise-scoped
+    role. Optionally attach the user to a crisis-cell team and configure
+    which simulation channels they may access.
+    """
+    user_id: int = Field(description="Platform user ID to assign", examples=[12])
+    role: ExerciseRole = Field(default=ExerciseRole.JOUEUR, description="Exercise-scoped role", examples=["JOUEUR"])
+    team_id: Optional[int] = Field(default=None, description="Crisis-cell team to attach the user to", examples=[3])
+    organization: Optional[str] = Field(default=None, description="Organisation the participant represents during the exercise", examples=["DSI"])
+    real_function: Optional[str] = Field(default=None, description="Real-world function the participant plays in the scenario", examples=["RSSI"])
+    can_social: Optional[bool] = Field(default=None, description="Allow access to the simulated social-media channel", examples=[True])
+    can_tv: Optional[bool] = Field(default=None, description="Allow access to the simulated TV-live channel", examples=[True])
+    can_mail: Optional[bool] = Field(default=None, description="Allow access to the simulated webmail channel", examples=[True])
+    visibility_scope: Optional[InjectVisibilityScope] = Field(default=None, description="Inject visibility scope for this participant", examples=["TEAM_ONLY"])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "user_id": 12,
+            "role": "JOUEUR",
+            "team_id": 3,
+            "organization": "DSI",
+            "real_function": "RSSI",
+            "can_social": True,
+            "can_tv": True,
+            "can_mail": True,
+            "visibility_scope": "TEAM_ONLY",
+        }
+    }}
 
 
 class ExerciseUserUpdate(BaseModel):
-    """Schema for updating exercise user role."""
-    role: Optional[ExerciseRole] = None
-    team_id: Optional[int] = None
-    organization: Optional[str] = None
-    real_function: Optional[str] = None
-    can_social: Optional[bool] = None
-    can_tv: Optional[bool] = None
-    can_mail: Optional[bool] = None
-    visibility_scope: Optional[InjectVisibilityScope] = None
+    """Update a participant's role, team, or channel capabilities within a CrisisLab exercise.
+
+    All fields are optional -- only supplied fields are modified.
+    """
+    role: Optional[ExerciseRole] = Field(default=None, description="New exercise-scoped role", examples=["ANIMATEUR"])
+    team_id: Optional[int] = Field(default=None, description="New crisis-cell team ID (0 to clear)", examples=[2])
+    organization: Optional[str] = Field(default=None, description="Updated organisation", examples=["Direction Generale"])
+    real_function: Optional[str] = Field(default=None, description="Updated real-world function", examples=["Directeur de crise"])
+    can_social: Optional[bool] = Field(default=None, description="Toggle social-media channel access", examples=[True])
+    can_tv: Optional[bool] = Field(default=None, description="Toggle TV-live channel access", examples=[True])
+    can_mail: Optional[bool] = Field(default=None, description="Toggle webmail channel access", examples=[True])
+    visibility_scope: Optional[InjectVisibilityScope] = Field(default=None, description="Updated inject visibility scope", examples=["TEAM_ONLY"])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "role": "ANIMATEUR",
+            "team_id": 2,
+            "organization": "Direction Generale",
+            "real_function": "Directeur de crise",
+            "can_social": True,
+            "can_tv": True,
+            "can_mail": True,
+            "visibility_scope": "TEAM_ONLY",
+        }
+    }}
 
 
 class ExerciseUserResponse(BaseModel):
-    """Schema for exercise user response."""
-    id: int
-    user_id: int
-    exercise_id: int
-    role: ExerciseRole
-    team_id: Optional[int]
-    assigned_at: str
-    assigned_by: Optional[int]
-    user_username: str
-    user_email: str
-    team_name: Optional[str] = None
-    organization: Optional[str] = None
-    real_function: Optional[str] = None
-    can_social: bool = True
-    can_tv: bool = True
-    can_mail: bool = True
-    visibility_scope: InjectVisibilityScope = InjectVisibilityScope.TEAM_ONLY
+    """Detailed view of a participant assigned to a CrisisLab exercise.
 
-    model_config = {"from_attributes": True}
+    Includes the user's platform identity, exercise-scoped role, team
+    assignment, organisation context, and channel capabilities.
+    """
+    id: int = Field(description="Exercise-user assignment ID", examples=[1])
+    user_id: int = Field(description="Platform user ID", examples=[12])
+    exercise_id: int = Field(description="Exercise this assignment belongs to", examples=[5])
+    role: ExerciseRole = Field(description="Exercise-scoped role", examples=["JOUEUR"])
+    team_id: Optional[int] = Field(description="Assigned crisis-cell team ID", examples=[3])
+    assigned_at: str = Field(description="ISO-8601 timestamp of the assignment", examples=["2024-11-15T09:30:00Z"])
+    assigned_by: Optional[int] = Field(description="Platform user ID of the person who made the assignment", examples=[1])
+    user_username: str = Field(description="Username of the assigned user", examples=["m.dupont"])
+    user_email: str = Field(description="Email of the assigned user", examples=["m.dupont@duval-industries.fr"])
+    team_name: Optional[str] = Field(default=None, description="Display name of the assigned team", examples=["Cellule IT"])
+    organization: Optional[str] = Field(default=None, description="Organisation the participant represents", examples=["DSI"])
+    real_function: Optional[str] = Field(default=None, description="Real-world function played in the scenario", examples=["RSSI"])
+    can_social: bool = Field(default=True, description="Whether the participant can use simulated social media", examples=[True])
+    can_tv: bool = Field(default=True, description="Whether the participant can use simulated TV live", examples=[True])
+    can_mail: bool = Field(default=True, description="Whether the participant can use simulated webmail", examples=[True])
+    visibility_scope: InjectVisibilityScope = Field(default=InjectVisibilityScope.TEAM_ONLY, description="Inject visibility scope", examples=["TEAM_ONLY"])
+
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 1,
+            "user_id": 12,
+            "exercise_id": 5,
+            "role": "JOUEUR",
+            "team_id": 3,
+            "assigned_at": "2024-11-15T09:30:00Z",
+            "assigned_by": 1,
+            "user_username": "m.dupont",
+            "user_email": "m.dupont@duval-industries.fr",
+            "team_name": "Cellule IT",
+            "organization": "DSI",
+            "real_function": "RSSI",
+            "can_social": True,
+            "can_tv": True,
+            "can_mail": True,
+            "visibility_scope": "TEAM_ONLY",
+        }
+    }}
 
 
 class ExerciseUserListResponse(BaseModel):
-    """Schema for list of exercise users."""
-    users: list[ExerciseUserResponse]
-    total: int
+    """Paginated list of participants assigned to a CrisisLab exercise."""
+    users: list[ExerciseUserResponse] = Field(description="Exercise-user assignments")
+    total: int = Field(description="Total number of assignments matching the query", examples=[42])
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "users": [
+                {
+                    "id": 1,
+                    "user_id": 12,
+                    "exercise_id": 5,
+                    "role": "JOUEUR",
+                    "team_id": 3,
+                    "assigned_at": "2024-11-15T09:30:00Z",
+                    "assigned_by": 1,
+                    "user_username": "m.dupont",
+                    "user_email": "m.dupont@duval-industries.fr",
+                    "team_name": "Cellule IT",
+                    "organization": "DSI",
+                    "real_function": "RSSI",
+                    "can_social": True,
+                    "can_tv": True,
+                    "can_mail": True,
+                    "visibility_scope": "TEAM_ONLY",
+                }
+            ],
+            "total": 1,
+        }
+    }}
 
 
 class AvailableUserResponse(BaseModel):
-    """Schema for users available to add to exercise."""
-    id: int
-    username: str
-    email: str
-    global_role: UserRole
-    already_assigned: bool
+    """A platform user who can potentially be assigned to a CrisisLab exercise.
 
-    model_config = {"from_attributes": True}
+    Includes a flag indicating whether the user is already assigned, so the
+    frontend can grey-out or hide duplicates in the assignment picker.
+    """
+    id: int = Field(description="Platform user ID", examples=[14])
+    username: str = Field(description="Username", examples=["c.martin"])
+    email: str = Field(description="Email address", examples=["c.martin@duval-industries.fr"])
+    global_role: UserRole = Field(description="Platform-level role of the user", examples=["animateur"])
+    already_assigned: bool = Field(description="True if the user is already assigned to this exercise", examples=[False])
+
+    model_config = {"from_attributes": True, "json_schema_extra": {
+        "example": {
+            "id": 14,
+            "username": "c.martin",
+            "email": "c.martin@duval-industries.fr",
+            "global_role": "animateur",
+            "already_assigned": False,
+        }
+    }}
 
 
 def build_exercise_user_response(eu: ExerciseUser) -> ExerciseUserResponse:
@@ -133,7 +235,12 @@ async def list_exercise_users(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List users assigned to an exercise."""
+    """List participants assigned to a CrisisLab exercise.
+
+    Returns a paginated list of exercise-user assignments with their role,
+    team, organisation, real-world function, and channel capabilities.
+    Optionally filter by exercise-scoped role (ANIMATEUR, OBSERVATEUR, JOUEUR).
+    """
     # Verify exercise exists
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     
@@ -173,7 +280,13 @@ async def assign_user_to_exercise(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Assign a user to an exercise with a specific role."""
+    """Assign a platform user to a CrisisLab exercise.
+
+    Creates a new exercise-user assignment with the specified role (defaults
+    to JOUEUR). Optionally links the participant to a crisis-cell team and
+    sets channel capabilities (can_social, can_tv, can_mail) and inject
+    visibility scope. Returns 400 if the user is already assigned.
+    """
     # Verify exercise exists
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     
@@ -256,7 +369,12 @@ async def update_exercise_user(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Update a user's role in an exercise."""
+    """Update a participant's assignment within a CrisisLab exercise.
+
+    Accepts a partial payload -- only supplied fields are modified. Can change
+    the exercise-scoped role, reassign to a different crisis-cell team, update
+    the organisation/function metadata, or toggle channel capabilities.
+    """
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     result = await db.execute(
         select(ExerciseUser)
@@ -336,7 +454,12 @@ async def remove_user_from_exercise(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Remove a user from an exercise."""
+    """Remove a participant from a CrisisLab exercise.
+
+    Deletes the exercise-user assignment. The platform user account is not
+    affected. Returns 404 if the user is not currently assigned to the
+    exercise.
+    """
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     result = await db.execute(
         select(ExerciseUser).where(
@@ -363,7 +486,13 @@ async def get_available_users(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get users available to add to an exercise."""
+    """List platform users available for assignment to a CrisisLab exercise.
+
+    Returns up to 50 users belonging to the current tenant, each annotated
+    with an ``already_assigned`` flag so the UI can indicate which users are
+    already participating. Supports optional free-text search on username or
+    email.
+    """
     # Verify exercise exists
     await _ensure_exercise_in_tenant(db, exercise_id, tenant_ctx.tenant.id)
     
@@ -405,7 +534,11 @@ async def list_user_exercises(
     tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """List all exercises a user is assigned to."""
+    """List all CrisisLab exercises a given user is assigned to.
+
+    Returns every exercise-user assignment for the specified platform user
+    within the current tenant, ordered by most recently assigned first.
+    """
     # Users can only see their own assignments unless admin
     _ = current_user.id if hasattr(current_user, "id") else None
 

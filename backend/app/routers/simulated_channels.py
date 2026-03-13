@@ -1,5 +1,17 @@
 """
-API routes for simulated communication channels.
+CrisisLab simulated communication channels.
+
+Provides REST + WebSocket endpoints for every simulated medium available to
+players during a crisis exercise: email, instant messaging (chat rooms),
+SMS, phone calls, social-media feed, press articles, and TV broadcasts.
+
+Each channel supports two creation paths:
+- **Player action** — the participant composes or reacts to content.
+- **Inject action** — the animation team pushes pre-scripted content as
+  part of the exercise scenario.
+
+All mutations are broadcast over a per-exercise WebSocket so that player
+UIs update in real time.
 """
 from datetime import datetime
 from typing import List, Optional
@@ -29,7 +41,7 @@ from app.schemas.simulated_channel import (
 from app.models import WsAuthTicketScope
 from app.routers.auth import authenticate_ws_with_ticket
 
-router = APIRouter(prefix="/simulated", tags=["simulated-channels"])
+router = APIRouter(prefix="/simulated", tags=["simulated-channels (CrisisLab)"])
 
 
 # ============== WEBSOCKET MANAGER ==============
@@ -74,7 +86,12 @@ async def list_mails(
     page: int = 1,
     page_size: int = 20
 ):
-    """List mails for a player (inbox or sent)."""
+    """List simulated emails for a CrisisLab exercise.
+
+    Returns a paginated mailbox filtered by folder (`inbox`, `sent`, or
+    `starred`).  Includes total and unread counts.  Use `unread_only=true`
+    to show only unopened messages.
+    """
     async for db in get_db_session():
         base_query = select(SimulatedMail).where(SimulatedMail.exercise_id == exercise_id)
         
@@ -118,7 +135,11 @@ async def list_mails(
 
 @router.get("/{exercise_id}/mails/{mail_id}", response_model=SimulatedMailResponse)
 async def get_mail(exercise_id: int, mail_id: int):
-    """Get a specific mail and mark it as read."""
+    """Retrieve a single simulated email and automatically mark it as read.
+
+    The `read_at` timestamp is recorded on first access for exercise metrics
+    (e.g. average reaction time).
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedMail).where(
@@ -144,7 +165,12 @@ async def get_mail(exercise_id: int, mail_id: int):
 
 @router.post("/{exercise_id}/mails", response_model=SimulatedMailResponse)
 async def send_mail(exercise_id: int, mail_data: SimulatedMailCreate):
-    """Send a mail (player action)."""
+    """Send a simulated email on behalf of the player.
+
+    The recipient is resolved from the crisis contact directory.  The new
+    message appears in the player's *sent* folder and is broadcast to all
+    connected WebSocket clients for the exercise.
+    """
     async for db in get_db_session():
         # Get recipient contact
         result = await db.execute(
@@ -189,7 +215,12 @@ async def send_mail(exercise_id: int, mail_data: SimulatedMailCreate):
 
 @router.post("/{exercise_id}/mails/inject", response_model=SimulatedMailResponse)
 async def create_mail_from_inject(exercise_id: int, mail_data: SimulatedMailFromInject):
-    """Create a mail from an inject event (system action)."""
+    """Create a simulated email from an inject event (animation team action).
+
+    Used by the scenario engine or animateurs to deliver scripted emails
+    into the player's inbox as part of the exercise timeline (e.g. a SOC
+    alert from `soc@duval-industries.fr`).
+    """
     async for db in get_db_session():
         mail = SimulatedMail(
             exercise_id=exercise_id,
@@ -225,7 +256,11 @@ async def create_mail_from_inject(exercise_id: int, mail_data: SimulatedMailFrom
 
 @router.post("/{exercise_id}/mails/{mail_id}/star")
 async def toggle_star_mail(exercise_id: int, mail_id: int):
-    """Toggle star status on a mail."""
+    """Toggle the starred/flagged status of a simulated email.
+
+    Allows the player to bookmark important messages for quick access via
+    the `starred` folder filter.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedMail).where(
@@ -249,7 +284,12 @@ async def toggle_star_mail(exercise_id: int, mail_id: int):
 
 @router.get("/{exercise_id}/chat/rooms", response_model=List[SimulatedChatRoomResponse])
 async def list_chat_rooms(exercise_id: int):
-    """List chat rooms for an exercise."""
+    """List active chat rooms for a CrisisLab exercise.
+
+    Returns all active rooms with unread message counts and a preview of the
+    last message.  Rooms represent crisis-cell channels such as
+    *#cellule-crise* or *#soc-duval*.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedChatRoom)
@@ -294,7 +334,12 @@ async def list_chat_rooms(exercise_id: int):
 
 @router.get("/{exercise_id}/chat/rooms/{room_id}", response_model=SimulatedChatRoomDetailResponse)
 async def get_chat_room(exercise_id: int, room_id: int, mark_read: bool = True):
-    """Get a chat room with messages."""
+    """Retrieve a chat room with its full message history.
+
+    Returns room metadata and all messages in chronological order.
+    By default marks incoming messages as read; pass `mark_read=false`
+    to preserve unread state.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedChatRoom).where(
@@ -324,7 +369,11 @@ async def get_chat_room(exercise_id: int, room_id: int, mark_read: bool = True):
 
 @router.post("/{exercise_id}/chat/rooms/{room_id}/messages", response_model=SimulatedChatMessageResponse)
 async def send_chat_message(exercise_id: int, room_id: int, message_data: SimulatedChatMessageCreate):
-    """Send a chat message."""
+    """Send a chat message in a simulated room on behalf of the player.
+
+    The message is persisted and broadcast via WebSocket to all connected
+    exercise participants.
+    """
     async for db in get_db_session():
         # Verify room exists
         room_result = await db.execute(
@@ -366,7 +415,11 @@ async def send_chat_message(exercise_id: int, room_id: int, message_data: Simula
 
 @router.post("/{exercise_id}/chat/rooms", response_model=SimulatedChatRoomResponse)
 async def create_chat_room(exercise_id: int, room_data: SimulatedChatRoomCreate):
-    """Create a new chat room."""
+    """Create a new simulated chat room for the exercise.
+
+    Used to set up crisis-cell channels (e.g. *#cellule-crise*,
+    *#soc-duval*) before or during the exercise.
+    """
     async for db in get_db_session():
         room = SimulatedChatRoom(
             exercise_id=exercise_id,
@@ -388,7 +441,12 @@ async def create_chat_room(exercise_id: int, room_data: SimulatedChatRoomCreate)
 
 @router.get("/{exercise_id}/sms/conversations", response_model=List[SimulatedSmsConversationResponse])
 async def list_sms_conversations(exercise_id: int):
-    """List SMS conversations grouped by contact."""
+    """List simulated SMS conversations grouped by contact.
+
+    Messages are aggregated per crisis-contact (identified by phone number
+    or contact ID) to display a messaging-app-style conversation list.
+    Each group includes an unread count.
+    """
     async for db in get_db_session():
         # Get all SMS for this exercise
         result = await db.execute(
@@ -444,7 +502,11 @@ async def list_sms_conversations(exercise_id: int):
 
 @router.post("/{exercise_id}/sms", response_model=SimulatedSmsResponse)
 async def send_sms(exercise_id: int, sms_data: SimulatedSmsCreate):
-    """Send an SMS (player action)."""
+    """Send a simulated SMS on behalf of the player.
+
+    The recipient is resolved from the crisis contact directory.  The
+    message is broadcast over the exercise WebSocket.
+    """
     async for db in get_db_session():
         # Get recipient
         result = await db.execute(
@@ -485,7 +547,11 @@ async def send_sms(exercise_id: int, sms_data: SimulatedSmsCreate):
 
 @router.post("/{exercise_id}/sms/inject", response_model=SimulatedSmsResponse)
 async def create_sms_from_inject(exercise_id: int, sms_data: SimulatedSmsFromInject):
-    """Create an SMS from an inject event."""
+    """Create a simulated SMS from an inject event (animation team action).
+
+    Delivers a scripted SMS into the player's message thread as part of
+    the exercise timeline.
+    """
     async for db in get_db_session():
         sms = SimulatedSms(
             exercise_id=exercise_id,
@@ -519,7 +585,11 @@ async def create_sms_from_inject(exercise_id: int, sms_data: SimulatedSmsFromInj
 
 @router.post("/{exercise_id}/sms/{sms_id}/read")
 async def mark_sms_read(exercise_id: int, sms_id: int):
-    """Mark an SMS as read."""
+    """Mark a simulated SMS as read.
+
+    Records the `read_at` timestamp.  Idempotent — subsequent calls are
+    no-ops.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedSms).where(
@@ -545,7 +615,11 @@ async def mark_sms_read(exercise_id: int, sms_id: int):
 
 @router.get("/{exercise_id}/calls", response_model=List[SimulatedCallResponse])
 async def list_calls(exercise_id: int, include_ended: bool = False):
-    """List phone calls."""
+    """List simulated phone calls for the exercise.
+
+    Returns calls ordered by most recent first.  By default hides ended
+    calls; set `include_ended=true` to show the full call log.
+    """
     async for db in get_db_session():
         query = select(SimulatedCall).where(SimulatedCall.exercise_id == exercise_id)
         
@@ -564,7 +638,11 @@ async def list_calls(exercise_id: int, include_ended: bool = False):
 
 @router.get("/{exercise_id}/calls/active", response_model=Optional[SimulatedCallResponse])
 async def get_active_call(exercise_id: int):
-    """Get the currently active call (ringing or answered)."""
+    """Get the currently active phone call (ringing or answered).
+
+    Returns `null` if no call is in progress.  The player UI uses this
+    to display an incoming-call overlay or an active-call timer.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedCall).where(
@@ -583,7 +661,12 @@ async def get_active_call(exercise_id: int):
 
 @router.post("/{exercise_id}/calls/inject", response_model=SimulatedCallResponse)
 async def create_call_from_inject(exercise_id: int, call_data: SimulatedCallFromInject):
-    """Create a call from an inject event."""
+    """Create an incoming phone call from an inject event (animation team action).
+
+    The call starts in `RINGING` status.  The player must then answer or
+    reject it via the `/action` endpoint.  Optionally includes a voicemail
+    transcript if the call goes unanswered.
+    """
     async for db in get_db_session():
         call = SimulatedCall(
             exercise_id=exercise_id,
@@ -617,7 +700,15 @@ async def create_call_from_inject(exercise_id: int, call_data: SimulatedCallFrom
 
 @router.post("/{exercise_id}/calls/{call_id}/action", response_model=SimulatedCallResponse)
 async def handle_call_action(exercise_id: int, call_id: int, action_data: SimulatedCallAction):
-    """Handle call actions: answer, reject, end."""
+    """Handle a player action on a simulated phone call.
+
+    Supported actions:
+    - **answer** — accept a ringing call (transitions to `ANSWERED`).
+    - **reject** — decline a ringing call (transitions to `REJECTED`).
+    - **end** — hang up an active call (transitions to `ENDED`, records duration).
+
+    State changes are broadcast via WebSocket.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedCall).where(
@@ -673,7 +764,12 @@ async def handle_call_action(exercise_id: int, call_id: int, action_data: Simula
 
 @router.get("/{exercise_id}/social", response_model=SimulatedSocialFeedResponse)
 async def list_social_posts(exercise_id: int, page: int = 1, page_size: int = 20):
-    """List social media posts."""
+    """List simulated social-media posts for the exercise feed.
+
+    Returns paginated posts ordered by most recent.  Posts are automatically
+    marked as *seen* when returned.  Includes total and unseen counts for
+    badge display.
+    """
     async for db in get_db_session():
         # Count total and unseen
         count_result = await db.execute(
@@ -716,7 +812,12 @@ async def list_social_posts(exercise_id: int, page: int = 1, page_size: int = 20
 
 @router.post("/{exercise_id}/social/inject", response_model=SimulatedSocialPostResponse)
 async def create_social_post_from_inject(exercise_id: int, post_data: SimulatedSocialPostFromInject):
-    """Create a social post from an inject event."""
+    """Create a simulated social-media post from an inject event.
+
+    Injects a tweet/post into the exercise social feed (e.g. a journalist
+    breaking the ransomware story or an employee leak).  The post is
+    broadcast via WebSocket for instant UI updates.
+    """
     async for db in get_db_session():
         post = SimulatedSocialPost(
             exercise_id=exercise_id,
@@ -753,7 +854,11 @@ async def create_social_post_from_inject(exercise_id: int, post_data: SimulatedS
 
 @router.post("/{exercise_id}/social/{post_id}/react", response_model=SimulatedSocialPostResponse)
 async def react_to_social_post(exercise_id: int, post_id: int, reaction_data: SimulatedSocialPostReaction):
-    """React to a social post (like/retweet)."""
+    """Toggle a player reaction on a simulated social post (like or retweet).
+
+    Acts as a toggle — calling twice removes the reaction.  Engagement
+    counters are updated accordingly.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedSocialPost).where(
@@ -793,7 +898,11 @@ async def react_to_social_post(exercise_id: int, post_id: int, reaction_data: Si
 
 @router.get("/{exercise_id}/press", response_model=SimulatedPressFeedResponse)
 async def list_press_articles(exercise_id: int, page: int = 1, page_size: int = 20):
-    """List press articles."""
+    """List simulated press articles for the exercise news feed.
+
+    Returns paginated articles ordered by publication date (newest first).
+    Includes total and unread counts for the press-monitoring UI.
+    """
     async for db in get_db_session():
         count_result = await db.execute(
             select(func.count()).where(SimulatedPressArticle.exercise_id == exercise_id)
@@ -827,7 +936,10 @@ async def list_press_articles(exercise_id: int, page: int = 1, page_size: int = 
 
 @router.get("/{exercise_id}/press/{article_id}", response_model=SimulatedPressArticleResponse)
 async def get_press_article(exercise_id: int, article_id: int):
-    """Get a press article and mark as read."""
+    """Retrieve a single press article and mark it as read.
+
+    Records the `read_at` timestamp for exercise metrics tracking.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedPressArticle).where(
@@ -852,7 +964,12 @@ async def get_press_article(exercise_id: int, article_id: int):
 
 @router.post("/{exercise_id}/press/inject", response_model=SimulatedPressArticleResponse)
 async def create_press_article_from_inject(exercise_id: int, article_data: SimulatedPressArticleFromInject):
-    """Create a press article from an inject event."""
+    """Create a simulated press article from an inject event.
+
+    Publishes a scripted news article into the exercise press feed (e.g.
+    a breaking-news story about the Duval Industries ransomware incident).
+    Broadcast via WebSocket.
+    """
     async for db in get_db_session():
         article = SimulatedPressArticle(
             exercise_id=exercise_id,
@@ -889,7 +1006,12 @@ async def create_press_article_from_inject(exercise_id: int, article_data: Simul
 
 @router.get("/{exercise_id}/tv", response_model=SimulatedTvFeedResponse)
 async def list_tv_events(exercise_id: int, page: int = 1, page_size: int = 20):
-    """List TV events."""
+    """List simulated TV broadcast events for the exercise.
+
+    Returns paginated TV events (breaking news, live reports, replays)
+    ordered by broadcast time.  Includes unseen count and the currently
+    live event if any.
+    """
     async for db in get_db_session():
         count_result = await db.execute(
             select(func.count()).where(SimulatedTvEvent.exercise_id == exercise_id)
@@ -932,7 +1054,12 @@ async def list_tv_events(exercise_id: int, page: int = 1, page_size: int = 20):
 
 @router.post("/{exercise_id}/tv/inject", response_model=SimulatedTvEventResponse)
 async def create_tv_event_from_inject(exercise_id: int, event_data: SimulatedTvEventFromInject):
-    """Create a TV event from an inject event."""
+    """Create a simulated TV broadcast event from an inject.
+
+    Pushes a scripted TV segment (e.g. a live press conference or a
+    breaking-news banner about the cyber incident) into the exercise
+    TV feed.  Broadcast via WebSocket.
+    """
     async for db in get_db_session():
         event = SimulatedTvEvent(
             exercise_id=exercise_id,
@@ -968,7 +1095,10 @@ async def create_tv_event_from_inject(exercise_id: int, event_data: SimulatedTvE
 
 @router.post("/{exercise_id}/tv/{event_id}/seen")
 async def mark_tv_event_seen(exercise_id: int, event_id: int):
-    """Mark a TV event as seen."""
+    """Mark a TV broadcast event as seen by the player.
+
+    Records the `seen_at` timestamp.  Idempotent.
+    """
     async for db in get_db_session():
         result = await db.execute(
             select(SimulatedTvEvent).where(
@@ -994,7 +1124,13 @@ async def mark_tv_event_seen(exercise_id: int, event_id: int):
 
 @router.websocket("/{exercise_id}/ws")
 async def simulated_channels_websocket(websocket: WebSocket, exercise_id: int, ticket: str = Query(...)):
-    """WebSocket endpoint for real-time updates on simulated channels."""
+    """WebSocket endpoint for real-time CrisisLab channel updates.
+
+    Clients authenticate via a one-time ticket (query parameter `ticket`).
+    Once connected, the server pushes events for all simulated channels
+    (mail, chat, SMS, calls, social, press, TV) scoped to the exercise.
+    Clients may send `{"type": "ping"}` to keep the connection alive.
+    """
     try:
         await authenticate_ws_with_ticket(
             websocket=websocket,
