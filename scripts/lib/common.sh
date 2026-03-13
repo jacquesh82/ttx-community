@@ -111,6 +111,63 @@ generate_session_secret() {
 }
 
 # ─────────────────────────────────────────────
+# App URL parsing
+# ─────────────────────────────────────────────
+
+# parse_app_url <url>
+# Sets globals: BASE_URL, TENANT, TTX_IS_DEV
+#
+# Derivation rules:
+#   port 5173 (Vite dev)  → BASE_URL = scheme://host:3000  IS_DEV=true
+#   port 3000 (direct)    → BASE_URL = scheme://host:3000  IS_DEV=true
+#   port 80/443 or none   → BASE_URL = url as-is (nginx)   IS_DEV=false
+#
+parse_app_url() {
+  local url="${1%/}"   # strip trailing slash
+
+  local scheme="${url%%://*}"
+  local rest="${url#*://}"
+  local host_port="${rest%%/*}"
+  local host="${host_port%%:*}"
+  local port=""
+  [[ "$host_port" == *:* ]] && port="${host_port##*:}"
+
+  TENANT="$host"
+
+  case "$port" in
+    5173)
+      BASE_URL="${scheme}://${host}:3000"
+      TTX_IS_DEV=true
+      ;;
+    3000)
+      BASE_URL="${scheme}://${host}:3000"
+      TTX_IS_DEV=true
+      ;;
+    *)
+      # port 80, 443 ou absent → prod via nginx
+      BASE_URL="$url"
+      TTX_IS_DEV=false
+      ;;
+  esac
+}
+
+# prompt_app_url
+# Prompts interactively if APP_URL is empty, then calls parse_app_url.
+prompt_app_url() {
+  if [[ -z "${APP_URL:-}" ]]; then
+    echo ""
+    echo -e "  ${CYAN}URL d'accès à l'application${NC}"
+    echo -e "  ${BLUE}Exemples :${NC}  http://localhost:5173  (dev)"
+    echo -e "               http://localhost         (prod local)"
+    echo -e "               https://ttx.example.com (prod distante)"
+    echo -n "  → "
+    read -r APP_URL
+    [[ -z "$APP_URL" ]] && { print_error "URL requise."; exit 1; }
+  fi
+  parse_app_url "$APP_URL"
+}
+
+# ─────────────────────────────────────────────
 # Service readiness helpers
 # ─────────────────────────────────────────────
 

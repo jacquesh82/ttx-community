@@ -11,11 +11,13 @@ source "$SCRIPT_DIR/lib/common.sh"
 # ─────────────────────────────────────────────
 # Defaults
 # ─────────────────────────────────────────────
-BASE_URL="http://localhost:3000"
-TENANT="localhost"
-USE_DEV_LOGIN=true
+APP_URL=""
+BASE_URL=""
+TENANT=""
+TTX_IS_DEV=true
+USE_DEV_LOGIN_EXPLICIT=""   # vide = non forcé
 USERNAME="admin"
-PASSWORD="AdminPass1!"
+PASSWORD="Admin123!"
 API_KEY=""
 VERBOSE=false
 CLEAR_FIRST=false
@@ -29,18 +31,19 @@ trap 'rm -f "$COOKIE_JAR"' EXIT
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/seed_inject_bank.sh [options]
+  ./scripts/seed_inject_bank.sh [--url <app_url>] [options]
 
 Options:
-  --base-url <url>    Backend URL (default: http://localhost:3000)
-  --tenant <host>     Host header for tenant resolution (default: localhost)
-  --no-dev            Disable dev-login bypass, use --username/--password instead
-  --username <user>   Admin username (default: admin, used with --no-dev)
-  --password <pass>   Admin password (default: AdminPass1!, used with --no-dev)
-  --api-key <key>     Skip login, use existing API key directly
-  --clear             Clear all existing inject bank items before seeding
-  --verbose           Show full JSON responses
-  --help, -h          Show this help
+  --url <url>         URL d'accès à l'application (demandée si absente)
+                        http://localhost:5173  → dev  (backend :3000, dev-login activé)
+                        http://localhost       → prod (nginx, dev-login désactivé)
+  --no-dev            Forcer l'auth par identifiants plutôt que dev-login
+  --username <user>   Nom d'utilisateur admin (défaut: admin)
+  --password <pass>   Mot de passe admin (défaut: Admin123!)
+  --api-key <key>     Utiliser directement une clé API existante
+  --clear             Vider la banque avant de seed
+  --verbose           Afficher les réponses JSON complètes
+  --help, -h          Afficher cette aide
 
 Description:
   Seeds the inject bank with one example inject per type (kind):
@@ -48,10 +51,9 @@ Description:
 
 Examples:
   ./scripts/seed_inject_bank.sh
-  ./scripts/seed_inject_bank.sh --clear
-  ./scripts/seed_inject_bank.sh --tenant demo.localhost --clear
-  ./scripts/seed_inject_bank.sh --no-dev --username admin --password AdminPass1!
-  ./scripts/seed_inject_bank.sh --api-key ttx_existing_key
+  ./scripts/seed_inject_bank.sh --url http://localhost:5173 --clear
+  ./scripts/seed_inject_bank.sh --url http://localhost --no-dev --password Admin123!
+  ./scripts/seed_inject_bank.sh --url https://ttx.example.com --api-key ttx_xxxxx
 EOF
 }
 
@@ -60,18 +62,29 @@ EOF
 # ─────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --base-url)   BASE_URL="$2"; shift 2 ;;
-    --tenant)     TENANT="$2"; shift 2 ;;
-    --no-dev)     USE_DEV_LOGIN=false; shift ;;
+    --url)        APP_URL="$2"; shift 2 ;;
+    --no-dev)     USE_DEV_LOGIN_EXPLICIT=false; shift ;;
     --username)   USERNAME="$2"; shift 2 ;;
     --password)   PASSWORD="$2"; shift 2 ;;
     --api-key)    API_KEY="$2"; shift 2 ;;
     --clear)      CLEAR_FIRST=true; shift ;;
     --verbose)    VERBOSE=true; shift ;;
     --help|-h)    usage; exit 0 ;;
-    *)            print_error "Unknown option: $1"; usage; exit 1 ;;
+    *)            print_error "Option inconnue: $1"; usage; exit 1 ;;
   esac
 done
+
+# ─────────────────────────────────────────────
+# Resolve URL → BASE_URL, TENANT, TTX_IS_DEV
+# ─────────────────────────────────────────────
+prompt_app_url
+
+# Appliquer dev-login : explicite > déduit de l'environnement
+if [[ -n "$USE_DEV_LOGIN_EXPLICIT" ]]; then
+  USE_DEV_LOGIN="$USE_DEV_LOGIN_EXPLICIT"
+else
+  USE_DEV_LOGIN="$TTX_IS_DEV"
+fi
 
 # ─────────────────────────────────────────────
 # Helpers
@@ -148,8 +161,10 @@ echo "════════════════════════�
 echo "  TTX Inject Bank Seed Script (via REST API)"
 echo "════════════════════════════════════════════════════════"
 echo ""
-log_info "Base URL: ${BASE_URL}"
+log_info "App URL:  ${APP_URL}"
+log_info "API URL:  ${BASE_URL}"
 log_info "Tenant:   ${TENANT}"
+log_info "Env:      $( [[ "$TTX_IS_DEV" == "true" ]] && echo "dev (dev-login disponible)" || echo "prod (auth par identifiants)" )"
 [[ "$CLEAR_FIRST" == "true" ]] && log_info "Mode:     clear + seed"
 
 # ─────────────────────────────────────────────
@@ -453,5 +468,5 @@ log_ok "${CREATED}/8 injects créés dans la banque (1 par type)"
 echo ""
 echo -e "  Types couverts : ${CYAN}mail, sms, call, socialnet, tv, doc, directory, story${NC}"
 echo ""
-echo "  Banque d'injects : http://localhost:5173/inject-bank"
+echo "  Banque d'injects : ${APP_URL%/}/inject-bank"
 echo ""

@@ -11,11 +11,13 @@ source "$SCRIPT_DIR/lib/common.sh"
 # ─────────────────────────────────────────────
 # Defaults
 # ─────────────────────────────────────────────
-BASE_URL="http://localhost:3000"
-TENANT="localhost"
-USE_DEV_LOGIN=true
+APP_URL=""
+BASE_URL=""
+TENANT=""
+TTX_IS_DEV=true
+USE_DEV_LOGIN_EXPLICIT=""   # vide = non forcé
 USERNAME="admin"
-PASSWORD="AdminPass1!"
+PASSWORD="Admin123!"
 API_KEY=""
 VERBOSE=false
 COOKIE_JAR=$(mktemp)
@@ -29,23 +31,24 @@ trap 'rm -f "$COOKIE_JAR"' EXIT
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/seed_demo_api.sh [options]
+  ./scripts/seed_demo_api.sh [--url <app_url>] [options]
 
 Options:
-  --base-url <url>    Backend URL (default: http://localhost:3000)
-  --tenant <host>     Host header for tenant resolution (default: localhost)
-  --no-dev            Disable dev-login bypass, use --username/--password instead
-  --username <user>   Admin username (default: admin, used with --no-dev)
-  --password <pass>   Admin password (default: AdminPass1!, used with --no-dev)
-  --api-key <key>     Skip login, use existing API key directly
-  --verbose           Show full JSON responses
-  --help, -h          Show this help
+  --url <url>         URL d'accès à l'application (demandée si absente)
+                        http://localhost:5173  → dev  (backend :3000, dev-login activé)
+                        http://localhost       → prod (nginx, dev-login désactivé)
+  --no-dev            Forcer l'auth par identifiants plutôt que dev-login
+  --username <user>   Nom d'utilisateur admin (défaut: admin)
+  --password <pass>   Mot de passe admin (défaut: Admin123!)
+  --api-key <key>     Utiliser directement une clé API existante
+  --verbose           Afficher les réponses JSON complètes
+  --help, -h          Afficher cette aide
 
 Examples:
   ./scripts/seed_demo_api.sh
-  ./scripts/seed_demo_api.sh --tenant demo.localhost
-  ./scripts/seed_demo_api.sh --no-dev --username admin --password AdminPass1!
-  ./scripts/seed_demo_api.sh --api-key ttx_existing_key
+  ./scripts/seed_demo_api.sh --url http://localhost:5173
+  ./scripts/seed_demo_api.sh --url http://localhost --no-dev --password Admin123!
+  ./scripts/seed_demo_api.sh --url https://ttx.example.com --api-key ttx_xxxxx
 EOF
 }
 
@@ -54,17 +57,28 @@ EOF
 # ─────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --base-url)   BASE_URL="$2"; shift 2 ;;
-    --tenant)     TENANT="$2"; shift 2 ;;
-    --no-dev)     USE_DEV_LOGIN=false; shift ;;
+    --url)        APP_URL="$2"; shift 2 ;;
+    --no-dev)     USE_DEV_LOGIN_EXPLICIT=false; shift ;;
     --username)   USERNAME="$2"; shift 2 ;;
     --password)   PASSWORD="$2"; shift 2 ;;
     --api-key)    API_KEY="$2"; shift 2 ;;
     --verbose)    VERBOSE=true; shift ;;
     --help|-h)    usage; exit 0 ;;
-    *)            print_error "Unknown option: $1"; usage; exit 1 ;;
+    *)            print_error "Option inconnue: $1"; usage; exit 1 ;;
   esac
 done
+
+# ─────────────────────────────────────────────
+# Resolve URL → BASE_URL, TENANT, TTX_IS_DEV
+# ─────────────────────────────────────────────
+prompt_app_url
+
+# Appliquer dev-login : explicite > déduit de l'environnement
+if [[ -n "$USE_DEV_LOGIN_EXPLICIT" ]]; then
+  USE_DEV_LOGIN="$USE_DEV_LOGIN_EXPLICIT"
+else
+  USE_DEV_LOGIN="$TTX_IS_DEV"
+fi
 
 # ─────────────────────────────────────────────
 # Helpers
@@ -143,8 +157,10 @@ echo "════════════════════════�
 echo "  TTX Demo Seed Script (via REST API)"
 echo "════════════════════════════════════════════════════════"
 echo ""
-log_info "Base URL: ${BASE_URL}"
+log_info "App URL:  ${APP_URL}"
+log_info "API URL:  ${BASE_URL}"
 log_info "Tenant:   ${TENANT}"
+log_info "Env:      $( [[ "$TTX_IS_DEV" == "true" ]] && echo "dev (dev-login disponible)" || echo "prod (auth par identifiants)" )"
 
 # ─────────────────────────────────────────────
 # Step 1: Authentication
@@ -651,6 +667,6 @@ log_ok "${PHASE_COUNT} phases configured with time offsets"
 log_ok "${INJECTS_CREATED} injects created (${TECHNICAL_COUNT} TECHNICAL, ${BUSINESS_COUNT} BUSINESS)"
 echo ""
 echo -e "${GREEN}Demo environment ready!${NC}"
-echo "  Dashboard: http://localhost:5173/dashboard"
-echo "  Exercise:  http://localhost:5173/exercises/${EXERCISE_ID}"
+echo "  Dashboard: ${APP_URL%/}/dashboard"
+echo "  Exercise:  ${APP_URL%/}/exercises/${EXERCISE_ID}"
 echo ""
