@@ -1052,6 +1052,41 @@ async def list_placeholders(
     return PlaceholderListResponse(placeholders=items)
 
 
+class ResolvePlaceholdersRequest(BaseModel):
+    text: str = Field(..., description="Text containing {{placeholder}} tokens to resolve")
+    exercise_id: int | None = Field(None, description="Optional exercise ID for contextual placeholders")
+
+
+class ResolvePlaceholdersResponse(BaseModel):
+    resolved: str = Field(..., description="Text with placeholders replaced by their current values")
+
+
+@router.post("/placeholders/resolve", response_model=ResolvePlaceholdersResponse)
+async def resolve_placeholders_endpoint(
+    body: ResolvePlaceholdersRequest,
+    tenant_ctx: TenantRequestContext = Depends(require_tenant_context),
+    _: any = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Resolve ``{{placeholder}}`` tokens in the given text.
+
+    Replaces all known placeholders with their current tenant/exercise values.
+    Unknown placeholders are left untouched.
+
+    **Auth required:** Yes (admin only).
+    """
+    from app.utils.placeholders import resolve_placeholders
+
+    resolved = await resolve_placeholders(
+        body.text,
+        tenant_id=tenant_ctx.tenant.id,
+        db=db,
+        tenant_name=tenant_ctx.tenant.name,
+        exercise_id=body.exercise_id,
+    )
+    return ResolvePlaceholdersResponse(resolved=resolved)
+
+
 # ============== App Configuration Endpoints ==============
 
 @router.get("/config", response_model=AppConfigurationResponse)

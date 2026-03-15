@@ -21,7 +21,7 @@ COPY package*.json ./
 RUN npm config set strict-ssl false && npm ci
 
 COPY . .
-RUN npm run build
+RUN npx vite build
 
 # Production stage with nginx
 FROM nginx:alpine AS production

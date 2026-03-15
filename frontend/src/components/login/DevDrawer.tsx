@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronUp, ChevronDown, Radio, Inbox, Activity, FlaskConical } from 'lucide-react'
+import { ChevronUp, ChevronDown, Radio, Inbox, FlaskConical } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import DebugExerciseSeedModal from './DebugExerciseSeedModal'
 
@@ -19,17 +19,7 @@ interface DevDrawerProps {
 export default function DevDrawer({ onDevLogin, devLoading }: DevDrawerProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null)
   const [showSeed, setShowSeed] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
-    let canceled = false
-    fetch('/api/health')
-      .then((r) => { if (!canceled) setApiOnline(r.ok) })
-      .catch(() => { if (!canceled) setApiOnline(false) })
-    return () => { canceled = true }
-  }, [open])
 
   return (
     <>
@@ -109,24 +99,6 @@ export default function DevDrawer({ onDevLogin, devLoading }: DevDrawerProps) {
             </div>
           </div>
 
-          {/* API status */}
-          <div className="mt-4 flex items-center justify-center gap-2 border-t pt-4" style={{ borderColor: 'var(--login-card-border)' }}>
-            <Activity size={14} className="login-muted" />
-            <span className="text-xs login-muted">{t('debug.apiStatus')} :</span>
-            {apiOnline === null ? (
-              <span className="text-xs login-muted">…</span>
-            ) : apiOnline ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-400">
-                <span className="h-2 w-2 rounded-full bg-green-400" />
-                {t('debug.apiOnline')}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-red-400">
-                <span className="h-2 w-2 rounded-full bg-red-400" />
-                {t('debug.apiOffline')}
-              </span>
-            )}
-          </div>
         </div>
       </div>
 

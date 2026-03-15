@@ -68,7 +68,7 @@ export default function WelcomeKitTemplatesPage() {
   const [previewContent, setPreviewContent] = useState<string>('')
   const [selectedKind, setSelectedKind] = useState<WelcomeKitKind | ''>('')
   const [formData, setFormData] = useState({
-    name: '',
+    name: `New template - ${new Date().toLocaleDateString('fr-FR')}`,
     kind: 'player' as WelcomeKitKind,
     template_markdown: DEFAULT_TEMPLATE_MARKDOWN,
     is_default: false,
@@ -119,7 +119,7 @@ export default function WelcomeKitTemplatesPage() {
 
   const resetForm = () => {
     setFormData({
-      name: '',
+      name: `New template - ${new Date().toLocaleDateString('fr-FR')}`,
       kind: 'player',
       template_markdown: DEFAULT_TEMPLATE_MARKDOWN,
       is_default: false,

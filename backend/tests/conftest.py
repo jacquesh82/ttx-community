@@ -8,7 +8,7 @@ Architecture:
     replacing the production Postgres engine.
   - app.main.seed_initial_data is replaced with a no-op.
   - Tables are created once (session scope); seed data inserted once.
-  - Authenticated clients are built by inserting Session rows directly in DB.
+  - Authenticated clients are built via POST /api/auth/login (no direct DB access).
   - asyncio_default_fixture_loop_scope = session (pytest.ini) ensures all
     async fixtures share the same event loop — no "different loop" errors.
 """
@@ -60,12 +60,8 @@ from app.main import app
 from app.models import (
     Tenant, TenantStatus, TenantConfiguration,
     User, UserRole,
-    Session as DbSession,
 )
-from app.models.tenant import SessionScope
-from app.utils.security import (
-    hash_password, generate_session_token, hash_token, create_session_expiry,
-)
+from app.utils.security import hash_password
 
 # ── Step 3 : create test engine (temp file + NullPool) ───────────────────────
 _DB_FILE = tempfile.mktemp(suffix=".test.db")
@@ -180,22 +176,7 @@ async def seed(create_tables):
     return {"tenant": tenant, "users": users}
 
 
-async def _make_cookie(tenant_id: int, user: User) -> str:
-    """Insert a Session row and return the raw token string."""
-    token = generate_session_token()
-    async with _TEST_SESSION_FACTORY() as db:
-        row = DbSession(
-            tenant_id=tenant_id,
-            user_id=user.id,
-            session_scope=SessionScope.TENANT.value,
-            token_hash=hash_token(token),
-            ip_address="127.0.0.1",
-            user_agent="pytest",
-            expires_at=create_session_expiry(),
-        )
-        db.add(row)
-        await db.commit()
-    return token
+_TEST_PASSWORD = "TestPass1!"
 
 
 def _build_client(cookies: dict | None = None) -> AsyncClient:
@@ -208,6 +189,18 @@ def _build_client(cookies: dict | None = None) -> AsyncClient:
     )
 
 
+async def _login_client(username: str) -> AsyncClient:
+    """Login via POST /api/auth/login and return an authenticated client."""
+    c = _build_client()
+    await c.__aenter__()
+    resp = await c.post("/api/auth/login", json={
+        "username_or_email": username,
+        "password": _TEST_PASSWORD,
+    })
+    assert resp.status_code == 200, f"Login failed for {username}: {resp.text}"
+    return c
+
+
 # ── Per-test clients ──────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
@@ -218,34 +211,35 @@ async def client(seed) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def admin_client(seed) -> AsyncGenerator[AsyncClient, None]:
-    token = await _make_cookie(seed["tenant"].id, seed["users"][UserRole.ADMIN])
-    async with _build_client({"ttx_session": token}) as c:
+    c = await _login_client(f"test_{UserRole.ADMIN.value}")
+    try:
         yield c
+    finally:
+        await c.aclose()
 
 
 @pytest_asyncio.fixture
 async def animateur_client(seed) -> AsyncGenerator[AsyncClient, None]:
-    token = await _make_cookie(seed["tenant"].id, seed["users"][UserRole.ANIMATEUR])
-    async with _build_client({"ttx_session": token}) as c:
+    c = await _login_client(f"test_{UserRole.ANIMATEUR.value}")
+    try:
         yield c
+    finally:
+        await c.aclose()
 
 
 @pytest_asyncio.fixture
 async def observateur_client(seed) -> AsyncGenerator[AsyncClient, None]:
-    token = await _make_cookie(seed["tenant"].id, seed["users"][UserRole.OBSERVATEUR])
-    async with _build_client({"ttx_session": token}) as c:
+    c = await _login_client(f"test_{UserRole.OBSERVATEUR.value}")
+    try:
         yield c
+    finally:
+        await c.aclose()
 
 
 @pytest_asyncio.fixture
 async def participant_client(seed) -> AsyncGenerator[AsyncClient, None]:
-    token = await _make_cookie(seed["tenant"].id, seed["users"][UserRole.PARTICIPANT])
-    async with _build_client({"ttx_session": token}) as c:
+    c = await _login_client(f"test_{UserRole.PARTICIPANT.value}")
+    try:
         yield c
-
-
-@pytest_asyncio.fixture
-async def db(seed) -> AsyncGenerator[AsyncSession, None]:
-    """Raw AsyncSession for direct DB manipulation in tests."""
-    async with _TEST_SESSION_FACTORY() as session:
-        yield session
+    finally:
+        await c.aclose()
